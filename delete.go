@@ -53,7 +53,7 @@ func (b *DeleteBuilder) Offset(offset uint64) *DeleteBuilder {
 	return b
 }
 
-// ToSql serialized the DeleteBuilder to a SQL string
+// ToSQL serialized the DeleteBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 	if len(b.Table) == 0 {
@@ -98,12 +98,12 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 	return sql.String(), args
 }
 
-// MustString interpolates this builders sql.
+// Interpolate interpolates this builders sql.
 func (b *DeleteBuilder) Interpolate() (string, error) {
 	return interpolate(b)
 }
 
-// MustString interpolates this builders sql.
+// MustInterpolate interpolates this builders sql or panics.
 func (b *DeleteBuilder) MustInterpolate() string {
 	return mustInterpolate(b)
 }

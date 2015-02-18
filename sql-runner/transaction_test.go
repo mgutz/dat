@@ -19,12 +19,12 @@ func TestTransactionReal(t *testing.T) {
 		Values("Barack", "obama@whitehouse.gov").
 		Returning("id")
 
-	tx.QueryScalar(&id, b)
+	tx.QueryScan(b, &id)
 
 	assert.True(t, id > 0)
 
 	var person dbrPerson
-	err = tx.QueryStruct(&person, dat.Select("*").From("dbr_people").Where("id = $1", id))
+	err = tx.QueryStruct(dat.Select("*").From("dbr_people").Where("id = $1", id), &person)
 	assert.NoError(t, err)
 
 	assert.Equal(t, person.ID, id)
@@ -44,7 +44,7 @@ func TestTransactionRollbackReal(t *testing.T) {
 	assert.NoError(t, err)
 
 	var person dbrPerson
-	err = tx.QueryStruct(&person, dat.Select("*").From("dbr_people").Where("email = $1", "jonathan@uservoice.com"))
+	err = tx.QueryStruct(dat.Select("*").From("dbr_people").Where("email = $1", "jonathan@uservoice.com"), &person)
 	assert.NoError(t, err)
 	assert.Equal(t, person.Name, "Jonathan")
 

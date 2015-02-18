@@ -19,6 +19,24 @@ func TestInsertKeywordColumnName(t *testing.T) {
 	assert.Equal(t, rowsAff, 1)
 }
 
+func TestInsertDefault(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	b := dat.InsertInto("dbr_people").Columns("name", "foo").
+		Values("Barack", "fool").
+		Returning("foo")
+	var str string
+	err := s.QueryScan(b, &str)
+	assert.NoError(t, err)
+	assert.Equal(t, str, "fool")
+
+	ub := dat.Update("dbr_people").
+		Set("foo", dat.DEFAULT).
+		Returning("foo")
+	err = s.QueryScan(ub, &str)
+	assert.NoError(t, err)
+	assert.Equal(t, str, "bar")
+}
+
 func TestInsertReal(t *testing.T) {
 	// Insert by specifying values
 	s := createRealSessionWithFixtures()
@@ -27,7 +45,7 @@ func TestInsertReal(t *testing.T) {
 		Columns("name", "email").
 		Values("Barack", "obama0@whitehouse.gov").
 		Returning("id")
-	err := s.QueryScalar(&id, b)
+	err := s.QueryScan(b, &id)
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
 
@@ -39,7 +57,7 @@ func TestInsertReal(t *testing.T) {
 		Columns("name", "email").
 		Record(&person).
 		Returning("id", "created_at")
-	err = s.QueryStruct(&person, b)
+	err = s.QueryStruct(b, &person)
 	assert.NoError(t, err)
 	assert.True(t, person.ID > 0)
 	assert.NotEqual(t, person.CreatedAt, dat.NullTime{})
@@ -51,7 +69,7 @@ func TestInsertReal(t *testing.T) {
 	b = dat.InsertInto("dbr_people").Columns("name", "email").
 		Record(person2).
 		Returning("id")
-	err = s.QueryStruct(&person2, b)
+	err = s.QueryStruct(b, &person2)
 	assert.NoError(t, err)
 	assert.True(t, person2.ID > 0)
 	assert.NotEqual(t, person.ID, person2.ID)
@@ -85,8 +103,9 @@ func TestInsertMultipleRecords(t *testing.T) {
 	assert.Equal(n, 2)
 
 	people := []*dbrPerson{}
-	n, err = s.QueryStructs(&people,
+	n, err = s.QueryStructs(
 		dat.Select("name").From("dbr_people").Where("name like $1", "%_timr"),
+		&people,
 	)
 	assert.NoError(err)
 	assert.Equal(len(people), 2)

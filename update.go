@@ -16,6 +16,7 @@ type UpdateBuilder struct {
 	LimitValid     bool
 	OffsetCount    uint64
 	OffsetValid    bool
+	Returnings     []string
 }
 
 type setClause struct {
@@ -73,7 +74,13 @@ func (b *UpdateBuilder) Offset(offset uint64) *UpdateBuilder {
 	return b
 }
 
-// ToSql serialized the UpdateBuilder to a SQL string
+// Returning sets the columns for the RETURNING clause
+func (b *UpdateBuilder) Returning(columns ...string) *UpdateBuilder {
+	b.Returnings = columns
+	return b
+}
+
+// ToSQL serialized the UpdateBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	if len(b.Table) == 0 {
@@ -139,6 +146,16 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	if b.OffsetValid {
 		sql.WriteString(" OFFSET ")
 		fmt.Fprint(&sql, b.OffsetCount)
+	}
+
+	// Go thru the returning clauses
+	for i, c := range b.Returnings {
+		if i == 0 {
+			sql.WriteString(" RETURNING ")
+		} else {
+			sql.WriteRune(',')
+		}
+		Quoter.WriteQuotedColumn(c, &sql)
 	}
 
 	return sql.String(), args

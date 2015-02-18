@@ -33,8 +33,9 @@ func main() {
 
     // Get a record
     var suggestion Suggestion
-    err := sess.QueryStruct(&suggestion,
+    err := sess.QueryStruct(
         dat.Select("id, title").From("suggestions").Where("id = $1", 13),
+        &suggestion,
     )
 
     if err != nil {
@@ -56,10 +57,11 @@ var posts []*struct {
     Title string
     Body dat.NullString
 }
-err := sess.QueryStructs(&post,
+err := sess.QueryStructs(
     dat.Select("id, title, body").
         From("posts").
-        Where("id = $1", id)
+        Where("id = $1", id),
+    &post,
 )
 ```
 
@@ -68,8 +70,8 @@ Query a scalar value or slice of values
 ```go
 var n int64, ids []int64
 
-sess.QueryScalar(&n, dat.SQL("SELECT count(*) FROM posts WHERE title=$1", title))
-sess.QuerySlice(&ids, dat.SQL("SELECT id FROM posts", title))
+sess.QueryScan(dat.SQL("SELECT count(*) FROM posts WHERE title=$1", title), &n)
+sess.QuerySlice(dat.SQL("SELECT id FROM posts", title), &ids)
 ```
 
 ### Use Query Builders or Plain SQL
@@ -85,7 +87,7 @@ b := dat.Select("title", "body").
 
 // Tip: must be slice to pointers
 var posts []*Post
-n, err := sess.QueryStructs(&posts, b)
+n, err := sess.QueryStructs(b, &posts)
 ```
 
 Plain SQL
@@ -97,7 +99,7 @@ b := dat.SQL(`
     ORDER BY id ASC LIMIT 10`,
     someTime,
 )
-n, err := sess.QueryStructs(&posts, b)
+n, err := sess.QueryStructs(b, &posts)
 ```
 
 ### IN queries
@@ -164,63 +166,94 @@ Currently only PostgreSQL has been tested.
 
 ## Usage Examples
 
-### Making a session
+### Create a Session
 
-All queries in mgutz/dat are made in the context of a session.
+All queries are made in the context of a session.
 
-Here's an example web endpoint that makes a session:
+If multiple operations will be performed, say in an http.HandlerFunc,
+create and reuse a session
 
 ```go
-connection = runner.NewConnection(db)
+conn = runner.NewConnection(db)
 
 func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
-    sess := connection.NewSession()
+    sess := conn.NewSession()
 
     // Do queries with the session
     var suggestion Suggestion
-    err := sess.QueryStruct(&suggestion,
+    err := sess.QueryStruct(
         dat.Select("id, title").
             From("suggestions").
             Where("id = $1", suggestion.ID),
+        &suggestion,
     )
 
     // Render etc. Nothing else needs to be done with the sesssion.
 }
 ```
 
+If a single operation will be performed, use `Connection` directly
+
+```go
+err := conn.QueryStruct(dat.SQL(...), &suggestion)
+```
+
 ### CRUD
+
+
+Create
 
 ```go
 suggestion := &Suggestion{Title: "My Cool Suggestion", State: "open"}
 
-// Create - QueryStruct updates ID and CreatedAt, taking advantage of
-// Postgres' RETURNING clause
-response, err := sess.QueryStruct(&suggestion,
+// Use Returning() and QueryStruct to update ID and CreatedAt in one trip
+response, err := sess.QueryStruct(
     dat.InsertInto("suggestions").
         Columns("title", "state").
         Record(suggestion).
         Returning("id", "created_at"),
+    &suggestion,
 )
 
-// Read
+```
+
+
+Read
+
+```go
 var otherSuggestion Suggestion
-err = sess.QueryStruct(&otherSuggestion,
+err = sess.QueryStruct(
     dat.Select("id, title").
         From("suggestions").
-        Where("id = $1", suggestion.Id),
+        Where("id = $1", suggestion.ID),
+    &otherSuggestion,
 )
+```
 
-// Update
+Update
+
+```go
 response, err = sess.Exec(
     dat.Update("suggestions").
         Set("title", "My New Title").
         Where("id = $1", suggestion.ID),
 )
 
-// Delete
+// To reser values to their default value, use DEFAULT
+// eg, to reset payment_type to its default value
+sess.Exec(
+    dat.Update("payments").
+        Set("payment_type", dat.DEFAULT).
+        Where("id = $1", 1),
+)
+```
+
+Delete
+
+``` go
 response, err = sess.Exec(
     dat.DeleteFrom("suggestions").
-        Where("id = $1", otherSuggestion.Id).
+        Where("id = $1", otherSuggestion.ID).
         Limit(1),
 )
 ```
@@ -231,26 +264,29 @@ Load scalar and slice primitive values
 
 ```go
 var id int64
-n, err := sess.QueryScalar(&id,
+n, err := sess.QueryScan(
     dat.Select("id").From("suggestions").Limit(1)
+    &id,
 )
 
 var ids []int64
-n, err := sess.QuerySlice(&ids,
+n, err := sess.QuerySlice(
     dat.Select("id").From("suggestions")
+    &ids,
 )
 ```
 
 ### Overriding Column Names With Struct Tags
 
-```go
-// By default dat converts CamelCase property names to snake_case column_names
-// You can override this with struct tags, just like with JSON tags
-// This is especially helpful while migrating from legacy systems
+By default dat converts CamelCase property names to snake\_case column names.
+The column name can be overridden with struct tags. Be careful of names
+like `UserID`, which in snake case is `user_i_d`. `ID` is a common idom and
+is converted to `id`.
 
+```go
 type Suggestion struct {
-    ID        int64 `db:"id"`
-    Title     dat.NullString `db:"subject"` // subjects are called titles now
+    ID        int64
+    UserID    dat.NullString  `db:"user_id"`
     CreatedAt dat.NullTime
 }
 ```
@@ -260,16 +296,17 @@ type Suggestion struct {
 ```go
 // Columns are mapped to fields breadth-first
 type Suggestion struct {
-    Id        int64
+    ID        int64
     Title     string
     User      *struct {
-        Id int64 `db:"user_id"`
+        ID int64 `db:"user_id"`
     }
 }
 
 var suggestion Suggestion
-err := sess.QueryStruct(&suggestion,
+err := sess.QueryStruct(
     dat.Select("id, title, user_id").From("suggestions").Limit(1),
+    &suggestion,
 )
 ```
 
@@ -277,7 +314,7 @@ err := sess.QueryStruct(&suggestion,
 
 ```go
 // dat.Null* types serialize to JSON properly
-suggestion := &Suggestion{Id: 1, Title: "Test Title"}
+suggestion := &Suggestion{ID: 1, Title: "Test Title"}
 jsonBytes, err := json.Marshal(&suggestion)
 fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null}
 ```

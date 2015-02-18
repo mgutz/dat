@@ -25,7 +25,7 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 	assert.Equal(t, rowsAff, 1)
 
 	var person dbrPerson
-	err = s.QueryStruct(&person, dat.Select("*").From("dbr_people").Where(dat.Eq{"email": "ben@whitehouse.gov"}))
+	err = s.QueryStruct(dat.Select("*").From("dbr_people").Where(dat.Eq{"email": "ben@whitehouse.gov"}), &person)
 	assert.NoError(t, err)
 
 	assert.Equal(t, person.Name, "Benjamin")
@@ -40,7 +40,7 @@ func TestUpdateReal(t *testing.T) {
 	b := dat.InsertInto("dbr_people").Columns("name", "email").
 		Values("George", "george@whitehouse.gov").
 		Returning("id")
-	s.QueryScalar(&id, b)
+	s.QueryScan(b, &id)
 
 	// Rename our George to Barack
 	_, err := s.Exec(dat.Update("dbr_people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id))
@@ -48,7 +48,7 @@ func TestUpdateReal(t *testing.T) {
 	assert.NoError(t, err)
 
 	var person dbrPerson
-	err = s.QueryStruct(&person, dat.Select("*").From("dbr_people").Where("id = $1", id))
+	err = s.QueryStruct(dat.Select("*").From("dbr_people").Where("id = $1", id), &person)
 	assert.NoError(t, err)
 
 	assert.Equal(t, person.ID, id)

@@ -103,3 +103,9 @@ func TestInterpolateErrors(t *testing.T) {
 	_, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{[]struct{}{{}, {}}})
 	assert.Equal(t, err, ErrInvalidSliceValue)
 }
+
+func TestInterpolateDefault(t *testing.T) {
+	sql, args := InsertInto("a").Columns("b", "c").Values(1, DEFAULT).ToSQL()
+	str, _ := Interpolate(sql, args)
+	assert.Equal(t, str, `INSERT INTO a ("b","c") VALUES (1,DEFAULT)`)
+}

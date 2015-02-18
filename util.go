@@ -1,23 +1,40 @@
 package dat
 
+import "bytes"
+
 // NameMapping is the routine to use when mapping column names to struct properties
 var NameMapping = camelCaseToSnakeCase
 
 func camelCaseToSnakeCase(name string) string {
-	var newstr []rune
-	firstTime := true
+	var buf bytes.Buffer
 
+	// handle the common ID idiom
+	if name == "ID" {
+		return "id"
+	}
+	// lenName := len(name)
+
+	// writeID := false
+	// if lenName > 2 {
+	// 	writeID = name[lenName-2:lenName-1] == "I" && name[lenName-1:lenName] == "D"
+	// }
+
+	firstTime := true
 	for _, chr := range name {
+		// if writeID && i == lenName-2 {
+		// 	buf.WriteString("_id")
+		// 	break
+		// }
 		if isUpper := 'A' <= chr && chr <= 'Z'; isUpper {
 			if firstTime {
 				firstTime = false
 			} else {
-				newstr = append(newstr, '_')
+				buf.WriteRune('_')
 			}
 			chr -= ('A' - 'a')
 		}
-		newstr = append(newstr, chr)
+		buf.WriteRune(chr)
 	}
 
-	return string(newstr)
+	return buf.String()
 }

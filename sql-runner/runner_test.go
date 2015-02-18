@@ -14,10 +14,11 @@ import (
 //
 // Test helpers
 //
+var testConn *Connection
 
 func createRealSession() *Session {
-	cxn := NewConnection(realDb())
-	return cxn.NewSession()
+	testConn = NewConnection(realDb())
+	return testConn.NewSession()
 }
 
 func createRealSessionWithFixtures() *Session {
@@ -62,11 +63,11 @@ func realDb() *sql.DB {
 }
 
 type dbrPerson struct {
-	ID        int64 `db:"id"`
+	ID        int64
 	Name      string
 	Email     dat.NullString
 	Key       dat.NullString
-	CreatedAt dat.NullTime `db:"created_at"`
+	CreatedAt dat.NullTime
 }
 
 func installFixtures(db *sql.DB) {
@@ -76,6 +77,7 @@ func installFixtures(db *sql.DB) {
 			name varchar(255) NOT NULL,
 			email varchar(255),
 			key varchar(255),
+			foo varchar(255) default 'bar',
 			created_at timestamptz default now()
 		)
 	`

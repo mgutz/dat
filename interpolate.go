@@ -130,6 +130,8 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 
 		if v == nil {
 			buf.WriteString("NULL")
+		} else if _, ok := v.(defaultType); ok {
+			buf.WriteString("DEFAULT")
 		} else if isInt(kindOfV) {
 			var ival = valueOfV.Int()
 			buf.WriteString(strconv.FormatInt(ival, 10))
@@ -207,7 +209,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 		return nil
 	}
 
-	lenSql := utf8.RuneCountInString(sql)
+	lenSql := len(sql)
 	done := false
 	for i, r := range sql {
 		if accumulateDigits {
@@ -216,8 +218,8 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 				if i < lenSql-1 {
 					continue
 				}
-				// means the last rune is part of a placeholder and its value
-				// must be written
+				// the last rune is part of a placeholder and its value must be
+				// written
 				done = true
 			}
 

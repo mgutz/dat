@@ -37,6 +37,13 @@ func TestInsertSingleToSql(t *testing.T) {
 	assert.Equal(t, args, []interface{}{1, 2})
 }
 
+func TestDefaultValue(t *testing.T) {
+	sql, args := InsertInto("a").Columns("b", "c").Values(1, DEFAULT).ToSQL()
+
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2)", "b", "c"))
+	assert.Equal(t, args, []interface{}{1, DEFAULT})
+}
+
 func TestInsertMultipleToSql(t *testing.T) {
 	sql, args := InsertInto("a").Columns("b", "c").Values(1, 2).Values(3, 4).ToSQL()
 

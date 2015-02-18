@@ -11,6 +11,12 @@ import (
 // Your app can use these Null types instead of the defaults. The sole benefit you get is a MarshalJSON method that is not retarded.
 //
 
+// Default is used to default into SQL
+type defaultType int
+
+// DEFAULT SQL keyword
+const DEFAULT defaultType = 0
+
 // NullString is a type that can be null or a string
 type NullString struct {
 	sql.NullString

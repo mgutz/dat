@@ -53,7 +53,7 @@ func (r Runner) Exec(builder dat.Builder) (sql.Result, error) {
 // a struct dest must be a pointer to a struct
 //
 // Returns ErrNotFound if nothing was found
-func (r Runner) QueryStruct(dest interface{}, builder dat.Builder) error {
+func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
 	//
 	// Validate the dest, and extract the reflection values we need.
 	//
@@ -128,7 +128,7 @@ func (r Runner) QueryStruct(dest interface{}, builder dat.Builder) error {
 //
 // Returns the number of items found (which is not necessarily the # of items
 // set)
-func (r Runner) QueryStructs(dest interface{}, builder dat.Builder) (int64, error) {
+func (r Runner) QueryStructs(builder dat.Builder, dest interface{}) (int64, error) {
 	//
 	// Validate the dest, and extract the reflection values we need.
 	//
@@ -230,22 +230,11 @@ func (r Runner) QueryStructs(dest interface{}, builder dat.Builder) (int64, erro
 	return numberOfRowsReturned, nil
 }
 
-// QueryScalar executes the query in builder and loads the resulting data into
-// a primitive value
+// QueryScan executes the query in builder and loads the resulting data into
+// one or more destinations.
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func (r Runner) QueryScalar(dest interface{}, builder dat.Builder) error {
-	// Validate the dest
-	valueOfDest := reflect.ValueOf(dest)
-	kindOfDest := valueOfDest.Kind()
-
-	if kindOfDest != reflect.Ptr {
-		panic("Destination must be a pointer")
-	}
-
-	//
-	// Get full SQL
-	//
+func (r Runner) QueryScan(builder dat.Builder, destinations ...interface{}) error {
 	fullSql, err := builder.Interpolate()
 	if err != nil {
 		return err
@@ -253,25 +242,26 @@ func (r Runner) QueryScalar(dest interface{}, builder dat.Builder) error {
 
 	// Start the timer:
 	startTime := time.Now()
-	defer func() { events.TimingKv("queryScalar", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
+	defer func() { events.TimingKv("QueryScan", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
 
 	// Run the query:
 	rows, err := r.runner.Query(fullSql)
 	if err != nil {
-		return events.EventErrKv("queryScalar.load_value.query", err, M{"sql": fullSql})
+		return events.EventErrKv("QueryScan.load_value.query", err, M{"sql": fullSql})
 	}
 	defer rows.Close()
 
 	if rows.Next() {
-		err = rows.Scan(dest)
+		err = rows.Scan(destinations...)
+
 		if err != nil {
-			return events.EventErrKv("queryScalar.load_value.scan", err, M{"sql": fullSql})
+			return events.EventErrKv("QueryScan.load_value.scan", err, M{"sql": fullSql})
 		}
 		return nil
 	}
 
 	if err := rows.Err(); err != nil {
-		return events.EventErrKv("queryScalar.load_value.rows_err", err, M{"sql": fullSql})
+		return events.EventErrKv("QueryScan.load_value.rows_err", err, M{"sql": fullSql})
 	}
 
 	return dat.ErrNotFound
@@ -281,7 +271,7 @@ func (r Runner) QueryScalar(dest interface{}, builder dat.Builder) error {
 // slice of primitive values
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func (r Runner) QuerySlice(dest interface{}, builder dat.Builder) (int64, error) {
+func (r Runner) QuerySlice(builder dat.Builder, dest interface{}) (int64, error) {
 	// Validate the dest and reflection values we need
 
 	// This must be a pointer to a slice

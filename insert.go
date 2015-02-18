@@ -70,7 +70,7 @@ func buildPlaceholders(start, length int) string {
 	return buf.String()
 }
 
-// ToSql serialized the InsertBuilder to a SQL string
+// ToSQL serialized the InsertBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 	if len(b.Table) == 0 {

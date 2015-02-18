@@ -89,7 +89,7 @@ func (b *SelectBuilder) Paginate(page, perPage uint64) *SelectBuilder {
 	return b
 }
 
-// ToSql serialized the SelectBuilder to a SQL string
+// ToSQL serialized the SelectBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	if len(b.Columns) == 0 {
@@ -162,12 +162,12 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	return sql.String(), args
 }
 
-// MustString interpolates this builders sql.
+// Interpolate interpolates this builders sql.
 func (b *SelectBuilder) Interpolate() (string, error) {
 	return interpolate(b)
 }
 
-// MustString interpolates this builders sql.
+// MustInterpolate interpolates this builders sql or panics.
 func (b *SelectBuilder) MustInterpolate() string {
 	return mustInterpolate(b)
 }
