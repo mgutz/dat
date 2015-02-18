@@ -49,185 +49,13 @@ func (r Runner) Exec(builder dat.Builder) (sql.Result, error) {
 	return result, nil
 }
 
-// QueryStruct executes the query in builder and loads the resulting data into
-// a struct dest must be a pointer to a struct
-//
-// Returns ErrNotFound if nothing was found
-func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
-	//
-	// Validate the dest, and extract the reflection values we need.
-	//
-	valueOfDest := reflect.ValueOf(dest)
-	indirectOfDest := reflect.Indirect(valueOfDest)
-	kindOfDest := valueOfDest.Kind()
-
-	if kindOfDest != reflect.Ptr || indirectOfDest.Kind() != reflect.Struct {
-		panic("you need to pass in the address of a struct")
-	}
-
-	recordType := indirectOfDest.Type()
-
-	//
-	// Get full SQL
-	//
+// Query delegates to the internal runner's Query.
+func (r Runner) Query(builder dat.Builder) (*sql.Rows, error) {
 	fullSql, err := builder.Interpolate()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { events.TimingKv("queryStruct", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
-
-	// Run the query:
-	rows, err := r.runner.Query(fullSql)
-	if err != nil {
-		return events.EventErrKv("queryStruct.query", err, M{"sql": fullSql})
-	}
-	defer rows.Close()
-
-	// Get the columns of this result set
-	columns, err := rows.Columns()
-	if err != nil {
-		return events.EventErrKv("queryStruct.rows.Columns", err, M{"sql": fullSql})
-	}
-
-	// Create a map of this result set to the struct columns
-	fieldMap, err := dat.CalculateFieldMap(recordType, columns, false)
-	if err != nil {
-		return events.EventErrKv("queryStruct.calculateFieldMap", err, M{"sql": fullSql})
-	}
-
-	// Build a 'holder', which is an []interface{}. Each value will be the set to address of the field corresponding to our newly made records:
-	holder := make([]interface{}, len(fieldMap))
-
-	if rows.Next() {
-		// Build a 'holder', which is an []interface{}. Each value will be the address of the field corresponding to our newly made record:
-		scannable, err := dat.PrepareHolderFor(indirectOfDest, fieldMap, holder)
-		if err != nil {
-			return events.EventErrKv("queryStruct.holderFor", err, M{"sql": fullSql})
-		}
-
-		// Load up our new structure with the row's values
-		err = rows.Scan(scannable...)
-		if err != nil {
-			return events.EventErrKv("queryStruct.scan", err, M{"sql": fullSql})
-		}
-		return nil
-	}
-
-	if err := rows.Err(); err != nil {
-		return events.EventErrKv("queryStruct.rows_err", err, M{"sql": fullSql})
-	}
-
-	return dat.ErrNotFound
-}
-
-// QueryStructs executes the query in builderand loads the resulting data into
-// a slice of structs. dest must be a pointer to a slice of pointers to structs
-//
-// Returns the number of items found (which is not necessarily the # of items
-// set)
-func (r Runner) QueryStructs(builder dat.Builder, dest interface{}) (int64, error) {
-	//
-	// Validate the dest, and extract the reflection values we need.
-	//
-
-	// This must be a pointer to a slice
-	valueOfDest := reflect.ValueOf(dest)
-	kindOfDest := valueOfDest.Kind()
-
-	if kindOfDest != reflect.Ptr {
-		panic("invalid type passed to LoadStructs. Need a pointer to a slice")
-	}
-
-	// This must a slice
-	valueOfDest = reflect.Indirect(valueOfDest)
-	kindOfDest = valueOfDest.Kind()
-
-	if kindOfDest != reflect.Slice {
-		panic("invalid type passed to LoadStructs. Need a pointer to a slice")
-	}
-
-	// The slice elements must be pointers to structures
-	recordType := valueOfDest.Type().Elem()
-	if recordType.Kind() != reflect.Ptr {
-		panic("Elements need to be pointers to structures")
-	}
-
-	recordType = recordType.Elem()
-	if recordType.Kind() != reflect.Struct {
-		panic("Elements need to be pointers to structures")
-	}
-
-	//
-	// Get full SQL
-	//
-	fullSql, err := builder.Interpolate()
-	if err != nil {
-		return 0, events.EventErr("queryStructs.interpolate", err)
-	}
-
-	var numberOfRowsReturned int64
-
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { events.TimingKv("queryStructs", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
-
-	// Run the query:
-	rows, err := r.runner.Query(fullSql)
-	if err != nil {
-		return 0, events.EventErrKv("queryStructs.query", err, M{"sql": fullSql})
-	}
-	defer rows.Close()
-
-	// Get the columns returned
-	columns, err := rows.Columns()
-	if err != nil {
-		return numberOfRowsReturned, events.EventErrKv("queryStruct.rows.Columns", err, M{"sql": fullSql})
-	}
-
-	// Create a map of this result set to the struct fields
-	fieldMap, err := dat.CalculateFieldMap(recordType, columns, false)
-	if err != nil {
-		return numberOfRowsReturned, events.EventErrKv("queryStructs.calculateFieldMap", err, M{"sql": fullSql})
-	}
-
-	// Build a 'holder', which is an []interface{}. Each value will be the set to address of the field corresponding to our newly made records:
-	holder := make([]interface{}, len(fieldMap))
-
-	// Iterate over rows and scan their data into the structs
-	sliceValue := valueOfDest
-	for rows.Next() {
-		// Create a new record to store our row:
-		pointerToNewRecord := reflect.New(recordType)
-		newRecord := reflect.Indirect(pointerToNewRecord)
-
-		// Prepare the holder for this record
-		scannable, err := dat.PrepareHolderFor(newRecord, fieldMap, holder)
-		if err != nil {
-			return numberOfRowsReturned, events.EventErrKv("queryStructs.holderFor", err, M{"sql": fullSql})
-		}
-
-		// Load up our new structure with the row's values
-		err = rows.Scan(scannable...)
-		if err != nil {
-			return numberOfRowsReturned, events.EventErrKv("queryStructs.scan", err, M{"sql": fullSql})
-		}
-
-		// Append our new record to the slice:
-		sliceValue = reflect.Append(sliceValue, pointerToNewRecord)
-
-		numberOfRowsReturned++
-	}
-	valueOfDest.Set(sliceValue)
-
-	// Check for errors at the end. Supposedly these are error that can happen during iteration.
-	if err = rows.Err(); err != nil {
-		return numberOfRowsReturned, events.EventErrKv("queryStructs.rows_err", err, M{"sql": fullSql})
-	}
-
-	return numberOfRowsReturned, nil
+	return r.runner.Query(fullSql)
 }
 
 // QueryScan executes the query in builder and loads the resulting data into
@@ -338,6 +166,187 @@ func (r Runner) QuerySlice(builder dat.Builder, dest interface{}) (int64, error)
 
 	if err := rows.Err(); err != nil {
 		return numberOfRowsReturned, events.EventErrKv("querySlice.load_all_values.rows_err", err, M{"sql": fullSql})
+	}
+
+	return numberOfRowsReturned, nil
+}
+
+// QueryStruct executes the query in builder and loads the resulting data into
+// a struct dest must be a pointer to a struct
+//
+// Returns ErrNotFound if nothing was found
+func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
+	//
+	// Validate the dest, and extract the reflection values we need.
+	//
+	valueOfDest := reflect.ValueOf(dest)
+	indirectOfDest := reflect.Indirect(valueOfDest)
+	kindOfDest := valueOfDest.Kind()
+
+	if kindOfDest != reflect.Ptr || indirectOfDest.Kind() != reflect.Struct {
+		panic("you need to pass in the address of a struct")
+	}
+
+	recordType := indirectOfDest.Type()
+
+	//
+	// Get full SQL
+	//
+	fullSql, err := builder.Interpolate()
+	if err != nil {
+		return err
+	}
+
+	// Start the timer:
+	startTime := time.Now()
+	defer func() { events.TimingKv("QueryStruct", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
+
+	// Run the query:
+	rows, err := r.runner.Query(fullSql)
+	if err != nil {
+		return events.EventErrKv("QueryStruct.query", err, M{"sql": fullSql})
+	}
+	defer rows.Close()
+
+	// Get the columns of this result set
+	columns, err := rows.Columns()
+	if err != nil {
+		return events.EventErrKv("QueryStruct.rows.Columns", err, M{"sql": fullSql})
+	}
+
+	// Create a map of this result set to the struct columns
+	fieldMap, err := dat.CalculateFieldMap(recordType, columns, false)
+	if err != nil {
+		return events.EventErrKv("QueryStruct.calculateFieldMap", err, M{"sql": fullSql})
+	}
+
+	// Build a 'holder', which is an []interface{}. Each value will be the set to address of the field corresponding to our newly made records:
+	holder := make([]interface{}, len(fieldMap))
+
+	if rows.Next() {
+		// Build a 'holder', which is an []interface{}. Each value will be the address of the field corresponding to our newly made record:
+		scannable, err := dat.PrepareHolderFor(indirectOfDest, fieldMap, holder)
+		if err != nil {
+			return events.EventErrKv("QueryStruct.holderFor", err, M{"sql": fullSql})
+		}
+
+		// Load up our new structure with the row's values
+		err = rows.Scan(scannable...)
+		if err != nil {
+			return events.EventErrKv("QueryStruct.scan", err, M{"sql": fullSql})
+		}
+		return nil
+	}
+
+	if err := rows.Err(); err != nil {
+		return events.EventErrKv("QueryStruct.rows_err", err, M{"sql": fullSql})
+	}
+
+	return dat.ErrNotFound
+}
+
+// QueryStructs executes the query in builderand loads the resulting data into
+// a slice of structs. dest must be a pointer to a slice of pointers to structs
+//
+// Returns the number of items found (which is not necessarily the # of items
+// set)
+func (r Runner) QueryStructs(builder dat.Builder, dest interface{}) (int64, error) {
+	//
+	// Validate the dest, and extract the reflection values we need.
+	//
+
+	// This must be a pointer to a slice
+	valueOfDest := reflect.ValueOf(dest)
+	kindOfDest := valueOfDest.Kind()
+
+	if kindOfDest != reflect.Ptr {
+		panic("invalid type passed to LoadStructs. Need a pointer to a slice")
+	}
+
+	// This must a slice
+	valueOfDest = reflect.Indirect(valueOfDest)
+	kindOfDest = valueOfDest.Kind()
+
+	if kindOfDest != reflect.Slice {
+		panic("invalid type passed to LoadStructs. Need a pointer to a slice")
+	}
+
+	// The slice elements must be pointers to structures
+	recordType := valueOfDest.Type().Elem()
+	if recordType.Kind() != reflect.Ptr {
+		panic("Elements need to be pointers to structures")
+	}
+
+	recordType = recordType.Elem()
+	if recordType.Kind() != reflect.Struct {
+		panic("Elements need to be pointers to structures")
+	}
+
+	//
+	// Get full SQL
+	//
+	fullSql, err := builder.Interpolate()
+	if err != nil {
+		return 0, events.EventErr("QueryStructs.interpolate", err)
+	}
+
+	var numberOfRowsReturned int64
+
+	// Start the timer:
+	startTime := time.Now()
+	defer func() { events.TimingKv("QueryStructs", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
+
+	// Run the query:
+	rows, err := r.runner.Query(fullSql)
+	if err != nil {
+		return 0, events.EventErrKv("QueryStructs.query", err, M{"sql": fullSql})
+	}
+	defer rows.Close()
+
+	// Get the columns returned
+	columns, err := rows.Columns()
+	if err != nil {
+		return numberOfRowsReturned, events.EventErrKv("QueryStruct.rows.Columns", err, M{"sql": fullSql})
+	}
+
+	// Create a map of this result set to the struct fields
+	fieldMap, err := dat.CalculateFieldMap(recordType, columns, false)
+	if err != nil {
+		return numberOfRowsReturned, events.EventErrKv("QueryStructs.calculateFieldMap", err, M{"sql": fullSql})
+	}
+
+	// Build a 'holder', which is an []interface{}. Each value will be the set to address of the field corresponding to our newly made records:
+	holder := make([]interface{}, len(fieldMap))
+
+	// Iterate over rows and scan their data into the structs
+	sliceValue := valueOfDest
+	for rows.Next() {
+		// Create a new record to store our row:
+		pointerToNewRecord := reflect.New(recordType)
+		newRecord := reflect.Indirect(pointerToNewRecord)
+
+		// Prepare the holder for this record
+		scannable, err := dat.PrepareHolderFor(newRecord, fieldMap, holder)
+		if err != nil {
+			return numberOfRowsReturned, events.EventErrKv("QueryStructs.holderFor", err, M{"sql": fullSql})
+		}
+
+		// Load up our new structure with the row's values
+		err = rows.Scan(scannable...)
+		if err != nil {
+			return numberOfRowsReturned, events.EventErrKv("QueryStructs.scan", err, M{"sql": fullSql})
+		}
+
+		// Append our new record to the slice:
+		sliceValue = reflect.Append(sliceValue, pointerToNewRecord)
+
+		numberOfRowsReturned++
+	}
+	valueOfDest.Set(sliceValue)
+
+	// Check for errors at the end. Supposedly these are error that can happen during iteration.
+	if err = rows.Err(); err != nil {
+		return numberOfRowsReturned, events.EventErrKv("QueryStructs.rows_err", err, M{"sql": fullSql})
 	}
 
 	return numberOfRowsReturned, nil

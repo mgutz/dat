@@ -61,7 +61,7 @@ err := sess.QueryStructs(
     dat.Select("id, title, body").
         From("posts").
         Where("id = $1", id),
-    &post,
+    &posts,
 )
 ```
 
@@ -192,7 +192,7 @@ func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
-If a single operation will be performed, use `Connection` directly
+If only a single operation will be performed, use `Connection` directly
 
 ```go
 err := conn.QueryStruct(dat.SQL(...), &suggestion)
