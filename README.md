@@ -33,13 +33,13 @@ func main() {
 
     // Get a record
     var suggestion Suggestion
-    err := sess.QueryStruct(
-        dat.Select("id, title").From("suggestions").Where("id = $1", 13),
-        &suggestion,
-    )
-
+    err := sess.
+        Select("id, title").
+        From("suggestions").
+        Where("id = $1", 13).
+        QueryStruct(&suggestion)
     if err != nil {
-        panic(err.Error())
+        panic(err)
     }
     fmt.Println("Title", suggestion.Title)
 }
@@ -57,12 +57,11 @@ var posts []*struct {
     Title string
     Body dat.NullString
 }
-err := sess.QueryStructs(
-    dat.Select("id, title, body").
-        From("posts").
-        Where("id = $1", id),
-    &posts,
-)
+err := sess.
+    Select("id, title, body").
+    From("posts").
+    Where("id = $1", id).
+    QueryStructs(&posts)
 ```
 
 Query a scalar value or slice of values
@@ -70,8 +69,8 @@ Query a scalar value or slice of values
 ```go
 var n int64, ids []int64
 
-sess.QueryScan(dat.SQL("SELECT count(*) FROM posts WHERE title=$1", title), &n)
-sess.QuerySlice(dat.SQL("SELECT id FROM posts", title), &ids)
+sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScan(&n)
+sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
 ### Use Query Builders or Plain SQL
@@ -79,27 +78,26 @@ sess.QuerySlice(dat.SQL("SELECT id FROM posts", title), &ids)
 Query Builder
 
 ```go
-b := dat.Select("title", "body").
+// Tip: must be slice to pointers
+var posts []*Post
+n, err := sess.
+    Select("title", "body").
     From("posts").
     Where("created_at > $1", someTime).
     OrderBy("id ASC").
-    Limit(10)
-
-// Tip: must be slice to pointers
-var posts []*Post
-n, err := sess.QueryStructs(b, &posts)
+    Limit(10).
+    QueryStructs(&posts)
 ```
 
 Plain SQL
 
 ```go
-b := dat.SQL(`
+sess.SQL(`
     SELECT title, body
     FROM posts WHERE created_at > $1
-    ORDER BY id ASC LIMIT 10`,
-    someTime,
-)
-n, err := sess.QueryStructs(b, &posts)
+    ORDER BY id ASC LIMIT 10
+    `, someTime,
+).QueryStructs(&posts)
 ```
 
 ### IN queries
@@ -122,7 +120,7 @@ The easy way with dat
 
 ```go
 ids := []int64{10,20,30,40,50}
-b := dat.SQL("SELECT * FROM posts WHERE id IN $1", ids)
+b := sess.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
@@ -181,13 +179,11 @@ func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
 
     // Do queries with the session
     var suggestion Suggestion
-    err := sess.QueryStruct(
-        dat.Select("id, title").
-            From("suggestions").
-            Where("id = $1", suggestion.ID),
-        &suggestion,
+    err := sess.Select("id, title").
+        From("suggestions").
+        Where("id = $1", suggestion.ID).
+        QueryStruct(&suggestion)
     )
-
     // Render etc. Nothing else needs to be done with the sesssion.
 }
 ```
@@ -195,7 +191,7 @@ func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
 If only a single operation will be performed, use `Connection` directly
 
 ```go
-err := conn.QueryStruct(dat.SQL(...), &suggestion)
+err := conn.SQL(...).QueryStruct(&suggestion)
 ```
 
 ### CRUD
@@ -207,14 +203,12 @@ Create
 suggestion := &Suggestion{Title: "My Cool Suggestion", State: "open"}
 
 // Use Returning() and QueryStruct to update ID and CreatedAt in one trip
-response, err := sess.QueryStruct(
-    dat.InsertInto("suggestions").
-        Columns("title", "state").
-        Record(suggestion).
-        Returning("id", "created_at"),
-    &suggestion,
-)
-
+response, err := sess.
+    InsertInto("suggestions").
+    Columns("title", "state").
+    Record(suggestion).
+    Returning("id", "created_at").
+    QueryStruct(&suggestion)
 ```
 
 
@@ -222,40 +216,39 @@ Read
 
 ```go
 var otherSuggestion Suggestion
-err = sess.QueryStruct(
-    dat.Select("id, title").
-        From("suggestions").
-        Where("id = $1", suggestion.ID),
-    &otherSuggestion,
-)
+err = sess.
+    Select("id, title").
+    From("suggestions").
+    Where("id = $1", suggestion.ID).
+    QueryStruct(&otherSuggestion)
 ```
 
 Update
 
 ```go
-response, err = sess.Exec(
-    dat.Update("suggestions").
-        Set("title", "My New Title").
-        Where("id = $1", suggestion.ID),
-)
+result, err = sess.
+    Update("suggestions").
+    Set("title", "My New Title").
+    Where("id = $1", suggestion.ID).
+    Exec()
 
-// To reser values to their default value, use DEFAULT
+// To reset values to their default value, use DEFAULT
 // eg, to reset payment_type to its default value
-sess.Exec(
-    dat.Update("payments").
-        Set("payment_type", dat.DEFAULT).
-        Where("id = $1", 1),
-)
+res, err := sess.
+    Update("payments").
+    Set("payment_type", dat.DEFAULT).
+    Where("id = $1", 1).
+    Exec()
 ```
 
 Delete
 
 ``` go
-response, err = sess.Exec(
-    dat.DeleteFrom("suggestions").
-        Where("id = $1", otherSuggestion.ID).
-        Limit(1),
-)
+response, err = sess.
+    DeleteFrom("suggestions").
+    Where("id = $1", otherSuggestion.ID).
+    Limit(1).
+    Exec()
 ```
 
 ### Primitive Values
@@ -264,28 +257,22 @@ Load scalar and slice primitive values
 
 ```go
 var id int64
-n, err := sess.QueryScan(
-    dat.Select("id").From("suggestions").Limit(1)
-    &id,
-)
+var userID string
+n, err := sess.Select("id", "user_id").From("suggestions").Limit(1).QueryScan(&id, &userID)
 
 var ids []int64
-n, err := sess.QuerySlice(
-    dat.Select("id").From("suggestions")
-    &ids,
-)
+n, err := sess.Select("id").From("suggestions").QuerySlice(&ids)
 ```
 
 ### Overriding Column Names With Struct Tags
 
 By default dat converts CamelCase property names to snake\_case column names.
 The column name can be overridden with struct tags. Be careful of names
-like `UserID`, which in snake case is `user_i_d`. `ID` is a common idom and
-is converted to `id`.
+like `UserID`, which in snake case is `user_i_d`.
 
 ```go
 type Suggestion struct {
-    ID        int64
+    ID        int64           `db:"id"`
     UserID    dat.NullString  `db:"user_id"`
     CreatedAt dat.NullTime
 }
@@ -296,7 +283,7 @@ type Suggestion struct {
 ```go
 // Columns are mapped to fields breadth-first
 type Suggestion struct {
-    ID        int64
+    ID        int64         `db:"id"`
     Title     string
     User      *struct {
         ID int64 `db:"user_id"`
@@ -304,10 +291,11 @@ type Suggestion struct {
 }
 
 var suggestion Suggestion
-err := sess.QueryStruct(
-    dat.Select("id, title, user_id").From("suggestions").Limit(1),
-    &suggestion,
-)
+err := sess.
+    Select("id, title, user_id").
+    From("suggestions").
+    Limit(1).
+    QueryStruct(&suggestion)
 ```
 
 ### JSON encoding of Null\* types
@@ -323,7 +311,7 @@ fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null
 
 ```go
 // Start bulding an INSERT statement
-b := dat.InsertInto("developers").
+b := sess.InsertInto("developers").
 	Columns("name", "language", "employee_number")
 
 // Add some new developers
@@ -332,26 +320,27 @@ for i := 0; i < 3; i++ {
 }
 
 // Execute statement
-_, err := sess.Exec(b)
+_, err := b.Exec()
 ```
 
 ### Updating Records
 
 ```go
 // Update any rubyists to gophers
-response, err := sess.Exec(
-    dat.Update("developers").
+result, err := sess.Update("developers").
         Set("name", "Gopher").
         Set("language", "Go").
-        Where("language = $1", "Ruby")
-)
+        Where("language = $1", "Ruby").
+        Exec()
 
 
 // Alternatively use a map of attributes to update
 attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}
-response, err := sess.Exec(
-    dat.Update("developers").SetMap(attrsMap).Where("language = $1", "Ruby")
-)
+result, err := sess.
+    Update("developers").
+    SetMap(attrsMap).
+    Where("language = $1", "Ruby").
+    Exec()
 ```
 
 ### Transactions
@@ -367,11 +356,12 @@ if err != nil {
 defer tx.RollbackUnlessCommitted()
 
 // Issue statements that might cause errors
-res, err := tx.Exec(
-    dat.Update("suggestions").
-        Set("state", "deleted").
-        Where("deleted_at IS NOT NULL"),
-)
+res, err := tx.
+    Update("suggestions").
+    Set("state", "deleted").
+    Where("deleted_at IS NOT NULL").
+    Exec()
+
 if err != nil {
     return err
 }
@@ -384,7 +374,11 @@ if err := tx.Commit(); err != nil {
 
 ### Use With Other Runners (sqlx, pgx)
 
+Use the `github.com/mgutz/dat` package which contains the various
+SQL builders.
+
 ```go
+import "github.com/mgutz/dat"
 b := dat.Select("*").From("suggestions").Where("subdomain_id = $1", 1)
 
 // Get builder's SQL and arguments
