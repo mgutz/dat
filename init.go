@@ -7,7 +7,16 @@ import (
 
 // Events is the event receiver.
 //var Events = NewLogEventReceiver("[dat ]")
-var Events = &NullEventReceiver{}
+var Events EventReceiver
+
+// SetVerbose sets the verbosity of logging which defaults to none
+func SetVerbose(verbose bool) {
+	if verbose {
+		Events = NewLogEventReceiver("[dat ]")
+	} else {
+		Events = &NullEventReceiver{}
+	}
+}
 
 // maxLookup is the max lookup index for predefined lookup tables
 const maxLookup = 100
@@ -28,6 +37,16 @@ var equalsPlaceholderTab = make([]string, maxLookup)
 var inPlaceholderTab = make([]string, maxLookup)
 
 func init() {
+	SetVerbose(false)
+
+	// There is a performance cost related to using ordinal placeholders.
+	// Using '?' placeholders is much more efficient but not very friendly
+	// when coding non-trivial queries.
+	//
+	// Most of the cost is incurred when converting between integers and
+	// strings. These lookup tables hardcode the values for up to 100 args
+	// which should cover most queries. Anything over maxLookup defaults to
+	// using strconv.FormatInt.
 	for i := 0; i < maxLookup; i++ {
 		placeholderTab[i] = fmt.Sprintf("$%d", i)
 		inPlaceholderTab[i] = fmt.Sprintf(" IN $%d", i)

@@ -26,15 +26,14 @@ type Suggestion struct {
     CreatedAt dat.NullTime  `db:"created_at"`
 }
 
-// global connection with pooling provided by SQL driver
+// create global connection at startup (pooling provided by SQL driver)
 var connection *runner.Connection
 
 func main() {
-    // Create the connection during application initialization
     db, _ := sql.Open("postgres", "dbname=dat_test user=dat password=!test host=localhost sslmode=disable")
     conn = runner.NewConnection(db)
 
-    // Get a record
+    // fetch a record
     var suggestion Suggestion
     err := conn.
         Select("id, title").
@@ -49,7 +48,7 @@ func main() {
 
 ### Fetching Data
 
-Automatically map results to structs
+Easily map results to structs
 
 ```go
 var posts []*struct {
@@ -73,7 +72,7 @@ sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
 sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
-### Use Query Builders or Plain SQL
+### Use Builders or SQL
 
 Query Builder
 
@@ -95,8 +94,8 @@ Plain SQL
 sess.SQL(`
     SELECT title, body
     FROM posts WHERE created_at > $1
-    ORDER BY id ASC LIMIT 10
-    `, someTime,
+    ORDER BY id ASC LIMIT 10`,
+    someTime,
 ).QueryStructs(&posts)
 ```
 
@@ -110,15 +109,11 @@ b := sess.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
-### Instrumentation
-
-Writing instrumented code is a first-class concern.
-
 ### Faster Than Using database/sql
 
-Every time you call database/sql's db.Query("SELECT ...") method,
-under the hood, the SQL driver creates a prepared statement,
-executes it, then discards it. This has a big performance cost.
+`database/sql`'s db.Query("SELECT ...") method via the SQL driver,
+creates a prepared statement, executes it, then discards it.
+This has performance costs.
 
 `dat` interpolates locally using a built-in escape function to inline
 query arguments. The result is less work on the database server,
@@ -131,22 +126,14 @@ TODO Check out these [benchmarks](https://github.com/tyler-smith/golang-sql-benc
 ```go
 type Foo {
     S1 dat.NullString `json:"str1"`
-    S2 dat.NullString `json:"str2"`
 }
 ```
 
 `dat.Null*` types marshal to JSON correctly
 
 ```json
-{
-    "str1": "Hi!",
-    "str2": null
-}
+{ "str1": "Hi!" }
 ```
-
-## Driver support
-
-Currently PostgreSQL.
 
 ## Usage Examples
 
@@ -154,8 +141,13 @@ Currently PostgreSQL.
 
 All queries are made in the context of a session.
 
-If multiple operations will be performed, say in an http.HandlerFunc,
-create a session
+For one-off operations, use `Connection` directly
+
+```go
+err := conn.SQL(...).QueryStruct(&suggestion)
+```
+
+For multiple operations, create a session
 
 ```go
 conn = runner.NewConnection(db)
@@ -175,58 +167,42 @@ func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
-If only a single operation will be performed, use `Connection` directly
-
-```go
-err := conn.SQL(...).QueryStruct(&suggestion)
-```
-
 ### CRUD
 
 Create
 
 ```go
-suggestion := &Suggestion{Title: "My Cool Suggestion", State: "open"}
+suggestion := &Suggestion{Title: "Swith to Postgres", State: "open"}
 
 // Use Returning() and QueryStruct to update ID and CreatedAt in one trip
 response, err := sess.
     InsertInto("suggestions").
     Columns("title", "state").
     Record(suggestion).
-    Returning("id", "created_at").
+    Returning("id", "created_at", "updated_at").
     QueryStruct(&suggestion)
 ```
-
 
 Read
 
 ```go
-var otherSuggestion Suggestion
+var other Suggestion
 err = sess.
     Select("id, title").
     From("suggestions").
     Where("id = $1", suggestion.ID).
-    QueryStruct(&otherSuggestion)
-
-// OR use the iterator directly like database/sql
-
-row, err = sess.
-    SQL(`...`)
-    Query()
-
-for rows.Next() {
-    // process it
-}
+    QueryStruct(&other)
 ```
 
 Update
 
 ```go
-result, err = sess.
+err = sess.
     Update("suggestions").
     Set("title", "My New Title").
     Where("id = $1", suggestion.ID).
-    Exec()
+    Returning("updated_at").
+    QueryScalar(&suggestion.UpdatedAt)
 
 // To reset values to their default value, use DEFAULT
 // eg, to reset payment_type to its default value in DDL
@@ -263,17 +239,21 @@ n, err := sess.Select("id").From("suggestions").QuerySlice(&ids)
 
 ### Overriding Column Names With Struct Tags
 
-By default dat converts CamelCase property names to snake\_case column names.
-The column name can be overridden with struct tags. Be careful of names
-like `UserID`, which in snake case is `user_i_d`.
+By default `dat` maps CamelCase field names to snake\_case column names.
+The column name can be overridden with struct tags. Be careful of fields
+named like `ID`, `UserID`, which in snake case are `i_d`, `user_i_d`.
+If in doubt, use struct tags.
 
 ```go
 type Suggestion struct {
     ID        int64           `db:"id"`
     UserID    dat.NullString  `db:"user_id"`
+    UpdatedAt data.NullTime
     CreatedAt dat.NullTime
 }
 ```
+
+Tip: Set
 
 ### Embedded structs
 
@@ -329,7 +309,6 @@ result, err := sess.
     Set("language", "Go").
     Where("language = $1", "Ruby").
     Exec()
-
 
 // Alternatively use a map of attributes to update
 attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}

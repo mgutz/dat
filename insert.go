@@ -61,9 +61,7 @@ func (b *InsertBuilder) Pair(column string, value interface{}) *InsertBuilder {
 	return b
 }
 
-func buildPlaceholders(start, length int) string {
-	var buf bytes.Buffer
-
+func buildPlaceholders(buf *bytes.Buffer, start, length int) {
 	// Build the placeholder like "($1,$2,$3)"
 	buf.WriteRune('(')
 	for i := start; i < start+length; i++ {
@@ -78,7 +76,6 @@ func buildPlaceholders(start, length int) string {
 		}
 	}
 	buf.WriteRune(')')
-	return buf.String()
 }
 
 // ToSQL serialized the InsertBuilder to a SQL string
@@ -115,7 +112,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		if i > 0 {
 			sql.WriteRune(',')
 		}
-		sql.WriteString(buildPlaceholders(start, len(row)))
+		buildPlaceholders(&sql, start, len(row))
 
 		for _, v := range row {
 			args = append(args, v)
@@ -135,7 +132,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		if err != nil {
 			panic(err.Error())
 		}
-		sql.WriteString(buildPlaceholders(start, len(vals)))
+		buildPlaceholders(&sql, start, len(vals))
 		for _, v := range vals {
 			args = append(args, v)
 			start++

@@ -2,7 +2,6 @@ package dat
 
 import (
 	"bytes"
-	"fmt"
 	"strconv"
 )
 
@@ -102,7 +101,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			sql.WriteString(", ")
 		}
 		Quoter.WriteQuotedColumn(c.column, &sql)
-		if e, ok := c.value.(*expression); ok {
+		if e, ok := c.value.(*Expression); ok {
 			start := placeholderStartPos
 			sql.WriteString(" = ")
 			// map relative $1, $2 placeholders to absolute
@@ -113,8 +112,12 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			if i < maxLookup {
 				sql.WriteString(equalsPlaceholderTab[placeholderStartPos])
 			} else {
-				sql.WriteString(" = $")
-				sql.WriteString(strconv.FormatInt(placeholderStartPos, 10))
+				if placeholderStartPos < maxLookup {
+					sql.WriteString(equalsPlaceholderTab[placeholderStartPos])
+				} else {
+					sql.WriteString(" = $")
+					sql.WriteString(strconv.FormatInt(placeholderStartPos, 10))
+				}
 			}
 			placeholderStartPos++
 			args = append(args, c.value)
@@ -140,12 +143,12 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 
 	if b.limitValid {
 		sql.WriteString(" LIMIT ")
-		fmt.Fprint(&sql, b.limitCount)
+		writeUint64(&sql, b.limitCount)
 	}
 
 	if b.offsetValid {
 		sql.WriteString(" OFFSET ")
-		fmt.Fprint(&sql, b.offsetCount)
+		writeUint64(&sql, b.offsetCount)
 	}
 
 	// Go thru the returning clauses

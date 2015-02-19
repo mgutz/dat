@@ -1,9 +1,6 @@
 package dat
 
-import (
-	"bytes"
-	"strconv"
-)
+import "bytes"
 
 // DeleteBuilder contains the clauses for a DELETE statement
 type DeleteBuilder struct {
@@ -12,9 +9,9 @@ type DeleteBuilder struct {
 	table          string
 	whereFragments []*whereFragment
 	orderBys       []string
-	limitCount     uint
+	limitCount     uint64
 	limitValid     bool
-	offsetCount    uint
+	offsetCount    uint64
 	offsetValid    bool
 }
 
@@ -37,14 +34,14 @@ func (b *DeleteBuilder) OrderBy(ord string) *DeleteBuilder {
 }
 
 // Limit sets a LIMIT clause for the statement; overrides any existing LIMIT
-func (b *DeleteBuilder) Limit(limit uint) *DeleteBuilder {
+func (b *DeleteBuilder) Limit(limit uint64) *DeleteBuilder {
 	b.limitCount = limit
 	b.limitValid = true
 	return b
 }
 
 // Offset sets an OFFSET clause for the statement; overrides any existing OFFSET
-func (b *DeleteBuilder) Offset(offset uint) *DeleteBuilder {
+func (b *DeleteBuilder) Offset(offset uint64) *DeleteBuilder {
 	b.offsetCount = offset
 	b.offsetValid = true
 	return b
@@ -84,20 +81,12 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 
 	if b.limitValid {
 		sql.WriteString(" LIMIT ")
-		if b.limitCount < maxLookup {
-			sql.WriteString(itoaTab[int(b.limitCount)])
-		} else {
-			sql.WriteString(strconv.FormatUint(uint64(b.limitCount), 10))
-		}
+		writeUint64(&sql, b.limitCount)
 	}
 
 	if b.offsetValid {
 		sql.WriteString(" OFFSET ")
-		if b.offsetCount < maxLookup {
-			sql.WriteString(itoaTab[int(b.offsetCount)])
-		} else {
-			sql.WriteString(strconv.FormatUint(uint64(b.offsetCount), 10))
-		}
+		writeUint64(&sql, b.offsetCount)
 	}
 
 	return sql.String(), args

@@ -8,8 +8,6 @@ import (
 	"github.com/mgutz/dat"
 )
 
-// TODO eventreceiver should just be a log interface with a verbose flag
-
 // Unvetted thots:
 // Given a query and given a structure (field list), there's 2 sets of fields.
 // Take the intersection. We can fill those in. great.

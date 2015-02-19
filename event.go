@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+// TODO eventreceiver should just be a log interface with a verbose flag
+
 // EventReceiver gets events from dbr methods for logging purposes
 type EventReceiver interface {
 	Event(eventName string)

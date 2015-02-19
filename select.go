@@ -1,9 +1,6 @@
 package dat
 
-import (
-	"bytes"
-	"strconv"
-)
+import "bytes"
 
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
@@ -148,20 +145,12 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 
 	if b.limitValid {
 		sql.WriteString(" LIMIT ")
-		if b.limitCount < maxLookup {
-			sql.WriteString(itoaTab[int(b.limitCount)])
-		} else {
-			sql.WriteString(strconv.FormatUint(b.limitCount, 10))
-		}
+		writeUint64(&sql, b.limitCount)
 	}
 
 	if b.offsetValid {
 		sql.WriteString(" OFFSET ")
-		if b.offsetCount < maxLookup {
-			sql.WriteString(itoaTab[int(b.offsetCount)])
-		} else {
-			sql.WriteString(strconv.FormatUint(b.offsetCount, 10))
-		}
+		writeUint64(&sql, b.offsetCount)
 	}
 
 	return sql.String(), args

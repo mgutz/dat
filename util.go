@@ -1,6 +1,9 @@
 package dat
 
-import "bytes"
+import (
+	"bytes"
+	"strconv"
+)
 
 // NameMapping is the routine to use when mapping column names to struct properties
 var NameMapping = camelCaseToSnakeCase
@@ -55,4 +58,20 @@ func camelCaseToSnakeCaseID(name string) string {
 	}
 
 	return buf.String()
+}
+
+func writeInt64(buf *bytes.Buffer, n int64) {
+	if 0 <= n && n <= maxLookup {
+		buf.WriteString(itoaTab[int(n)])
+	} else {
+		buf.WriteString(strconv.FormatInt(n, 10))
+	}
+}
+
+func writeUint64(buf *bytes.Buffer, n uint64) {
+	if n <= maxLookup {
+		buf.WriteString(itoaTab[int(n)])
+	} else {
+		buf.WriteString(strconv.FormatUint(n, 10))
+	}
 }

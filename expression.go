@@ -1,11 +1,11 @@
 package dat
 
-type expression struct {
+type Expression struct {
 	Sql    string
 	Values []interface{}
 }
 
-// Expr is a SQL sqlExpressoin with placeholders, and a slice of args to replace them with
-func Expr(sql string, values ...interface{}) *expression {
-	return &expression{Sql: sql, Values: values}
+// Expr is a SQL expression with placeholders, and a slice of args to replace them with
+func Expr(sql string, values ...interface{}) *Expression {
+	return &Expression{Sql: sql, Values: values}
 }

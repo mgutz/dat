@@ -52,6 +52,7 @@ func remapPlaceholders(buf *bytes.Buffer, statement string, pos int64) int64 {
 			if pos+replaced < maxLookup {
 				buf.WriteString(placeholderTab[pos+replaced])
 			} else {
+				buf.WriteRune('$')
 				buf.WriteString(strconv.FormatInt(pos+replaced, 10))
 			}
 			replaced++

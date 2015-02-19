@@ -136,21 +136,12 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			buf.WriteString(escapeAndQuoteString(str))
 		} else if isInt(kindOfV) {
 			var ival = valueOfV.Int()
-			if 0 <= ival && ival < maxLookup {
-				buf.WriteString(itoaTab[int(ival)])
-			} else {
-				buf.WriteString(strconv.FormatInt(ival, 10))
-			}
+			writeInt64(&buf, ival)
 		} else if isUint(kindOfV) {
 			var uival = valueOfV.Uint()
-			if uival < maxLookup {
-				buf.WriteString(itoaTab[int(uival)])
-			} else {
-				buf.WriteString(strconv.FormatUint(uival, 10))
-			}
+			writeUint64(&buf, uival)
 		} else if isFloat(kindOfV) {
 			var fval = valueOfV.Float()
-
 			buf.WriteString(strconv.FormatFloat(fval, 'f', -1, 64))
 		} else if kindOfV == reflect.Bool {
 			var bval = valueOfV.Bool()
@@ -183,7 +174,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 						buf.WriteRune(',')
 					}
 					var ival = valueOfV.Index(i).Int()
-					buf.WriteString(strconv.FormatInt(ival, 10))
+					writeInt64(&buf, ival)
 				}
 			} else if isUint(kindOfSubtype) {
 				for i := 0; i < sliceLen; i++ {
@@ -191,7 +182,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 						buf.WriteRune(',')
 					}
 					var uival = valueOfV.Index(i).Uint()
-					buf.WriteString(strconv.FormatUint(uival, 10))
+					writeUint64(&buf, uival)
 				}
 			} else if kindOfSubtype == reflect.String {
 				for i := 0; i < sliceLen; i++ {
