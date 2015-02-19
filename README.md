@@ -2,8 +2,9 @@
 
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
-Package dat (Data Access Toolkit) is a fast, convenient and SQL friendly
-library for Postgres and Go
+Package dat (Data Access Toolkit) is a fast and convenient
+Postgres specific library for Go. `dat`'s goal is to make SQL
+more accessible not hide it behind some cumbersome AST dialect.
 
 TODO
 
