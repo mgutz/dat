@@ -2,16 +2,22 @@
 
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
-github.com/mgutz/dat is a Data Access Toolkit for Go built for speed and convenience.
+Package dat (Data Access Toolkit) is a fast, convenient and SQL friendly
+library for Postgres and Go
+
+TODO
+
+* hstore query suppport
 
 ## Getting Started
 
 ```go
 import (
     "database/sql"
-    _ "github.com/lib/pq"
+
     "github.com/mgutz/dat"
     "github.com/mgutz/dat/sql-runner" // use database/sql runner
+    _ "github.com/lib/pq"
 )
 
 type Suggestion struct {
@@ -20,34 +26,28 @@ type Suggestion struct {
     CreatedAt dat.NullTime  `db:"created_at"`
 }
 
-// Hold a single global connection (pooling provided by sql driver)
+// global connection with pooling provided by SQL driver
 var connection *runner.Connection
 
 func main() {
     // Create the connection during application initialization
     db, _ := sql.Open("postgres", "dbname=dat_test user=dat password=!test host=localhost sslmode=disable")
-    connection = runner.NewConnection(db)
-
-    // Create a session for each unit of execution, eg. each http.Handler
-    sess := connection.NewSession()
+    conn = runner.NewConnection(db)
 
     // Get a record
     var suggestion Suggestion
-    err := sess.
+    err := conn.
         Select("id, title").
         From("suggestions").
         Where("id = $1", 13).
         QueryStruct(&suggestion)
-    if err != nil {
-        panic(err)
-    }
     fmt.Println("Title", suggestion.Title)
 }
 ```
 
 ## Feature highlights
 
-### Fetching into Variables
+### Fetching Data
 
 Automatically map results to structs
 
@@ -64,12 +64,12 @@ err := sess.
     QueryStructs(&posts)
 ```
 
-Query a scalar value or slice of values
+Query scalar values or a slice of values
 
 ```go
 var n int64, ids []int64
 
-sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScan(&n)
+sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
 sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
@@ -102,21 +102,7 @@ sess.SQL(`
 
 ### IN queries
 
-Simpler IN queries
-
-Traditional Way
-
-```go
-ids := []int64{1,2,3,4,5}
-questionMarks := []string
-for _, _ := range ids {
-    questionMarks = append(questionMarks, "?")
-}
-query := fmt.Sprintf("SELECT * FROM posts WHERE id IN (%s)",
-    strings.Join(questionMarks, ",")
-```
-
-The easy way with dat
+Simpler IN queries which expand correctly
 
 ```go
 ids := []int64{10,20,30,40,50}
@@ -131,14 +117,14 @@ Writing instrumented code is a first-class concern.
 ### Faster Than Using database/sql
 
 Every time you call database/sql's db.Query("SELECT ...") method,
-under the hood, the mysql driver will create a prepared statement,
-execute it, and then throw it away. This has a big performance cost.
+under the hood, the SQL driver creates a prepared statement,
+executes it, then discards it. This has a big performance cost.
 
-`dat` doesn't use prepared statements. Postgres' escape functionality is
-built-in, which means all queries are interpolated on the current server.
-The result is less work on the database server, no prep time and it's safe.
+`dat` interpolates locally using a built-in escape function to inline
+query arguments. The result is less work on the database server,
+no prep time and it's safe.
 
-Check out these [benchmarks](https://github.com/tyler-smith/golang-sql-benchmark).
+TODO Check out these [benchmarks](https://github.com/tyler-smith/golang-sql-benchmark).
 
 ### JSON Friendly
 
@@ -160,7 +146,7 @@ type Foo {
 
 ## Driver support
 
-Currently only PostgreSQL has been tested.
+Currently PostgreSQL.
 
 ## Usage Examples
 
@@ -169,7 +155,7 @@ Currently only PostgreSQL has been tested.
 All queries are made in the context of a session.
 
 If multiple operations will be performed, say in an http.HandlerFunc,
-create and reuse a session
+create a session
 
 ```go
 conn = runner.NewConnection(db)
@@ -184,7 +170,8 @@ func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
         Where("id = $1", suggestion.ID).
         QueryStruct(&suggestion)
     )
-    // Render etc. Nothing else needs to be done with the sesssion.
+
+    // do more queries
 }
 ```
 
@@ -195,7 +182,6 @@ err := conn.SQL(...).QueryStruct(&suggestion)
 ```
 
 ### CRUD
-
 
 Create
 
@@ -221,6 +207,16 @@ err = sess.
     From("suggestions").
     Where("id = $1", suggestion.ID).
     QueryStruct(&otherSuggestion)
+
+// OR use the iterator directly like database/sql
+
+row, err = sess.
+    SQL(`...`)
+    Query()
+
+for rows.Next() {
+    // process it
+}
 ```
 
 Update
@@ -233,7 +229,7 @@ result, err = sess.
     Exec()
 
 // To reset values to their default value, use DEFAULT
-// eg, to reset payment_type to its default value
+// eg, to reset payment_type to its default value in DDL
 res, err := sess.
     Update("payments").
     Set("payment_type", dat.DEFAULT).
@@ -258,7 +254,8 @@ Load scalar and slice primitive values
 ```go
 var id int64
 var userID string
-n, err := sess.Select("id", "user_id").From("suggestions").Limit(1).QueryScan(&id, &userID)
+n, err := sess.
+    Select("id", "user_id").From("suggestions").Limit(1).QueryScalar(&id, &userID)
 
 var ids []int64
 n, err := sess.Select("id").From("suggestions").QuerySlice(&ids)
@@ -311,8 +308,7 @@ fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null
 
 ```go
 // Start bulding an INSERT statement
-b := sess.InsertInto("developers").
-	Columns("name", "language", "employee_number")
+b := sess.InsertInto("developers").Columns("name", "language", "employee_number")
 
 // Add some new developers
 for i := 0; i < 3; i++ {
@@ -327,11 +323,12 @@ _, err := b.Exec()
 
 ```go
 // Update any rubyists to gophers
-result, err := sess.Update("developers").
-        Set("name", "Gopher").
-        Set("language", "Go").
-        Where("language = $1", "Ruby").
-        Exec()
+result, err := sess.
+    Update("developers").
+    Set("name", "Gopher").
+    Set("language", "Go").
+    Where("language = $1", "Ruby").
+    Exec()
 
 
 // Alternatively use a map of attributes to update
@@ -372,7 +369,7 @@ if err := tx.Commit(); err != nil {
 }
 ```
 
-### Use With Other Runners (sqlx, pgx)
+### Use With Other Libraries (sqlx, ...)
 
 Use the `github.com/mgutz/dat` package which contains the various
 SQL builders.
@@ -389,15 +386,19 @@ fmt.Println(args)   // [1]
 // Use raw database/sql for actual query
 rows, err := db.Query(sql, args...)
 
-// Alternatively build the interpolated sql statement
+// Alternatively build the interpolated sql statement for better performance
 sql := builder.MustInterpolate()
 rows, err := db.Query(sql)
 ```
 
-## Thanks
+## Inspiration
 
-Inspiration from
+*   [mapper](https://github.com/mgutz/mapper)
 
-*  [mapper](https://github.com/mgutz/mapper) - my data access library for node, which predates dbr
-*  [dbr](https://github.com/gocraft/dbr) - builder code
+    my SQL builder for node.js which has builder, interpolation and exec
+    functionality
+
+*   [dbr](https://github.com/gocraft/dbr)
+
+    used this as starting point instead of porting mapper from scratch
 

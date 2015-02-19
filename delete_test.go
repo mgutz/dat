@@ -10,7 +10,7 @@ func BenchmarkDeleteSql(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		DeleteFrom("alpha").Where("a", "b").Limit(1).OrderDir("id", true).ToSQL()
+		DeleteFrom("alpha").Where("a", "b").Limit(1).OrderBy("id").ToSQL()
 	}
 }
 

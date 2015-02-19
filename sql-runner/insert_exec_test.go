@@ -31,7 +31,7 @@ func TestInsertDefault(t *testing.T) {
 		InsertInto("people").Columns("name", "foo").
 		Values("Barack", "fool").
 		Returning("foo").
-		QueryScan(&str)
+		QueryScalar(&str)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "fool")
 
@@ -39,7 +39,7 @@ func TestInsertDefault(t *testing.T) {
 		Update("people").
 		Set("foo", dat.DEFAULT).
 		Returning("foo").
-		QueryScan(&str)
+		QueryScalar(&str)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "bar")
 }
@@ -52,7 +52,7 @@ func TestInsertReal(t *testing.T) {
 		Columns("name", "email").
 		Values("Barack", "obama0@whitehouse.gov").
 		Returning("id").
-		QueryScan(&id)
+		QueryScalar(&id)
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
 

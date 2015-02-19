@@ -89,13 +89,13 @@ func TestSelectQueryScalar(t *testing.T) {
 		Select("name").
 		From("people").
 		Where("email = 'jonathan@uservoice.com'").
-		QueryScan(&name)
+		QueryScalar(&name)
 
 	assert.NoError(t, err)
 	assert.Equal(t, name, "Jonathan")
 
 	var id int64
-	err = s.Select("id").From("people").Limit(1).QueryScan(&id)
+	err = s.Select("id").From("people").Limit(1).QueryScalar(&id)
 
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
@@ -123,12 +123,12 @@ func TestScalar(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	var name string
-	err := s.Select("name").From("people").Where("email = 'jonathan@uservoice.com'").QueryScan(&name)
+	err := s.Select("name").From("people").Where("email = 'jonathan@uservoice.com'").QueryScalar(&name)
 	assert.NoError(t, err)
 	assert.Equal(t, name, "Jonathan")
 
 	var count int64
-	err = s.Select("COUNT(*)").From("people").QueryScan(&count)
+	err = s.Select("COUNT(*)").From("people").QueryScalar(&count)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 2)
 }

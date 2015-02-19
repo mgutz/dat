@@ -55,11 +55,18 @@ func tasks(p *Project) {
 	p.Task("test", func() {
 		Run(`go test`)
 		Run(`go test`, In{"sql-runner"})
-	}).Watch("*.go")
+	}).Watch("**/*.go")
 
 	p.Task("test-some", func() {
 		Run(`go test -run InsertReal`, In{"sql-runner"})
 	}).Watch("*.go")
+
+	p.Task("allocs", func() {
+		Bash(`
+		go test -c
+		GODEBUG=allocfreetrace=1 ./dat.test -test.bench=BenchmarkSelectBasicSql -test.run=none -test.benchtime=10ms 2>trace.log
+		`)
+	})
 
 	p.Task("bench", func() {
 		Bash("go test -bench . -benchmem 2>/dev/null | column -t")

@@ -43,7 +43,7 @@ func TestUpdateReal(t *testing.T) {
 	s.InsertInto("people").Columns("name", "email").
 		Values("George", "george@whitehouse.gov").
 		Returning("id").
-		QueryScan(&id)
+		QueryScalar(&id)
 
 	// Rename our George to Barack
 	_, err := s.Update("people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id).Exec()

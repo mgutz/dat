@@ -6,7 +6,7 @@ import "database/sql"
 type Executable interface {
 	Exec() (sql.Result, error)
 	Query() (*sql.Rows, error)
-	QueryScan(destinations ...interface{}) error
+	QueryScalar(destinations ...interface{}) error
 	QuerySlice(dest interface{}) (int64, error)
 	QueryStruct(dest interface{}) error
 	QueryStructs(dest interface{}) (int64, error)

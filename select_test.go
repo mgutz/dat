@@ -10,6 +10,7 @@ func BenchmarkSelectBasicSql(b *testing.B) {
 	// Do some allocations outside the loop so they don't affect the results
 	argEq := Eq{"a": []int{1, 2, 3}}
 
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Select("something_id", "user_id", "other").
@@ -49,37 +50,6 @@ func BenchmarkSelectFullSql(b *testing.B) {
 			Limit(7).
 			Offset(8).
 			ToSQL()
-	}
-}
-
-func BenchmarkInterpolate(b *testing.B) {
-	// Do some allocations outside the loop so they don't affect the results
-	argEq1 := Eq{"f": 2, "x": "hi"}
-	argEq2 := map[string]interface{}{"g": 3}
-	argEq3 := Eq{"h": []int{1, 2, 3}}
-	sq, args := Select("a", "b", "z", "y", "x").
-		Distinct().
-		From("c").
-		Where("d = $1 OR e = $2", 1, "wat").
-		Where(argEq1).
-		Where(argEq2).
-		Where(argEq3).
-		GroupBy("i").
-		GroupBy("ii").
-		GroupBy("iii").
-		Having("j = k").
-		Having("jj = $1", 1).
-		Having("jjj = $1", 2).
-		OrderBy("l").
-		OrderBy("l").
-		OrderBy("l").
-		Limit(7).
-		Offset(8).
-		ToSQL()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		Interpolate(sq, args)
 	}
 }
 

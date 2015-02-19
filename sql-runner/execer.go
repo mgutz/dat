@@ -23,7 +23,7 @@ func (ex *Execer) Exec() (sql.Result, error) {
 func (ex *Execer) Query() (*sql.Rows, error) {
 	return query(ex.runner, ex.builder)
 }
-func (ex *Execer) QueryScan(destinations ...interface{}) error {
+func (ex *Execer) QueryScalar(destinations ...interface{}) error {
 	return queryScan(ex.runner, ex.builder, destinations...)
 }
 func (ex *Execer) QuerySlice(dest interface{}) (int64, error) {

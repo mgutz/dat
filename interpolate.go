@@ -136,12 +136,21 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			buf.WriteString(escapeAndQuoteString(str))
 		} else if isInt(kindOfV) {
 			var ival = valueOfV.Int()
-			buf.WriteString(strconv.FormatInt(ival, 10))
+			if 0 <= ival && ival < maxLookup {
+				buf.WriteString(itoaTab[int(ival)])
+			} else {
+				buf.WriteString(strconv.FormatInt(ival, 10))
+			}
 		} else if isUint(kindOfV) {
 			var uival = valueOfV.Uint()
-			buf.WriteString(strconv.FormatUint(uival, 10))
+			if uival < maxLookup {
+				buf.WriteString(itoaTab[int(uival)])
+			} else {
+				buf.WriteString(strconv.FormatUint(uival, 10))
+			}
 		} else if isFloat(kindOfV) {
 			var fval = valueOfV.Float()
+
 			buf.WriteString(strconv.FormatFloat(fval, 'f', -1, 64))
 		} else if kindOfV == reflect.Bool {
 			var bval = valueOfV.Bool()
@@ -214,12 +223,17 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 				if i < lenSql-1 {
 					continue
 				}
-				// the last rune is part of a placeholder and its value must be
-				// written
+				// last rune is part of a placeholder, fallthrough
 				done = true
 			}
 
-			pos, _ := strconv.Atoi(digits.String())
+			digitsStr := digits.String()
+			pos := 0
+			if len(digitsStr) > 2 {
+				pos, _ = strconv.Atoi(digitsStr)
+			} else {
+				pos, _ = atoiTab[digitsStr]
+			}
 			err := writeValue(pos - 1)
 			if err != nil {
 				return "", err

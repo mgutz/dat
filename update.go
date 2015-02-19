@@ -10,15 +10,15 @@ import (
 type UpdateBuilder struct {
 	Executable
 
-	Table          string
-	SetClauses     []*setClause
-	WhereFragments []*whereFragment
-	OrderBys       []string
-	LimitCount     uint64
-	LimitValid     bool
-	OffsetCount    uint64
-	OffsetValid    bool
-	Returnings     []string
+	table          string
+	setClauses     []*setClause
+	whereFragments []*whereFragment
+	orderBys       []string
+	limitCount     uint64
+	limitValid     bool
+	offsetCount    uint64
+	offsetValid    bool
+	returnings     []string
 }
 
 type setClause struct {
@@ -28,12 +28,12 @@ type setClause struct {
 
 // NewUpdateBuilder creates a new UpdateBuilder for the given table
 func NewUpdateBuilder(table string) *UpdateBuilder {
-	return &UpdateBuilder{Table: table}
+	return &UpdateBuilder{table: table}
 }
 
 // Set appends a column/value pair for the statement
 func (b *UpdateBuilder) Set(column string, value interface{}) *UpdateBuilder {
-	b.SetClauses = append(b.SetClauses, &setClause{column: column, value: value})
+	b.setClauses = append(b.setClauses, &setClause{column: column, value: value})
 	return b
 }
 
@@ -47,43 +47,43 @@ func (b *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 
 // Where appends a WHERE clause to the statement
 func (b *UpdateBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *UpdateBuilder {
-	b.WhereFragments = append(b.WhereFragments, newWhereFragment(whereSqlOrMap, args))
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
 func (b *UpdateBuilder) OrderBy(ord string) *UpdateBuilder {
-	b.OrderBys = append(b.OrderBys, ord)
+	b.orderBys = append(b.orderBys, ord)
 	return b
 }
 
 // Limit sets a limit for the statement; overrides any existing LIMIT
 func (b *UpdateBuilder) Limit(limit uint64) *UpdateBuilder {
-	b.LimitCount = limit
-	b.LimitValid = true
+	b.limitCount = limit
+	b.limitValid = true
 	return b
 }
 
 // Offset sets an offset for the statement; overrides any existing OFFSET
 func (b *UpdateBuilder) Offset(offset uint64) *UpdateBuilder {
-	b.OffsetCount = offset
-	b.OffsetValid = true
+	b.offsetCount = offset
+	b.offsetValid = true
 	return b
 }
 
 // Returning sets the columns for the RETURNING clause
 func (b *UpdateBuilder) Returning(columns ...string) *UpdateBuilder {
-	b.Returnings = columns
+	b.returnings = columns
 	return b
 }
 
 // ToSQL serialized the UpdateBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
-	if len(b.Table) == 0 {
+	if len(b.table) == 0 {
 		panic("no table specified")
 	}
-	if len(b.SetClauses) == 0 {
+	if len(b.setClauses) == 0 {
 		panic("no set clauses specified")
 	}
 
@@ -91,13 +91,13 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	var args []interface{}
 
 	sql.WriteString("UPDATE ")
-	sql.WriteString(b.Table)
+	sql.WriteString(b.table)
 	sql.WriteString(" SET ")
 
 	var placeholderStartPos int64 = 1
 
 	// Build SET clause SQL with placeholders and add values to args
-	for i, c := range b.SetClauses {
+	for i, c := range b.setClauses {
 		if i > 0 {
 			sql.WriteString(", ")
 		}
@@ -106,28 +106,31 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			start := placeholderStartPos
 			sql.WriteString(" = ")
 			// map relative $1, $2 placeholders to absolute
-			placeholders, _ := remapPlaceholders(e.Sql, start)
-			sql.WriteString(placeholders)
+			remapPlaceholders(&sql, e.Sql, start)
 			args = append(args, e.Values...)
 			placeholderStartPos += int64(len(e.Values))
 		} else {
-			sql.WriteString(" = $")
-			sql.WriteString(strconv.FormatInt(placeholderStartPos, 10))
+			if i < maxLookup {
+				sql.WriteString(equalsPlaceholderTab[placeholderStartPos])
+			} else {
+				sql.WriteString(" = $")
+				sql.WriteString(strconv.FormatInt(placeholderStartPos, 10))
+			}
 			placeholderStartPos++
 			args = append(args, c.value)
 		}
 	}
 
 	// Write WHERE clause if we have any fragments
-	if len(b.WhereFragments) > 0 {
+	if len(b.whereFragments) > 0 {
 		sql.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(b.WhereFragments, &sql, &args, &placeholderStartPos)
+		writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
 	}
 
 	// Ordering and limiting
-	if len(b.OrderBys) > 0 {
+	if len(b.orderBys) > 0 {
 		sql.WriteString(" ORDER BY ")
-		for i, s := range b.OrderBys {
+		for i, s := range b.orderBys {
 			if i > 0 {
 				sql.WriteString(", ")
 			}
@@ -135,18 +138,18 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		}
 	}
 
-	if b.LimitValid {
+	if b.limitValid {
 		sql.WriteString(" LIMIT ")
-		fmt.Fprint(&sql, b.LimitCount)
+		fmt.Fprint(&sql, b.limitCount)
 	}
 
-	if b.OffsetValid {
+	if b.offsetValid {
 		sql.WriteString(" OFFSET ")
-		fmt.Fprint(&sql, b.OffsetCount)
+		fmt.Fprint(&sql, b.offsetCount)
 	}
 
 	// Go thru the returning clauses
-	for i, c := range b.Returnings {
+	for i, c := range b.returnings {
 		if i == 0 {
 			sql.WriteString(" RETURNING ")
 		} else {

@@ -29,12 +29,13 @@ func newWhereFragment(whereSqlOrMap interface{}, args []interface{}) *whereFragm
 	}
 }
 
-func remapPlaceholders(statement string, pos int64) (string, int64) {
+func remapPlaceholders(buf *bytes.Buffer, statement string, pos int64) int64 {
 	if !strings.Contains(statement, "$") {
-		return statement, 0
+		buf.WriteString(statement)
+		return 0
 	}
 
-	var buf bytes.Buffer
+	//var buf bytes.Buffer
 	var discardDigits bool
 	var replaced int64
 	for _, r := range statement {
@@ -47,38 +48,42 @@ func remapPlaceholders(statement string, pos int64) (string, int64) {
 		if r != '$' {
 			buf.WriteRune(r)
 		} else if r == '$' {
-			buf.WriteRune(r)
-			buf.WriteString(strconv.FormatInt(pos+replaced, 10))
+			// replace relative $1 with absolute like $4
+			if pos+replaced < maxLookup {
+				buf.WriteString(placeholderTab[pos+replaced])
+			} else {
+				buf.WriteString(strconv.FormatInt(pos+replaced, 10))
+			}
 			replaced++
 			discardDigits = true
 		}
 	}
-	return buf.String(), replaced
+	return replaced
 }
 
 // Invariant: only called when len(fragments) > 0
 func writeWhereFragmentsToSql(fragments []*whereFragment, sql *bytes.Buffer, args *[]interface{}, pos *int64) {
-	anyConditions := false
+	hasConditions := false
 	for _, f := range fragments {
 		if f.Condition != "" {
-			if anyConditions {
+			if hasConditions {
 				sql.WriteString(" AND (")
 			} else {
 				sql.WriteRune('(')
-				anyConditions = true
+				hasConditions = true
 			}
 
-			// map relative $1, $2 placeholders to absolute
-			condition, replaced := remapPlaceholders(f.Condition, *pos)
-			*pos += replaced
-
-			sql.WriteString(condition)
-			sql.WriteRune(')')
 			if len(f.Values) > 0 {
+				// map relative $1, $2 placeholders to absolute
+				replaced := remapPlaceholders(sql, f.Condition, *pos)
+				*pos += replaced
 				*args = append(*args, f.Values...)
+			} else {
+				sql.WriteString(f.Condition)
 			}
+			sql.WriteRune(')')
 		} else if f.EqualityMap != nil {
-			anyConditions = writeEqualityMapToSql(f.EqualityMap, sql, args, anyConditions, pos)
+			hasConditions = writeEqualityMapToSql(f.EqualityMap, sql, args, hasConditions, pos)
 		} else {
 			panic("invalid equality map")
 		}
@@ -105,16 +110,17 @@ func writeEqualityMapToSql(eq map[string]interface{}, sql *bytes.Buffer, args *[
 						}
 					}
 				} else if vValLen == 1 {
-					anyConditions = writeWhereCondition(sql, k, " = $"+strconv.FormatInt(*pos, 10), anyConditions)
+					anyConditions = writeWhereCondition(sql, k, equalsPlaceholderTab[*pos], anyConditions)
 					*args = append(*args, vVal.Index(0).Interface())
 					*pos++
 				} else {
-					anyConditions = writeWhereCondition(sql, k, " IN $"+strconv.FormatInt(*pos, 10), anyConditions)
+					// " IN $n"
+					anyConditions = writeWhereCondition(sql, k, inPlaceholderTab[*pos], anyConditions)
 					*args = append(*args, v)
 					*pos++
 				}
 			} else {
-				anyConditions = writeWhereCondition(sql, k, " = $"+strconv.FormatInt(*pos, 10), anyConditions)
+				anyConditions = writeWhereCondition(sql, k, equalsPlaceholderTab[*pos], anyConditions)
 				*args = append(*args, v)
 				*pos++
 			}

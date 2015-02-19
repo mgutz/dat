@@ -16,7 +16,8 @@ func TestConnectionExec(t *testing.T) {
 		Columns("name", "foo").
 		Values("conn1", "---").
 		Returning("id", "foo").
-		QueryScan(&id, &str)
+		QueryScalar(&id, &str)
+
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
 	assert.Equal(t, "---", str)

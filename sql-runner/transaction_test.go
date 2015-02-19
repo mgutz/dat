@@ -17,7 +17,7 @@ func TestTransactionReal(t *testing.T) {
 	tx.InsertInto("people").Columns("name", "email").
 		Values("Barack", "obama@whitehouse.gov").
 		Returning("id").
-		QueryScan(&id)
+		QueryScalar(&id)
 
 	assert.True(t, id > 0)
 

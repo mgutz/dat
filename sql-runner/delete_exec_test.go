@@ -12,10 +12,11 @@ func TestDeleteReal(t *testing.T) {
 	var id int64
 
 	// Insert a Barack
-	s.InsertInto("people").Columns("name", "email").
+	s.InsertInto("people").
+		Columns("name", "email").
 		Values("Barack", "barack@whitehouse.gov").
 		Returning("id").
-		QueryScan(&id)
+		QueryScalar(&id)
 
 	// Delete Barack
 	res, err := s.DeleteFrom("people").Where("id = $1", id).Exec()
@@ -30,7 +31,7 @@ func TestDeleteReal(t *testing.T) {
 	err = s.Select("count(*)").
 		From("people").
 		Where("id = $1", id).
-		QueryScan(&count)
+		QueryScalar(&count)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 0)
 }

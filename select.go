@@ -2,79 +2,79 @@ package dat
 
 import (
 	"bytes"
-	"fmt"
+	"strconv"
 )
 
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
 	Executable
 
-	IsDistinct      bool
-	Columns         []string
-	Table           string
-	WhereFragments  []*whereFragment
-	GroupBys        []string
-	HavingFragments []*whereFragment
-	OrderBys        []string
-	LimitCount      uint64
-	LimitValid      bool
-	OffsetCount     uint64
-	OffsetValid     bool
+	isDistinct      bool
+	columns         []string
+	table           string
+	whereFragments  []*whereFragment
+	groupBys        []string
+	havingFragments []*whereFragment
+	orderBys        []string
+	limitCount      uint64
+	limitValid      bool
+	offsetCount     uint64
+	offsetValid     bool
 }
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
 func NewSelectBuilder(columns ...string) *SelectBuilder {
-	return &SelectBuilder{Columns: columns}
+	return &SelectBuilder{columns: columns}
 }
 
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectBuilder) Distinct() *SelectBuilder {
-	b.IsDistinct = true
+	b.isDistinct = true
 	return b
 }
 
 // From sets the table to SELECT FROM
 func (b *SelectBuilder) From(from string) *SelectBuilder {
-	b.Table = from
+	b.table = from
 	return b
 }
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *SelectBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.WhereFragments = append(b.WhereFragments, newWhereFragment(whereSqlOrMap, args))
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
 	return b
 }
 
 // GroupBy appends a column to group the statement
 func (b *SelectBuilder) GroupBy(group string) *SelectBuilder {
-	b.GroupBys = append(b.GroupBys, group)
+	b.groupBys = append(b.groupBys, group)
 	return b
 }
 
 // Having appends a HAVING clause to the statement
 func (b *SelectBuilder) Having(whereSqlOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.HavingFragments = append(b.HavingFragments, newWhereFragment(whereSqlOrMap, args))
+	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSqlOrMap, args))
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
 func (b *SelectBuilder) OrderBy(ord string) *SelectBuilder {
-	b.OrderBys = append(b.OrderBys, ord)
+	b.orderBys = append(b.orderBys, ord)
 	return b
 }
 
 // Limit sets a limit for the statement; overrides any existing LIMIT
 func (b *SelectBuilder) Limit(limit uint64) *SelectBuilder {
-	b.LimitCount = limit
-	b.LimitValid = true
+	b.limitCount = limit
+	b.limitValid = true
 	return b
 }
 
 // Offset sets an offset for the statement; overrides any existing OFFSET
 func (b *SelectBuilder) Offset(offset uint64) *SelectBuilder {
-	b.OffsetCount = offset
-	b.OffsetValid = true
+	b.offsetCount = offset
+	b.offsetValid = true
 	return b
 }
 
@@ -89,10 +89,10 @@ func (b *SelectBuilder) Paginate(page, perPage uint64) *SelectBuilder {
 // ToSQL serialized the SelectBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *SelectBuilder) ToSQL() (string, []interface{}) {
-	if len(b.Columns) == 0 {
+	if len(b.columns) == 0 {
 		panic("no columns specified")
 	}
-	if len(b.Table) == 0 {
+	if len(b.table) == 0 {
 		panic("no table specified")
 	}
 
@@ -101,11 +101,11 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 
 	sql.WriteString("SELECT ")
 
-	if b.IsDistinct {
+	if b.isDistinct {
 		sql.WriteString("DISTINCT ")
 	}
 
-	for i, s := range b.Columns {
+	for i, s := range b.columns {
 		if i > 0 {
 			sql.WriteString(", ")
 		}
@@ -113,17 +113,17 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	}
 
 	sql.WriteString(" FROM ")
-	sql.WriteString(b.Table)
+	sql.WriteString(b.table)
 
 	var placeholderStartPos int64 = 1
-	if len(b.WhereFragments) > 0 {
+	if len(b.whereFragments) > 0 {
 		sql.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(b.WhereFragments, &sql, &args, &placeholderStartPos)
+		writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
 	}
 
-	if len(b.GroupBys) > 0 {
+	if len(b.groupBys) > 0 {
 		sql.WriteString(" GROUP BY ")
-		for i, s := range b.GroupBys {
+		for i, s := range b.groupBys {
 			if i > 0 {
 				sql.WriteString(", ")
 			}
@@ -131,14 +131,14 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 		}
 	}
 
-	if len(b.HavingFragments) > 0 {
+	if len(b.havingFragments) > 0 {
 		sql.WriteString(" HAVING ")
-		writeWhereFragmentsToSql(b.HavingFragments, &sql, &args, &placeholderStartPos)
+		writeWhereFragmentsToSql(b.havingFragments, &sql, &args, &placeholderStartPos)
 	}
 
-	if len(b.OrderBys) > 0 {
+	if len(b.orderBys) > 0 {
 		sql.WriteString(" ORDER BY ")
-		for i, s := range b.OrderBys {
+		for i, s := range b.orderBys {
 			if i > 0 {
 				sql.WriteString(", ")
 			}
@@ -146,14 +146,22 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 		}
 	}
 
-	if b.LimitValid {
+	if b.limitValid {
 		sql.WriteString(" LIMIT ")
-		fmt.Fprint(&sql, b.LimitCount)
+		if b.limitCount < maxLookup {
+			sql.WriteString(itoaTab[int(b.limitCount)])
+		} else {
+			sql.WriteString(strconv.FormatUint(b.limitCount, 10))
+		}
 	}
 
-	if b.OffsetValid {
+	if b.offsetValid {
 		sql.WriteString(" OFFSET ")
-		fmt.Fprint(&sql, b.OffsetCount)
+		if b.offsetCount < maxLookup {
+			sql.WriteString(itoaTab[int(b.offsetCount)])
+		} else {
+			sql.WriteString(strconv.FormatUint(b.offsetCount, 10))
+		}
 	}
 
 	return sql.String(), args
