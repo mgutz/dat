@@ -2,13 +2,9 @@
 
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
-Package dat (Data Access Toolkit) is a fast and convenient
-Postgres specific library for Go. `dat`'s goal is to make SQL
-more accessible not hide it behind some cumbersome AST dialect.
-
-TODO
-
-* hstore query suppport
+`dat` (Data Access Toolkit) is a fast, lightweight and convenient Postgres
+specific library for Go. `dat`'s goal is to make SQL more accessible not hide
+it behind some cumbersome AST dialect.
 
 ## Getting Started
 
@@ -21,19 +17,24 @@ import (
     _ "github.com/lib/pq"
 )
 
+// global connection (pooling provided by SQL driver)
+var connection *runner.Connection
+
+func init() {
+    db, err := sql.Open("postgres", "dbname=dat_test user=dat password=!test host=localhost sslmode=disable")
+    if err != nil {
+        panic(err)
+    }
+    conn = runner.NewConnection(db)
+}
+
 type Suggestion struct {
     ID        int64         `db:"id"`
     Title     string
     CreatedAt dat.NullTime  `db:"created_at"`
 }
 
-// create global connection at startup (pooling provided by SQL driver)
-var connection *runner.Connection
-
 func main() {
-    db, _ := sql.Open("postgres", "dbname=dat_test user=dat password=!test host=localhost sslmode=disable")
-    conn = runner.NewConnection(db)
-
     // fetch a record
     var suggestion Suggestion
     err := conn.
@@ -47,7 +48,33 @@ func main() {
 
 ## Feature highlights
 
-### Fetching Data
+### Use Builders or SQL
+
+Query Builder
+
+```go
+var posts []*Post
+n, err := sess.
+    Select("title", "body").
+    From("posts").
+    Where("created_at > $1", someTime).
+    OrderBy("id ASC").
+    Limit(10).
+    QueryStructs(&posts)
+```
+
+Plain SQL
+
+```go
+sess.SQL(`
+    SELECT title, body
+    FROM posts WHERE created_at > $1
+    ORDER BY id ASC LIMIT 10`,
+    someTime,
+).QueryStructs(&posts)
+```
+
+### Fetch Data Simply
 
 Easily map results to structs
 
@@ -73,33 +100,6 @@ sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
 sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
-### Use Builders or SQL
-
-Query Builder
-
-```go
-// Tip: must be slice to pointers
-var posts []*Post
-n, err := sess.
-    Select("title", "body").
-    From("posts").
-    Where("created_at > $1", someTime).
-    OrderBy("id ASC").
-    Limit(10).
-    QueryStructs(&posts)
-```
-
-Plain SQL
-
-```go
-sess.SQL(`
-    SELECT title, body
-    FROM posts WHERE created_at > $1
-    ORDER BY id ASC LIMIT 10`,
-    someTime,
-).QueryStructs(&posts)
-```
-
 ### IN queries
 
 Simpler IN queries which expand correctly
@@ -112,7 +112,7 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 
 ### Faster Than Using database/sql
 
-`database/sql`'s db.Query("SELECT ...") method via the SQL driver,
+`database/sql`'s `db.Query("SELECT ...")` method
 creates a prepared statement, executes it, then discards it.
 This has performance costs.
 
@@ -140,18 +140,21 @@ type Foo {
 
 ### Create a Session
 
-All queries are made in the context of a session.
+All queries are made in the context of a session which are acquired
+from the pool in the underlying SQL driver
 
-For one-off operations, use `Connection` directly
+For one-off operations, use a `Connection` directly
 
 ```go
+// a global connection usually created in `init`
+conn = runner.NewConnection(db)
+
 err := conn.SQL(...).QueryStruct(&suggestion)
 ```
 
 For multiple operations, create a session
 
 ```go
-conn = runner.NewConnection(db)
 
 func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
     sess := conn.NewSession()
@@ -311,7 +314,7 @@ result, err := sess.
     Where("language = $1", "Ruby").
     Exec()
 
-// Alternatively use a map of attributes to update
+// Alternatively use a map of attributes
 attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}
 result, err := sess.
     Update("developers").
@@ -329,7 +332,7 @@ if err != nil {
     return err
 }
 
-// Rollback unless we're successful. tx.Rollback() may also be called manually.
+// Rollback unless we're successful. tx.Rollback() may also be called manually
 defer tx.RollbackUnlessCommitted()
 
 // Issue statements that might cause errors
@@ -370,6 +373,11 @@ rows, err := db.Query(sql, args...)
 sql := builder.MustInterpolate()
 rows, err := db.Query(sql)
 ```
+
+## TODO
+
+* MORE, more tests
+* hstore query suppport
 
 ## Inspiration
 
