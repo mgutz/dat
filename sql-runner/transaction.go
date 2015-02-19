@@ -5,7 +5,7 @@ import "database/sql"
 // Tx is a transaction for the given Session
 type Tx struct {
 	*sql.Tx
-	Runner
+	*Queryable
 }
 
 // Begin creates a transaction for the given session
@@ -16,10 +16,7 @@ func (sess *Session) Begin() (*Tx, error) {
 	}
 	events.Event("begin")
 
-	return &Tx{
-		Tx:     tx,
-		Runner: Runner{tx},
-	}, nil
+	return &Tx{tx, &Queryable{tx}}, nil
 }
 
 // Commit finishes the transaction

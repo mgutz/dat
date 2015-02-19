@@ -22,16 +22,11 @@ type runner interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
-// Runner executes SQL.
-type Runner struct {
-	runner
-}
-
 // M is generic string map.
 type M map[string]string
 
 // Exec executes the query built by builder.
-func (r Runner) Exec(builder dat.Builder) (sql.Result, error) {
+func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 	fullSql, err := builder.Interpolate()
 	if err != nil {
 		return nil, events.EventErrKv("exec.interpolate", err, M{"sql": fullSql})
@@ -41,7 +36,7 @@ func (r Runner) Exec(builder dat.Builder) (sql.Result, error) {
 	startTime := time.Now()
 	defer func() { events.TimingKv("exec", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
 
-	result, err := r.runner.Exec(fullSql)
+	result, err := runner.Exec(fullSql)
 	if err != nil {
 		return nil, events.EventErrKv("exec.exec", err, M{"sql": fullSql})
 	}
@@ -50,19 +45,19 @@ func (r Runner) Exec(builder dat.Builder) (sql.Result, error) {
 }
 
 // Query delegates to the internal runner's Query.
-func (r Runner) Query(builder dat.Builder) (*sql.Rows, error) {
+func query(runner runner, builder dat.Builder) (*sql.Rows, error) {
 	fullSql, err := builder.Interpolate()
 	if err != nil {
 		return nil, err
 	}
-	return r.runner.Query(fullSql)
+	return runner.Query(fullSql)
 }
 
 // QueryScan executes the query in builder and loads the resulting data into
 // one or more destinations.
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func (r Runner) QueryScan(builder dat.Builder, destinations ...interface{}) error {
+func queryScan(runner runner, builder dat.Builder, destinations ...interface{}) error {
 	fullSql, err := builder.Interpolate()
 	if err != nil {
 		return err
@@ -73,7 +68,7 @@ func (r Runner) QueryScan(builder dat.Builder, destinations ...interface{}) erro
 	defer func() { events.TimingKv("QueryScan", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
 
 	// Run the query:
-	rows, err := r.runner.Query(fullSql)
+	rows, err := runner.Query(fullSql)
 	if err != nil {
 		return events.EventErrKv("QueryScan.load_value.query", err, M{"sql": fullSql})
 	}
@@ -99,7 +94,7 @@ func (r Runner) QueryScan(builder dat.Builder, destinations ...interface{}) erro
 // slice of primitive values
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func (r Runner) QuerySlice(builder dat.Builder, dest interface{}) (int64, error) {
+func querySlice(runner runner, builder dat.Builder, dest interface{}) (int64, error) {
 	// Validate the dest and reflection values we need
 
 	// This must be a pointer to a slice
@@ -140,7 +135,7 @@ func (r Runner) QuerySlice(builder dat.Builder, dest interface{}) (int64, error)
 	defer func() { events.TimingKv("querySlice", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
 
 	// Run the query:
-	rows, err := r.runner.Query(fullSql)
+	rows, err := runner.Query(fullSql)
 	if err != nil {
 		return numberOfRowsReturned, events.EventErrKv("querySlice.load_all_values.query", err, M{"sql": fullSql})
 	}
@@ -175,7 +170,7 @@ func (r Runner) QuerySlice(builder dat.Builder, dest interface{}) (int64, error)
 // a struct dest must be a pointer to a struct
 //
 // Returns ErrNotFound if nothing was found
-func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
+func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 	//
 	// Validate the dest, and extract the reflection values we need.
 	//
@@ -202,7 +197,7 @@ func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
 	defer func() { events.TimingKv("QueryStruct", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
 
 	// Run the query:
-	rows, err := r.runner.Query(fullSql)
+	rows, err := runner.Query(fullSql)
 	if err != nil {
 		return events.EventErrKv("QueryStruct.query", err, M{"sql": fullSql})
 	}
@@ -215,7 +210,7 @@ func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
 	}
 
 	// Create a map of this result set to the struct columns
-	fieldMap, err := dat.CalculateFieldMap(recordType, columns, false)
+	fieldMap, err := dat.CalculateFieldMap(recordType, columns, Strict)
 	if err != nil {
 		return events.EventErrKv("QueryStruct.calculateFieldMap", err, M{"sql": fullSql})
 	}
@@ -250,7 +245,7 @@ func (r Runner) QueryStruct(builder dat.Builder, dest interface{}) error {
 //
 // Returns the number of items found (which is not necessarily the # of items
 // set)
-func (r Runner) QueryStructs(builder dat.Builder, dest interface{}) (int64, error) {
+func queryStructs(runner runner, builder dat.Builder, dest interface{}) (int64, error) {
 	//
 	// Validate the dest, and extract the reflection values we need.
 	//
@@ -297,7 +292,7 @@ func (r Runner) QueryStructs(builder dat.Builder, dest interface{}) (int64, erro
 	defer func() { events.TimingKv("QueryStructs", time.Since(startTime).Nanoseconds(), M{"sql": fullSql}) }()
 
 	// Run the query:
-	rows, err := r.runner.Query(fullSql)
+	rows, err := runner.Query(fullSql)
 	if err != nil {
 		return 0, events.EventErrKv("QueryStructs.query", err, M{"sql": fullSql})
 	}
@@ -310,7 +305,7 @@ func (r Runner) QueryStructs(builder dat.Builder, dest interface{}) (int64, erro
 	}
 
 	// Create a map of this result set to the struct fields
-	fieldMap, err := dat.CalculateFieldMap(recordType, columns, false)
+	fieldMap, err := dat.CalculateFieldMap(recordType, columns, Strict)
 	if err != nil {
 		return numberOfRowsReturned, events.EventErrKv("QueryStructs.calculateFieldMap", err, M{"sql": fullSql})
 	}

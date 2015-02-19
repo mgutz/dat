@@ -16,7 +16,6 @@ func escapeAndQuoteString(val string) string {
 	var buf bytes.Buffer
 
 	buf.WriteRune('\'')
-
 	for _, char := range val {
 		if char == '\'' { // single quote: ' -> \'
 			buf.WriteString("\\'")
@@ -36,9 +35,7 @@ func escapeAndQuoteString(val string) string {
 			buf.WriteRune(char)
 		}
 	}
-
 	buf.WriteRune('\'')
-
 	return buf.String()
 }
 
@@ -78,19 +75,18 @@ var typeOfTime = reflect.TypeOf(time.Time{})
 // does not match the number of arguments.
 func Interpolate(sql string, vals []interface{}) (string, error) {
 	// Get the number of arguments to add to this query
-	maxVals := len(vals)
+	lenVals := len(vals)
 
 	// If our query is blank and has no args return early
 	// Args with a blank query is an error
 	if sql == "" {
-		if maxVals != 0 {
+		if lenVals != 0 {
 			return "", ErrArgumentMismatch
 		}
 		return "", nil
 	}
 
-	lenVals := len(vals)
-	hasPlaceholders := strings.Contains(sql, "$1")
+	hasPlaceholders := strings.Contains(sql, "$")
 
 	// If we have no args and the query has no place holders return early
 	// No args for a query with place holders is an error
@@ -132,18 +128,18 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			buf.WriteString("NULL")
 		} else if _, ok := v.(defaultType); ok {
 			buf.WriteString("DEFAULT")
-		} else if isInt(kindOfV) {
-			var ival = valueOfV.Int()
-			buf.WriteString(strconv.FormatInt(ival, 10))
-		} else if isUint(kindOfV) {
-			var uival = valueOfV.Uint()
-			buf.WriteString(strconv.FormatUint(uival, 10))
 		} else if kindOfV == reflect.String {
 			var str = valueOfV.String()
 			if !utf8.ValidString(str) {
 				return ErrNotUTF8
 			}
 			buf.WriteString(escapeAndQuoteString(str))
+		} else if isInt(kindOfV) {
+			var ival = valueOfV.Int()
+			buf.WriteString(strconv.FormatInt(ival, 10))
+		} else if isUint(kindOfV) {
+			var uival = valueOfV.Uint()
+			buf.WriteString(strconv.FormatUint(uival, 10))
 		} else if isFloat(kindOfV) {
 			var fval = valueOfV.Float()
 			buf.WriteString(strconv.FormatFloat(fval, 'f', -1, 64))
@@ -256,7 +252,7 @@ func mustInterpolate(builder Builder) string {
 
 	fullSql, err := Interpolate(sql, args)
 	if err != nil {
-		panic(events.EventErrKv("mustInterpolate", err, kvs{"sql": fullSql}))
+		panic(Events.EventErrKv("mustInterpolate", err, kvs{"sql": fullSql}))
 	}
 	return fullSql
 }

@@ -1,7 +1,6 @@
 package dat
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 )
@@ -65,7 +64,7 @@ func CalculateFieldMap(recordType reflect.Type, columns []string,
 		}
 
 		if requireAllColumns && fieldMap[i] == nil {
-			return nil, errors.New(fmt.Sprint("couldn't find match for column ", col))
+			return nil, fmt.Errorf(`could not map db column "%s" to struct field (use struct tags)`, col)
 		}
 	}
 

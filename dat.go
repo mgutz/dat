@@ -9,25 +9,25 @@ type Builder interface {
 
 // DeleteFrom creates a new DeleteBuilder for the given table.
 func DeleteFrom(table string) *DeleteBuilder {
-	return &DeleteBuilder{Table: table}
+	return NewDeleteBuilder(table)
 }
 
 // InsertInto creates a new InsertBuilder for the given table.
 func InsertInto(table string) *InsertBuilder {
-	return &InsertBuilder{Table: table}
+	return NewInsertBuilder(table)
 }
 
-// Select creates a new SelectBuilder for the given columns
+// Select creates a new SelectBuilder for the given columns.
 func Select(columns ...string) *SelectBuilder {
-	return &SelectBuilder{Columns: columns}
+	return NewSelectBuilder(columns...)
 }
 
-// SQL creates a new RawBuilder for the given SQL string and arguments
+// SQL creates a new raw SQL builder.
 func SQL(sql string, args ...interface{}) *RawBuilder {
-	return &RawBuilder{sql: sql, args: args}
+	return NewRawBuilder(sql, args...)
 }
 
-// Update creates a new UpdateBuilder for the given table
+// Update creates a new UpdateBuilder for the given table.
 func Update(table string) *UpdateBuilder {
-	return &UpdateBuilder{Table: table}
+	return NewUpdateBuilder(table)
 }

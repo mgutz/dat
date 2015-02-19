@@ -62,9 +62,10 @@ func realDb() *sql.DB {
 	return db
 }
 
-type dbrPerson struct {
-	ID        int64
+type Person struct {
+	ID        int64 `db:"id"`
 	Name      string
+	Foo       string
 	Email     dat.NullString
 	Key       dat.NullString
 	CreatedAt dat.NullTime
@@ -72,7 +73,7 @@ type dbrPerson struct {
 
 func installFixtures(db *sql.DB) {
 	createTablePeople := `
-		CREATE TABLE dbr_people (
+		CREATE TABLE people (
 			id SERIAL PRIMARY KEY,
 			name varchar(255) NOT NULL,
 			email varchar(255),
@@ -83,10 +84,10 @@ func installFixtures(db *sql.DB) {
 	`
 
 	sqlToRun := []string{
-		"DROP TABLE IF EXISTS dbr_people",
+		"DROP TABLE IF EXISTS people",
 		createTablePeople,
-		"INSERT INTO dbr_people (name,email) VALUES ('Jonathan', 'jonathan@uservoice.com')",
-		"INSERT INTO dbr_people (name,email) VALUES ('Dmitri', 'zavorotni@jadius.com')",
+		"INSERT INTO people (name,email) VALUES ('Jonathan', 'jonathan@uservoice.com')",
+		"INSERT INTO people (name,email) VALUES ('Dmitri', 'zavorotni@jadius.com')",
 	}
 
 	for _, v := range sqlToRun {

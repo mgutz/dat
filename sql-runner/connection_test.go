@@ -8,23 +8,22 @@ import (
 )
 
 func TestConnectionExec(t *testing.T) {
-
 	createRealSessionWithFixtures()
 
-	b := dat.InsertInto("dbr_people").
-		Columns("name", "foo").
-		Values("conn1", "---").
-		Returning("id", "foo")
 	id := 0
 	str := ""
-	err := testConn.QueryScan(b, &id, &str)
+	err := testConn.InsertInto("people").
+		Columns("name", "foo").
+		Values("conn1", "---").
+		Returning("id", "foo").
+		QueryScan(&id, &str)
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
 	assert.Equal(t, "---", str)
 
-	ub := dat.Update("dbr_people").
+	_, err = testConn.Update("people").
 		Set("foo", dat.DEFAULT).
-		Returning("foo")
-	_, err = testConn.Exec(ub)
+		Returning("foo").
+		Exec()
 	assert.NoError(t, err)
 }

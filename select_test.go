@@ -16,7 +16,7 @@ func BenchmarkSelectBasicSql(b *testing.B) {
 			From("some_table").
 			Where("d = $1 OR e = $2", 1, "wat").
 			Where(argEq).
-			OrderDir("id", false).
+			OrderBy("id DESC").
 			Paginate(1, 20).
 			ToSQL()
 	}
@@ -114,7 +114,7 @@ func TestSelectPaginateOrderDirToSql(t *testing.T) {
 		From("c").
 		Where("d = $1", 1).
 		Paginate(1, 20).
-		OrderDir("id", false).
+		OrderBy("id DESC").
 		ToSQL()
 
 	assert.Equal(t, sql, "SELECT a, b FROM c WHERE (d = $1) ORDER BY id DESC LIMIT 20 OFFSET 0")
@@ -124,10 +124,10 @@ func TestSelectPaginateOrderDirToSql(t *testing.T) {
 		From("c").
 		Where("d = $1", 1).
 		Paginate(3, 30).
-		OrderDir("id", true).
+		OrderBy("id").
 		ToSQL()
 
-	assert.Equal(t, sql, "SELECT a, b FROM c WHERE (d = $1) ORDER BY id ASC LIMIT 30 OFFSET 60")
+	assert.Equal(t, sql, "SELECT a, b FROM c WHERE (d = $1) ORDER BY id LIMIT 30 OFFSET 60")
 	assert.Equal(t, args, []interface{}{1})
 }
 

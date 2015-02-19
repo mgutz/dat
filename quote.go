@@ -15,6 +15,7 @@ type quoter interface {
 // MysqlQuoter implements Mysql-specific quoting
 type MysqlQuoter struct{}
 
+// WriteQuotedColumn writes a quoted column to buffer.
 func (q MysqlQuoter) WriteQuotedColumn(column string, sql *bytes.Buffer) {
 	sql.WriteRune('`')
 	sql.WriteString(column)
@@ -24,6 +25,7 @@ func (q MysqlQuoter) WriteQuotedColumn(column string, sql *bytes.Buffer) {
 // PostgresQuoter implements Postgres-specific quoting
 type PostgresQuoter struct{}
 
+// WriteQuotedColumn writes a quoted column to buffer.
 func (q PostgresQuoter) WriteQuotedColumn(column string, sql *bytes.Buffer) {
 	sql.WriteRune('"')
 	sql.WriteString(column)

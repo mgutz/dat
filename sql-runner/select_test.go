@@ -10,13 +10,12 @@ import (
 func TestSelectQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
-	var people []*dbrPerson
-	count, err := s.QueryStructs(
-		dat.Select("id", "name", "email").
-			From("dbr_people").
-			OrderBy("id ASC"),
-		&people,
-	)
+	var people []*Person
+	count, err := s.
+		Select("id", "name", "email").
+		From("people").
+		OrderBy("id ASC").
+		QueryStructs(&people)
 
 	assert.NoError(t, err)
 	assert.Equal(t, count, 2)
@@ -43,13 +42,12 @@ func TestSelectQueryStruct(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	// Found:
-	var person dbrPerson
-	err := s.QueryStruct(
-		dat.Select("id", "name", "email").
-			From("dbr_people").
-			Where("email = $1", "jonathan@uservoice.com"),
-		&person,
-	)
+	var person Person
+	err := s.
+		Select("id", "name", "email").
+		From("people").
+		Where("email = $1", "jonathan@uservoice.com").
+		QueryStruct(&person)
 	assert.NoError(t, err)
 	assert.True(t, person.ID > 0)
 	assert.Equal(t, person.Name, "Jonathan")
@@ -57,23 +55,21 @@ func TestSelectQueryStruct(t *testing.T) {
 	assert.Equal(t, person.Email.String, "jonathan@uservoice.com")
 
 	// Not found:
-	var person2 dbrPerson
-	err = s.QueryStruct(
-		dat.Select("id", "name", "email").
-			From("dbr_people").Where("email = $1", "dontexist@uservoice.com"),
-		&person2,
-	)
+	var person2 Person
+	err = s.
+		Select("id", "name", "email").
+		From("people").Where("email = $1", "dontexist@uservoice.com").
+		QueryStruct(&person2)
 	assert.Equal(t, err, dat.ErrNotFound)
 }
 
 func TestSelectBySqlQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
-	var people []*dbrPerson
-	count, err := s.QueryStructs(
-		dat.SQL("SELECT name FROM dbr_people WHERE email IN $1", []string{"jonathan@uservoice.com"}),
-		&people,
-	)
+	var people []*Person
+	count, err := s.
+		SQL("SELECT name FROM people WHERE email IN $1", []string{"jonathan@uservoice.com"}).
+		QueryStructs(&people)
 
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
@@ -89,18 +85,17 @@ func TestSelectQueryScalar(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	var name string
-	err := s.QueryScan(
-		dat.Select("name").
-			From("dbr_people").
-			Where("email = 'jonathan@uservoice.com'"),
-		&name,
-	)
+	err := s.
+		Select("name").
+		From("people").
+		Where("email = 'jonathan@uservoice.com'").
+		QueryScan(&name)
 
 	assert.NoError(t, err)
 	assert.Equal(t, name, "Jonathan")
 
 	var id int64
-	err = s.QueryScan(dat.Select("id").From("dbr_people").Limit(1), &id)
+	err = s.Select("id").From("people").Limit(1).QueryScan(&id)
 
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
@@ -110,14 +105,14 @@ func TestSelectQuerySlice(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	var names []string
-	count, err := s.QuerySlice(dat.Select("name").From("dbr_people"), &names)
+	count, err := s.Select("name").From("people").QuerySlice(&names)
 
 	assert.NoError(t, err)
 	assert.Equal(t, count, 2)
 	assert.Equal(t, names, []string{"Jonathan", "Dmitri"})
 
 	var ids []int64
-	count, err = s.QuerySlice(dat.Select("id").From("dbr_people").Limit(1), &ids)
+	count, err = s.Select("id").From("people").Limit(1).QuerySlice(&ids)
 
 	assert.NoError(t, err)
 	assert.Equal(t, count, 1)
@@ -128,12 +123,12 @@ func TestScalar(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	var name string
-	err := s.QueryScan(dat.Select("name").From("dbr_people").Where("email = 'jonathan@uservoice.com'"), &name)
+	err := s.Select("name").From("people").Where("email = 'jonathan@uservoice.com'").QueryScan(&name)
 	assert.NoError(t, err)
 	assert.Equal(t, name, "Jonathan")
 
 	var count int64
-	err = s.QueryScan(dat.Select("COUNT(*)").From("dbr_people"), &count)
+	err = s.Select("COUNT(*)").From("people").QueryScan(&count)
 	assert.NoError(t, err)
 	assert.Equal(t, count, 2)
 }

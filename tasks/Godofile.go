@@ -58,7 +58,7 @@ func tasks(p *Project) {
 	}).Watch("*.go")
 
 	p.Task("test-some", func() {
-		Run(`go test -run InsertReal`)
+		Run(`go test -run InsertReal`, In{"sql-runner"})
 	}).Watch("*.go")
 
 	p.Task("bench", func() {

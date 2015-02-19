@@ -7,10 +7,6 @@ import (
 	"github.com/lib/pq"
 )
 
-//
-// Your app can use these Null types instead of the defaults. The sole benefit you get is a MarshalJSON method that is not retarded.
-//
-
 // Default is used to default into SQL
 type defaultType int
 

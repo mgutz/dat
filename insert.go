@@ -8,11 +8,18 @@ import (
 
 // InsertBuilder contains the clauses for an INSERT statement
 type InsertBuilder struct {
+	Executable
+
 	Table      string
 	Cols       []string
 	Vals       [][]interface{}
 	Records    []interface{}
 	Returnings []string
+}
+
+// NewInsertBuilder creates a new InsertBuilder for the given table.
+func NewInsertBuilder(table string) *InsertBuilder {
+	return &InsertBuilder{Table: table}
 }
 
 // Columns appends columns to insert in the statement
@@ -52,6 +59,10 @@ func (b *InsertBuilder) Pair(column string, value interface{}) *InsertBuilder {
 		panic("pair only allows you to specify 1 record to insret")
 	}
 	return b
+}
+
+var placeholderTab = []string{
+	"$0", "$1", "$2", "$3", "$4", "$5", "$6", "$7", "$8", "$9", "$10",
 }
 
 func buildPlaceholders(start, length int) string {

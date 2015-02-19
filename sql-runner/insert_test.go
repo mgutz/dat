@@ -10,8 +10,12 @@ import (
 func TestInsertKeywordColumnName(t *testing.T) {
 	// Insert a column whose name is reserved
 	s := createRealSessionWithFixtures()
-	b := dat.InsertInto("dbr_people").Columns("name", "key").Values("Barack", "44")
-	res, err := s.Exec(b)
+	res, err := s.
+		InsertInto("people").
+		Columns("name", "key").
+		Values("Barack", "44").
+		Exec()
+
 	assert.NoError(t, err)
 
 	rowsAff, err := res.RowsAffected()
@@ -21,18 +25,21 @@ func TestInsertKeywordColumnName(t *testing.T) {
 
 func TestInsertDefault(t *testing.T) {
 	s := createRealSessionWithFixtures()
-	b := dat.InsertInto("dbr_people").Columns("name", "foo").
-		Values("Barack", "fool").
-		Returning("foo")
+
 	var str string
-	err := s.QueryScan(b, &str)
+	err := s.
+		InsertInto("people").Columns("name", "foo").
+		Values("Barack", "fool").
+		Returning("foo").
+		QueryScan(&str)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "fool")
 
-	ub := dat.Update("dbr_people").
+	err = s.
+		Update("people").
 		Set("foo", dat.DEFAULT).
-		Returning("foo")
-	err = s.QueryScan(ub, &str)
+		Returning("foo").
+		QueryScan(&str)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "bar")
 }
@@ -41,35 +48,38 @@ func TestInsertReal(t *testing.T) {
 	// Insert by specifying values
 	s := createRealSessionWithFixtures()
 	var id int64
-	b := dat.InsertInto("dbr_people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Barack", "obama0@whitehouse.gov").
-		Returning("id")
-	err := s.QueryScan(b, &id)
+		Returning("id").
+		QueryScan(&id)
 	assert.NoError(t, err)
 	assert.True(t, id > 0)
 
 	// Insert by specifying a record (ptr to struct)
-	person := dbrPerson{Name: "Barack"}
+	person := Person{Name: "Barack"}
 	person.Email.Valid = true
 	person.Email.String = "obama1@whitehouse.gov"
-	b = dat.InsertInto("dbr_people").
+
+	err = s.
+		InsertInto("people").
 		Columns("name", "email").
 		Record(&person).
-		Returning("id", "created_at")
-	err = s.QueryStruct(b, &person)
+		Returning("id", "created_at").
+		QueryStruct(&person)
 	assert.NoError(t, err)
 	assert.True(t, person.ID > 0)
 	assert.NotEqual(t, person.CreatedAt, dat.NullTime{})
 
 	// Insert by specifying a record (struct)
-	person2 := dbrPerson{Name: "Barack"}
+	person2 := Person{Name: "Barack"}
 	person2.Email.Valid = true
 	person2.Email.String = "obama2@whitehouse.gov"
-	b = dat.InsertInto("dbr_people").Columns("name", "email").
+	err = s.
+		InsertInto("people").Columns("name", "email").
 		Record(person2).
-		Returning("id")
-	err = s.QueryStruct(b, &person2)
+		Returning("id").
+		QueryStruct(&person2)
 	assert.NoError(t, err)
 	assert.True(t, person2.ID > 0)
 	assert.NotEqual(t, person.ID, person2.ID)
@@ -79,34 +89,36 @@ func TestInsertMultipleRecords(t *testing.T) {
 	assert := assert.New(t)
 
 	s := createRealSessionWithFixtures()
-	b := dat.InsertInto("dbr_people").
+	res, err := s.
+		InsertInto("people").
 		Columns("name", "email").
 		Values("apple", "apple@fruits.local").
 		Values("orange", "orange@fruits.local").
-		Values("pear", "pear@fruits.local")
-	res, err := s.Exec(b)
+		Values("pear", "pear@fruits.local").
+		Exec()
 	assert.NoError(err)
 	n, err := res.RowsAffected()
 	assert.Equal(n, 3)
 
-	person1 := dbrPerson{Name: "john_timr"}
-	person2 := dbrPerson{Name: "jane_timr"}
+	person1 := Person{Name: "john_timr"}
+	person2 := Person{Name: "jane_timr"}
 
-	b = dat.InsertInto("dbr_people").
+	res, err = s.InsertInto("people").
 		Columns("name", "email").
 		Record(&person1).
-		Record(&person2)
-	res, err = s.Exec(b)
+		Record(&person2).
+		Exec()
 	assert.NoError(err)
 	n, err = res.RowsAffected()
 	assert.NoError(err)
 	assert.Equal(n, 2)
 
-	people := []*dbrPerson{}
-	n, err = s.QueryStructs(
-		dat.Select("name").From("dbr_people").Where("name like $1", "%_timr"),
-		&people,
-	)
+	people := []*Person{}
+	n, err = s.
+		Select("name").
+		From("people").
+		Where("name like $1", "%_timr").
+		QueryStructs(&people)
 	assert.NoError(err)
 	assert.Equal(len(people), 2)
 

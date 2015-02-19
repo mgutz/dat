@@ -8,6 +8,8 @@ import (
 
 // UpdateBuilder contains the clauses for an UPDATE statement
 type UpdateBuilder struct {
+	Executable
+
 	Table          string
 	SetClauses     []*setClause
 	WhereFragments []*whereFragment
@@ -22,6 +24,11 @@ type UpdateBuilder struct {
 type setClause struct {
 	column string
 	value  interface{}
+}
+
+// NewUpdateBuilder creates a new UpdateBuilder for the given table
+func NewUpdateBuilder(table string) *UpdateBuilder {
+	return &UpdateBuilder{Table: table}
 }
 
 // Set appends a column/value pair for the statement
@@ -47,16 +54,6 @@ func (b *UpdateBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *U
 // OrderBy appends a column to ORDER the statement by
 func (b *UpdateBuilder) OrderBy(ord string) *UpdateBuilder {
 	b.OrderBys = append(b.OrderBys, ord)
-	return b
-}
-
-// OrderDir appends a column to ORDER the statement by with a given direction
-func (b *UpdateBuilder) OrderDir(ord string, isAsc bool) *UpdateBuilder {
-	if isAsc {
-		b.OrderBys = append(b.OrderBys, ord+" ASC")
-	} else {
-		b.OrderBys = append(b.OrderBys, ord+" DESC")
-	}
 	return b
 }
 
@@ -105,7 +102,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			sql.WriteString(", ")
 		}
 		Quoter.WriteQuotedColumn(c.column, &sql)
-		if e, ok := c.value.(*expr); ok {
+		if e, ok := c.value.(*expression); ok {
 			start := placeholderStartPos
 			sql.WriteString(" = ")
 			// map relative $1, $2 placeholders to absolute

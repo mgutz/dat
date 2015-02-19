@@ -7,6 +7,8 @@ import (
 
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
+	Executable
+
 	IsDistinct      bool
 	Columns         []string
 	Table           string
@@ -18,6 +20,11 @@ type SelectBuilder struct {
 	LimitValid      bool
 	OffsetCount     uint64
 	OffsetValid     bool
+}
+
+// NewSelectBuilder creates a new SelectBuilder for the given columns
+func NewSelectBuilder(columns ...string) *SelectBuilder {
+	return &SelectBuilder{Columns: columns}
 }
 
 // Distinct marks the statement as a DISTINCT SELECT
@@ -54,16 +61,6 @@ func (b *SelectBuilder) Having(whereSqlOrMap interface{}, args ...interface{}) *
 // OrderBy appends a column to ORDER the statement by
 func (b *SelectBuilder) OrderBy(ord string) *SelectBuilder {
 	b.OrderBys = append(b.OrderBys, ord)
-	return b
-}
-
-// OrderDir appends a column to ORDER the statement by with a given direction
-func (b *SelectBuilder) OrderDir(ord string, isAsc bool) *SelectBuilder {
-	if isAsc {
-		b.OrderBys = append(b.OrderBys, ord+" ASC")
-	} else {
-		b.OrderBys = append(b.OrderBys, ord+" DESC")
-	}
 	return b
 }
 

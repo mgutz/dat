@@ -2,21 +2,28 @@ package dat
 
 // RawBuilder builds SQL from raw SQL.
 type RawBuilder struct {
+	Executable
+
 	sql  string
 	args []interface{}
 }
 
-// ToSql implements builder interface
+// NewRawBuilder creates a new RawBuilder for the given SQL string and arguments
+func NewRawBuilder(sql string, args ...interface{}) *RawBuilder {
+	return &RawBuilder{sql: sql, args: args}
+}
+
+// ToSQL implements builder interface
 func (b *RawBuilder) ToSQL() (string, []interface{}) {
 	return b.sql, b.args
 }
 
-// MustString interpolates this builders sql.
+// Interpolate interpolates this builder's SQL.
 func (b *RawBuilder) Interpolate() (string, error) {
 	return interpolate(b)
 }
 
-// MustString interpolates this builders sql.
+// MustInterpolate interpolates this builder's SQL.
 func (b *RawBuilder) MustInterpolate() string {
 	return mustInterpolate(b)
 }

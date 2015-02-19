@@ -51,7 +51,7 @@ func TestUpdateSetExprToSql(t *testing.T) {
 	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1, %s = COALESCE(bar, 0) + 1 WHERE (id = $2)", "foo", "bar"))
 	assert.Equal(t, args, []interface{}{1, 9})
 
-	sql, args = Update("a").Set("foo", 1).Set("bar", Expr("COALESCE(bar, 0) + $1", 2)).Where("id = $2", 9).ToSQL()
+	sql, args = Update("a").Set("foo", 1).Set("bar", Expr("COALESCE(bar, 0) + $1", 2)).Where("id = $1", 9).ToSQL()
 
 	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1, %s = COALESCE(bar, 0) + $2 WHERE (id = $3)", "foo", "bar"))
 	assert.Equal(t, args, []interface{}{1, 2, 9})

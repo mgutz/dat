@@ -2,6 +2,7 @@ package runner
 
 import "github.com/mgutz/dat"
 
-var events = &dat.NullEventReceiver{}
+var events = dat.Events
 
-//var events = dat.NewLogEventReceiver("[sql-runner ]")
+// Whether to check column names
+var Strict = true

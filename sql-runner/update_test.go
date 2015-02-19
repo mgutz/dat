@@ -11,12 +11,15 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	// Insert a user with a key
-	b := dat.InsertInto("dbr_people").Columns("name", "email", "key").Values("Benjamin", "ben@whitehouse.gov", "6")
-	res, err := s.Exec(b)
+	res, err := s.
+		InsertInto("people").
+		Columns("name", "email", "key").
+		Values("Benjamin", "ben@whitehouse.gov", "6").
+		Exec()
 	assert.NoError(t, err)
 
 	// Update the key
-	res, err = s.Exec(dat.Update("dbr_people").Set("key", "6-revoked").Where(dat.Eq{"key": "6"}))
+	res, err = s.Update("people").Set("key", "6-revoked").Where(dat.Eq{"key": "6"}).Exec()
 	assert.NoError(t, err)
 
 	// Assert our record was updated (and only our record)
@@ -24,8 +27,8 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, rowsAff, 1)
 
-	var person dbrPerson
-	err = s.QueryStruct(dat.Select("*").From("dbr_people").Where(dat.Eq{"email": "ben@whitehouse.gov"}), &person)
+	var person Person
+	err = s.Select("*").From("people").Where(dat.Eq{"email": "ben@whitehouse.gov"}).QueryStruct(&person)
 	assert.NoError(t, err)
 
 	assert.Equal(t, person.Name, "Benjamin")
@@ -37,18 +40,18 @@ func TestUpdateReal(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	b := dat.InsertInto("dbr_people").Columns("name", "email").
+	s.InsertInto("people").Columns("name", "email").
 		Values("George", "george@whitehouse.gov").
-		Returning("id")
-	s.QueryScan(b, &id)
+		Returning("id").
+		QueryScan(&id)
 
 	// Rename our George to Barack
-	_, err := s.Exec(dat.Update("dbr_people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id))
+	_, err := s.Update("people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id).Exec()
 
 	assert.NoError(t, err)
 
-	var person dbrPerson
-	err = s.QueryStruct(dat.Select("*").From("dbr_people").Where("id = $1", id), &person)
+	var person Person
+	err = s.Select("*").From("people").Where("id = $1", id).QueryStruct(&person)
 	assert.NoError(t, err)
 
 	assert.Equal(t, person.ID, id)

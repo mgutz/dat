@@ -6,12 +6,11 @@ import "bytes"
 var NameMapping = camelCaseToSnakeCase
 
 func camelCaseToSnakeCase(name string) string {
-	var buf bytes.Buffer
-
 	// handle the common ID idiom
-	if name == "ID" {
-		return "id"
-	}
+	// if name == "ID" {
+	// 	return "id"
+	// }
+	var buf bytes.Buffer
 	// lenName := len(name)
 
 	// writeID := false

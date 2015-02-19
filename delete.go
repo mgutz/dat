@@ -7,6 +7,8 @@ import (
 
 // DeleteBuilder contains the clauses for a DELETE statement
 type DeleteBuilder struct {
+	Executable
+
 	Table          string
 	WhereFragments []*whereFragment
 	OrderBys       []string
@@ -14,6 +16,11 @@ type DeleteBuilder struct {
 	LimitValid     bool
 	OffsetCount    uint64
 	OffsetValid    bool
+}
+
+// NewDeleteBuilder creates a new DeleteBuilder for the given table.
+func NewDeleteBuilder(table string) *DeleteBuilder {
+	return &DeleteBuilder{Table: table}
 }
 
 // Where appends a WHERE clause to the statement whereSqlOrMap can be a
