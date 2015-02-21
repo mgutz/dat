@@ -13,6 +13,11 @@ import (
 // only be used to create constants.
 type UnsafeString string
 
+// Value implements a valuer for compatibility
+func (u UnsafeString) Value() (driver.Value, error) {
+	panic("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")
+}
+
 // DEFAULT SQL value
 const DEFAULT = UnsafeString("DEFAULT")
 

@@ -64,9 +64,11 @@ func TestSelectBySqlQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
 	var people []*Person
+	dat.EnableInterpolation = true
 	err := s.
 		SQL("SELECT name FROM people WHERE email IN $1", []string{"jonathan@uservoice.com"}).
 		QueryStructs(&people)
+	dat.EnableInterpolation = false
 
 	assert.NoError(t, err)
 	assert.Equal(t, len(people), 1)

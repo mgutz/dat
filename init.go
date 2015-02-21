@@ -11,6 +11,9 @@ var Events EventReceiver
 // Strict tells dat to raise errors
 var Strict = false
 
+// Whether to enable interpolation
+var EnableInterpolation = false
+
 // SetVerbose sets the verbosity of logging which defaults to none
 func SetVerbose(verbose bool) {
 	if verbose {

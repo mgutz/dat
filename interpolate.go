@@ -14,27 +14,42 @@ import (
 // Need to turn \x00, \n, \r, \, ', " and \x1a
 // Returns an escaped, quoted string. eg, "hello 'world'" -> "'hello \'world\''"
 func escapeAndQuoteString(val string) string {
+	escapeNeeded := false
+
+	// check if we need to escape
+	for _, r := range val {
+		if r == '\'' || r == '\\' || r == '\n' || r == '\r' || r == '\t' || r == 0 || r == 0x1a {
+			escapeNeeded = true
+			break
+		}
+	}
 	var buf bytes.Buffer
 
 	buf.WriteRune('\'')
-	for _, char := range val {
-		if char == '\'' { // single quote: ' -> \'
-			buf.WriteString("\\'")
-		} else if char == '"' { // double quote: " -> \"
-			buf.WriteString("\\\"")
-		} else if char == '\\' { // slash: \ -> "\\"
-			buf.WriteString("\\\\")
-		} else if char == '\n' { // control: newline: \n -> "\n"
-			buf.WriteString("\\n")
-		} else if char == '\r' { // control: return: \r -> "\r"
-			buf.WriteString("\\r")
-		} else if char == 0 { // control: NUL: 0 -> "\x00"
-			buf.WriteString("\\x00")
-		} else if char == 0x1a { // control: \x1a -> "\x1a"
-			buf.WriteString("\\x1a")
-		} else {
-			buf.WriteRune(char)
+	if escapeNeeded {
+		for _, char := range val {
+			if char == '\'' { // single quote: ' -> \'
+				buf.WriteString("\\'")
+			} else if char == '"' { // double quote: " -> \"
+				buf.WriteString("\\\"")
+			} else if char == '\\' { // slash: \ -> "\\"
+				buf.WriteString("\\\\")
+			} else if char == '\n' { // control: newline: \n -> "\n"
+				buf.WriteString("\\n")
+			} else if char == '\r' { // control: return: \r -> "\r"
+				buf.WriteString("\\r")
+			} else if char == '\t' { // control: return: \t -> "\t"
+				buf.WriteString("\\t")
+			} else if char == 0 { // control: NUL: 0 -> "\x00"
+				buf.WriteString("\\x00")
+			} else if char == 0x1a { // control: \x1a -> "\x1a"
+				buf.WriteString("\\x1a")
+			} else {
+				buf.WriteRune(char)
+			}
 		}
+	} else {
+		buf.WriteString(val)
 	}
 	buf.WriteRune('\'')
 	return buf.String()
@@ -71,6 +86,28 @@ func isFloat(k reflect.Kind) bool {
 //   - times
 var typeOfTime = reflect.TypeOf(time.Time{})
 var typeOfUnsafeString = reflect.TypeOf(UnsafeString(""))
+
+// ToSQL interpolates sql and args if EnableInterpolation is set, otherwise
+// it ToSQL acts as an identify function returning sql and args.
+func ToSQL(sql string, args []interface{}) (string, []interface{}, error) {
+	if EnableInterpolation {
+		interpolated, err := Interpolate(sql, args)
+		return interpolated, nil, err
+	}
+	return sql, args, nil
+}
+
+// BuilderSQL interpolates sql and args if EnableInterpolation is set, otherwise
+// it ToSQL acts as an identify function returning sql and args.
+func BuilderSQL(b Builder) (string, []interface{}, error) {
+	sql, args := b.ToSQL()
+
+	if EnableInterpolation {
+		interpolated, err := Interpolate(sql, args)
+		return interpolated, nil, err
+	}
+	return sql, args, nil
+}
 
 // Interpolate takes a SQL string with placeholders and a list of arguments to
 // replace them with. Returns a blank string and error if the number of placeholders
@@ -114,6 +151,17 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 
 		v := vals[pos]
 
+		if val, ok := v.(UnsafeString); ok {
+			buf.WriteString(string(val))
+			return nil
+		} else if Strict {
+			if _, ok := v.([]byte); ok {
+				panic("[]byte not supported; converting to string would be inefficient")
+			} else if _, ok := v.(*[]byte); ok {
+				panic("*[]byte not supported; converting to string would be inefficient")
+			}
+		}
+
 		valuer, ok := v.(driver.Valuer)
 		if ok {
 			val, err := valuer.Value()
@@ -126,19 +174,8 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 		valueOfV := reflect.ValueOf(v)
 		kindOfV := valueOfV.Kind()
 
-		if Strict {
-			if _, ok := v.([]byte); ok {
-				panic("[]byte not supported; converting to string would be inefficient")
-			} else if _, ok := v.(*[]byte); ok {
-				panic("*[]byte not supported; converting to string would be inefficient")
-			}
-		}
-
 		if v == nil {
 			buf.WriteString("NULL")
-			return nil
-		} else if val, ok := v.(UnsafeString); ok {
-			buf.WriteString(string(val))
 			return nil
 		}
 

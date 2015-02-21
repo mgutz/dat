@@ -35,11 +35,13 @@ func TestInsertDefault(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, str, "fool")
 
+	dat.EnableInterpolation = true
 	err = s.
 		Update("people").
 		Set("foo", dat.DEFAULT).
 		Returning("foo").
 		QueryScalar(&str)
+	dat.EnableInterpolation = false
 	assert.NoError(t, err)
 	assert.Equal(t, str, "bar")
 }

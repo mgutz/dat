@@ -22,9 +22,11 @@ func TestConnectionExec(t *testing.T) {
 	assert.True(t, id > 0)
 	assert.Equal(t, "---", str)
 
+	dat.EnableInterpolation = true
 	_, err = testConn.Update("people").
 		Set("foo", dat.DEFAULT).
 		Returning("foo").
 		Exec()
+	dat.EnableInterpolation = false
 	assert.NoError(t, err)
 }

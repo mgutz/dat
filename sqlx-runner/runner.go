@@ -29,7 +29,7 @@ type M map[string]string
 
 // Exec executes the query built by builder.
 func exec(runner runner, builder dat.Builder) (sql.Result, error) {
-	fullSQL, err := builder.Interpolate()
+	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return nil, dat.Events.EventErrKv("exec.interpolate", err, M{"sql": fullSQL})
 	}
@@ -38,7 +38,12 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 	startTime := time.Now()
 	defer func() { dat.Events.TimingKv("exec", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
 
-	result, err := runner.Exec(fullSQL)
+	var result sql.Result
+	if args == nil {
+		result, err = runner.Exec(fullSQL)
+	} else {
+		result, err = runner.Exec(fullSQL, args...)
+	}
 	if err != nil {
 		return nil, dat.Events.EventErrKv("exec.exec", err, M{"sql": fullSQL})
 	}
@@ -48,11 +53,15 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 
 // Query delegates to the internal runner's Query.
 func query(runner runner, builder dat.Builder) (*sqlx.Rows, error) {
-	fullSQL, err := builder.Interpolate()
+	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return nil, err
 	}
-	return runner.Queryx(fullSQL)
+
+	if args == nil {
+		return runner.Queryx(fullSQL)
+	}
+	return runner.Queryx(fullSQL, args...)
 }
 
 // QueryScan executes the query in builder and loads the resulting data into
@@ -60,7 +69,7 @@ func query(runner runner, builder dat.Builder) (*sqlx.Rows, error) {
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
 func queryScan(runner runner, builder dat.Builder, destinations ...interface{}) error {
-	fullSQL, err := builder.Interpolate()
+	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return err
 	}
@@ -70,7 +79,12 @@ func queryScan(runner runner, builder dat.Builder, destinations ...interface{}) 
 	defer func() { dat.Events.TimingKv("QueryScan", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
 
 	// Run the query:
-	rows, err := runner.Queryx(fullSQL)
+	var rows *sqlx.Rows
+	if args == nil {
+		rows, err = runner.Queryx(fullSQL)
+	} else {
+		rows, err = runner.Queryx(fullSQL, args...)
+	}
 	if err != nil {
 		return dat.Events.EventErrKv("QueryScan.load_value.query", err, M{"sql": fullSQL})
 	}
@@ -119,10 +133,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 		reflect.ValueOf(dest)
 	}
 
-	//
-	// Get full SQL
-	//
-	fullSQL, err := builder.Interpolate()
+	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return err
 	}
@@ -132,7 +143,12 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 	defer func() { dat.Events.TimingKv("querySlice", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
 
 	// Run the query:
-	rows, err := runner.Queryx(fullSQL)
+	var rows *sqlx.Rows
+	if args == nil {
+		rows, err = runner.Queryx(fullSQL)
+	} else {
+		rows, err = runner.Queryx(fullSQL, args...)
+	}
 	if err != nil {
 		return dat.Events.EventErrKv("querySlice.load_all_values.query", err, M{"sql": fullSQL})
 	}
@@ -167,7 +183,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 //
 // Returns ErrNotFound if nothing was found
 func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
-	fullSQL, err := builder.Interpolate()
+	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return err
 	}
@@ -177,20 +193,11 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 	defer func() { dat.Events.TimingKv("QueryStruct", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
 
 	// Run the query:
-	return runner.Get(dest, fullSQL)
-	// if err != nil {
-	// 	return dat.Events.EventErrKv("QueryStruct.query", err, M{"sql": fullSQL})
-	// }
-	// defer rows.Close()
-	// if rows.Next() {
-	// 	rows.StructScan(dest)
-	// 	return nil
-	// }
-	// if err := rows.Err(); err != nil {
-	// 	return dat.Events.EventErrKv("QueryStruct.struct_scan.rows_err", err, M{"sql": fullSQL})
-	// }
 
-	// return dat.ErrNotFound
+	if args == nil {
+		return runner.Get(dest, fullSQL)
+	}
+	return runner.Get(dest, fullSQL, args...)
 }
 
 // QueryStructs executes the query in builderand loads the resulting data into
@@ -199,7 +206,7 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 // Returns the number of items found (which is not necessarily the # of items
 // set)
 func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
-	fullSQL, err := builder.Interpolate()
+	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return dat.Events.EventErr("QueryStructs.interpolate", err)
 	}
@@ -208,5 +215,8 @@ func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
 	startTime := time.Now()
 	defer func() { dat.Events.TimingKv("QueryStructs", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
 
-	return runner.Select(dest, fullSQL)
+	if args == nil {
+		return runner.Select(dest, fullSQL)
+	}
+	return runner.Select(dest, fullSQL, args...)
 }

@@ -25,9 +25,9 @@ Highlights
 
 *   Multiple Runners - use `sqlx` or `database/sql`
 
-*   Performant 
-  	
-    -   `dat` interpolates queries locally before sending to server.
+*   Performant
+
+    -   `dat` can interpolates queries locally before sending to server which can speed things up.
     -   ordinal placeholder logic has been optimized to be almost as fast as `?`
         placeholders
 
@@ -52,6 +52,8 @@ func init() {
         panic(err)
     }
 
+    // set this to true to enable interpolation
+    dat.EnableInterpolation = true
     conn = runner.NewConnection(db, "postgres")
 }
 
@@ -123,8 +125,8 @@ Easily map results to structs
 ```go
 var posts []struct {
     ID int64            `db:"id"`
-    Title string
-    Body dat.NullString
+    Title string        `db:"title"`
+    Body dat.NullString `db:"body"`
 }
 err := sess.
     Select("id, title, body").
@@ -152,17 +154,18 @@ b := sess.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
-### Faster Than Using database/sql
-
-`database/sql`'s `db.Query("SELECT ...")` method
-creates a prepared statement, executes it, then discards it.
-This has performance costs.
+### Local Interpolation
 
 `dat` interpolates locally using a built-in escape function to inline
-query arguments. The result is less work on the database server,
-no prep time and it's safe.
+query arguments which can result in performance improvements. It's safe.
+What is safe? It uses a more strict escape function than the `appendEscapedText`
+functino in `https://github.com/lib/pq/blob/master/encode.go`.
 
-TODO Check out these [benchmarks](https://github.com/tyler-smith/golang-sql-benchmark).
+__interpolation is disabled by default__, set `dat.EnableInterpolation = true`
+to enable this feature. Keep it disabled if you are concerned about the
+interpolation.
+
+TODO Add benchmarks
 
 ## Usage Examples
 
@@ -263,6 +266,8 @@ response, err = sess.
 * dat.NOW - inserts `NOW()`
 
 **BEGIN DANGER ZONE**
+
+_UnsafeStrings and constants will panic unless_ `dat.EnableInterpolation=true`
 
 To define your own SQL constants, use `dat.UnsafeString`
 
