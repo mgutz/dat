@@ -25,9 +25,11 @@ Highlights
 
 *   Multiple Runners - use `sqlx` or `database/sql`
 
-*   Performant - `dat` interpolates queries locally before sending to server.
-    Ordinal placeholders logic has been optimized to be almost as fast as `?`
-    placeholders. The difference is negligible.
+*   Performant 
+  	
+    -   `dat` interpolates queries locally before sending to server.
+    -   ordinal placeholder logic has been optimized to be almost as fast as `?`
+        placeholders
 
 ## Getting Started
 
@@ -94,7 +96,7 @@ in those situations.
 Query Builder
 
 ```go
-var posts []*Post
+var posts []Post
 n, err := sess.
     Select("title", "body").
     From("posts").
@@ -120,7 +122,7 @@ sess.SQL(`
 Easily map results to structs
 
 ```go
-var posts []*struct {
+var posts []struct {
     ID int64            `db:"id"`
     Title string
     Body dat.NullString
@@ -217,7 +219,7 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 Create
 
 ```go
-post := &Post{Title: "Swith to Postgres", State: "open"}
+post := Post{Title: "Swith to Postgres", State: "open"}
 
 // Use Returning() and QueryStruct to update ID and CreatedAt in one trip
 response, err := sess.
@@ -284,11 +286,10 @@ const CURRENT_TIMESTAMP = dat.UnsafeString("NOW()")
 conn.SQL("UPDATE table SET updated_at = $1", CURRENT_TIMESTAMP)
 ```
 
-UnsafeString is exactly that, unsafe. If you must use it, create a constant
+`UnsafeString` is exactly that, **unsafe**. If you must use it, create a constant
 and name it according to its SQL usage.
 
 **END**
-
 
 ### Primitive Values
 
@@ -304,31 +305,15 @@ var ids []int64
 n, err := sess.Select("id").From("posts").QuerySlice(&ids)
 ```
 
-### Overriding Column Names With Struct Tags
-
-By default `dat` maps CamelCase field names to snake\_case column names.
-The column name can be overridden with struct tags. Be careful of fields
-named like `ID`, `UserID`, which in snake case are `i_d`, `user_i_d`.
-If in doubt, use struct tags.
-
-```go
-type Post struct {
-    ID        int64           `db:"id"`
-    UserID    dat.NullString  `db:"user_id"`
-    UpdatedAt dat.NullTime
-    CreatedAt dat.NullTime
-}
-```
-
 ### Embedded structs
 
 ```go
 // Columns are mapped to fields breadth-first
 type Post struct {
-    ID        int64         `db:"id"`
-    Title     string
+    ID        int64      `db:"id"`
+    Title     string     `db:"title"`
     User      *struct {
-        ID int64 `db:"user_id"`
+        ID int64         `db:"user_id"`
     }
 }
 
