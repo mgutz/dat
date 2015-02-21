@@ -126,17 +126,21 @@ func TestInterpolatingUnsafeStrings(t *testing.T) {
 }
 
 func TestInterpolatingPointers(t *testing.T) {
-	var one int32 = 1000
+	var one int32 = -10000
 	var two int64 = 2000
 	var three float32 = 3
 	var four float64 = 4
 	var five = "five"
 	var six = true
+	var seven uint32 = 10000
+	var eight uint64 = 20000
 
-	args := []interface{}{&one, &two, &three, &four, &five, &six}
-	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
+	args := []interface{}{&one, &two, &three, &four, &five, &six, &seven, &eight}
+	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND "+
+		"three=$3 AND four=$4 AND five=$5 AND six=$6 AND seven=$7 AND eight=$8", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE one=1000 AND two=2000 AND three=3 AND four=4 AND five='five' AND six=1")
+	assert.Equal(t, str, "SELECT * FROM x WHERE one=-10000 AND two=2000 AND "+
+		"three=3 AND four=4 AND five='five' AND six=1 AND seven=10000 AND eight=20000")
 }
 
 func TestInterpolatingNulls(t *testing.T) {

@@ -240,7 +240,8 @@ There are a few constants that are often used in SQL statements
 * dat.NOW - inserts `NOW()`
 
 **BEGIN DANGER ZONE**
-To define your own SQL constants
+
+To define your own SQL constants, use `dat.UnsafeString`
 
 ```go
 const CURRENT_TIMESTAMP = dat.UnsafeString("NOW()")
@@ -249,6 +250,7 @@ conn.SQL("UPDATE table SET updated_at = $1", CURRENT_TIMESTAMP)
 
 UnsafeString is exactly that, unsafe. If you must use it, create a constant
 and name it according to its SQL usage.
+
 **END**
 
 
