@@ -138,7 +138,7 @@ func writeWhereCondition(sql *bytes.Buffer, k string, pred string, anyConditions
 		sql.WriteRune('(')
 		anyConditions = true
 	}
-	Quoter.WriteQuotedColumn(k, sql)
+	Dialect.WriteIdentifier(sql, k)
 	sql.WriteString(pred)
 	sql.WriteRune(')')
 

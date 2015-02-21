@@ -17,6 +17,6 @@ func quoteSQL(sqlFmt string, cols ...string) string {
 
 func quoteColumn(column string) string {
 	var buffer bytes.Buffer
-	Quoter.WriteQuotedColumn(column, &buffer)
+	Dialect.WriteIdentifier(&buffer, column)
 	return buffer.String()
 }

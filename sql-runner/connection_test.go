@@ -30,3 +30,23 @@ func TestConnectionExec(t *testing.T) {
 	dat.EnableInterpolation = false
 	assert.NoError(t, err)
 }
+
+func TestEscapeSequences(t *testing.T) {
+	createRealSessionWithFixtures()
+
+	dat.EnableInterpolation = true
+	id := 0
+	str := ""
+	expect := "I said, \"a's \\ \\\b\f\n\r\t\x1a\""
+
+	err := testConn.InsertInto("people").
+		Columns("name", "foo").
+		Values("conn1", expect).
+		Returning("id", "foo").
+		QueryScalar(&id, &str)
+
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.Equal(t, expect, str)
+	dat.EnableInterpolation = false
+}

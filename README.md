@@ -162,11 +162,19 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 query arguments which can result in performance improvements. Another
 benefit is the interpolation SQL is much simpler to debug.
 
-Is it safe? Well, it uses a more strict escape function than the `appendEscapedText`
-function in `https://github.com/lib/pq/blob/master/encode.go`. And you trust
-`lib/pq` right?
+Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
+[String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE)
+Verify your database by executing this command in psql
 
-__Interpolation is DISABLED by default__ for those still not convinced. 
+```sql
+SHOW standard_conforming_strings;
+```
+
+That value should be `on`.
+
+Interpolation uses escape string constants `E''` and escapes only apostrophe `'` and backslash `\`
+
+__Interpolation is DISABLED by default__ for those still not convinced.
 Set `dat.EnableInterpolation = true` to enable.
 
 TODO Add benchmarks

@@ -32,7 +32,7 @@ func createRealSessionWithFixtures() *Session {
 
 func quoteColumn(column string) string {
 	var buffer bytes.Buffer
-	dat.Quoter.WriteQuotedColumn(column, &buffer)
+	dat.Dialect.WriteIdentifier(&buffer, column)
 	return buffer.String()
 }
 

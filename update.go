@@ -100,7 +100,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		if i > 0 {
 			sql.WriteString(", ")
 		}
-		Quoter.WriteQuotedColumn(c.column, &sql)
+		Dialect.WriteIdentifier(&sql, c.column)
 		if e, ok := c.value.(*Expression); ok {
 			start := placeholderStartPos
 			sql.WriteString(" = ")
@@ -158,7 +158,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		} else {
 			sql.WriteRune(',')
 		}
-		Quoter.WriteQuotedColumn(c, &sql)
+		Dialect.WriteIdentifier(&sql, c)
 	}
 
 	return sql.String(), args

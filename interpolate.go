@@ -11,34 +11,6 @@ import (
 	"unicode/utf8"
 )
 
-var escapeStringLiteral = pgEscapeStringLiteral
-
-// see http://www.postgresql.org/docs/8.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS
-func pgEscapeStringLiteral(buf *bytes.Buffer, val string) {
-	for _, r := range val {
-		if r == '\\' {
-			buf.WriteRune('E')
-			break
-		}
-	}
-
-	buf.WriteRune('\'')
-	for _, char := range val {
-		if char == '\\' {
-			// slash
-			buf.WriteString(`\\`)
-		} else if char == '\'' {
-			// apos
-			buf.WriteString(`\'`)
-		} else if char == 0 {
-			panic("postgres doesn't support NULL, see http://stackoverflow.com/questions/1347646/postgres-error-on-insert-error-invalid-byte-sequence-for-encoding-utf8-0x0")
-		} else {
-			buf.WriteRune(char)
-		}
-	}
-	buf.WriteRune('\'')
-}
-
 func isUint(k reflect.Kind) bool {
 	return k == reflect.Uint ||
 		k == reflect.Uint8 ||
@@ -178,7 +150,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			if !utf8.ValidString(str) {
 				return ErrNotUTF8
 			}
-			escapeStringLiteral(&buf, str)
+			Dialect.WriteStringLiteral(&buf, str)
 		} else if isInt(kindOfV) {
 			var ival = valueOfV.Int()
 			writeInt64(&buf, ival)
@@ -198,7 +170,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 		} else if kindOfV == reflect.Struct {
 			if typeOfV := valueOfV.Type(); typeOfV == typeOfTime {
 				t := valueOfV.Interface().(time.Time)
-				escapeStringLiteral(&buf, t.UTC().Format(timeFormat))
+				Dialect.WriteStringLiteral(&buf, t.UTC().Format(timeFormat))
 			} else {
 				return ErrInvalidValue
 			}
@@ -238,7 +210,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 					if !utf8.ValidString(str) {
 						return ErrNotUTF8
 					}
-					escapeStringLiteral(&buf, str)
+					Dialect.WriteStringLiteral(&buf, str)
 				}
 			} else {
 				return ErrInvalidSliceValue

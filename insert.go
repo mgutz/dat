@@ -102,7 +102,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		if i > 0 {
 			sql.WriteRune(',')
 		}
-		Quoter.WriteQuotedColumn(c, &sql)
+		Dialect.WriteIdentifier(&sql, c)
 	}
 	sql.WriteString(") VALUES ")
 
@@ -146,7 +146,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		} else {
 			sql.WriteRune(',')
 		}
-		Quoter.WriteQuotedColumn(c, &sql)
+		Dialect.WriteIdentifier(&sql, c)
 	}
 
 	return sql.String(), args
