@@ -27,7 +27,7 @@ Highlights
 
 *   Performant
 
-    -   `dat` can interpolates queries locally before sending to server which can speed things up.
+    -   `dat` can interpolates queries locally before sending to server which can speed things up
     -   ordinal placeholder logic has been optimized to be almost as fast as `?`
         placeholders
 
@@ -146,6 +146,8 @@ sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 
 ### IN queries
 
+__available when `dat.EnableInterpolation=true`__
+
 Simpler IN queries which expand correctly
 
 ```go
@@ -157,13 +159,15 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ### Local Interpolation
 
 `dat` interpolates locally using a built-in escape function to inline
-query arguments which can result in performance improvements. It's safe.
-What is safe? It uses a more strict escape function than the `appendEscapedText`
-functino in `https://github.com/lib/pq/blob/master/encode.go`.
+query arguments which can result in performance improvements. Another
+benefit is the interpolation SQL is much simpler to debug.
 
-__interpolation is disabled by default__, set `dat.EnableInterpolation = true`
-to enable this feature. Keep it disabled if you are concerned about the
-interpolation.
+Is it safe? Well, it uses a more strict escape function than the `appendEscapedText`
+function in `https://github.com/lib/pq/blob/master/encode.go`. And you trust
+`lib/pq` right?
+
+__Interpolation is DISABLED by default__ for those still not convinced. 
+Set `dat.EnableInterpolation = true` to enable.
 
 TODO Add benchmarks
 
@@ -260,6 +264,8 @@ response, err = sess.
 
 ### Constants
 
+__available when `dat.EnableInterpolation == true`__
+
 `dat` provides often used constants in SQL statements
 
 * dat.DEFAULT - inserts `DEFAULT`
@@ -267,7 +273,7 @@ response, err = sess.
 
 **BEGIN DANGER ZONE**
 
-_UnsafeStrings and constants will panic unless_ `dat.EnableInterpolation=true`
+_UnsafeStrings and constants will panic unless_ `dat.EnableInterpolation == true`
 
 To define your own SQL constants, use `dat.UnsafeString`
 
@@ -409,7 +415,7 @@ fmt.Println(args)   // [1]
 // Use raw database/sql for actual query
 rows, err := db.Query(sql, args...)
 
-// Alternatively build the interpolated sql statement for better performance
+// Alternatively build the interpolated sql statement
 sql := builder.MustInterpolate()
 rows, err := db.Query(sql)
 ```
