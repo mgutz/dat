@@ -17,9 +17,9 @@ Highlights
 
     ```go
     err := conn.
-        SELECT("id, user_name").
-        FROM("users").
-        WHERE("id = $1", id).
+        Select("id, user_name").
+        From("users").
+        Where("id = $1", id).
         QueryStruct(&user)
     ```
 
@@ -65,7 +65,6 @@ type Post struct {
 }
 
 func main() {
-    // fetch a record
     var post Post
     err := conn.
         Select("id, title").
@@ -164,20 +163,6 @@ query arguments. The result is less work on the database server,
 no prep time and it's safe.
 
 TODO Check out these [benchmarks](https://github.com/tyler-smith/golang-sql-benchmark).
-
-### JSON Friendly
-
-```go
-type Foo {
-    S1 dat.NullString `json:"str1"`
-}
-```
-
-`dat.Null*` types marshal to JSON correctly
-
-```json
-{"str1": "Hi!"}
-```
 
 ## Usage Examples
 
@@ -426,7 +411,7 @@ rows, err := db.Query(sql)
 
 ## TODO
 
-* MORE, more tests
+* more tests
 * hstore query suppport
 
 ## Inspiration
@@ -439,4 +424,3 @@ rows, err := db.Query(sql)
 *   [dbr](https://github.com/gocraft/dbr)
 
     used this as starting point instead of porting mapper from scratch
-
