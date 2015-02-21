@@ -1,6 +1,10 @@
 package runner
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/mgutz/dat"
+)
 
 // Tx is a transaction for the given Session
 type Tx struct {
@@ -12,9 +16,9 @@ type Tx struct {
 func (sess *Session) Begin() (*Tx, error) {
 	tx, err := sess.cxn.Db.Begin()
 	if err != nil {
-		return nil, events.EventErr("begin.error", err)
+		return nil, dat.Events.EventErr("begin.error", err)
 	}
-	events.Event("begin")
+	dat.Events.Event("begin")
 
 	return &Tx{tx, &Queryable{tx}}, nil
 }
@@ -23,9 +27,9 @@ func (sess *Session) Begin() (*Tx, error) {
 func (tx *Tx) Commit() error {
 	err := tx.Tx.Commit()
 	if err != nil {
-		return events.EventErr("commit.error", err)
+		return dat.Events.EventErr("commit.error", err)
 	}
-	events.Event("commit")
+	dat.Events.Event("commit")
 	return nil
 }
 
@@ -33,9 +37,9 @@ func (tx *Tx) Commit() error {
 func (tx *Tx) Rollback() error {
 	err := tx.Tx.Rollback()
 	if err != nil {
-		return events.EventErr("rollback", err)
+		return dat.Events.EventErr("rollback", err)
 	}
-	events.Event("rollback")
+	dat.Events.Event("rollback")
 	return nil
 }
 
@@ -47,8 +51,8 @@ func (tx *Tx) RollbackUnlessCommitted() {
 	if err == sql.ErrTxDone {
 		// ok
 	} else if err != nil {
-		events.EventErr("rollback_unless_committed", err)
+		dat.Events.EventErr("rollback_unless_committed", err)
 	} else {
-		events.Event("rollback")
+		dat.Events.Event("rollback")
 	}
 }
