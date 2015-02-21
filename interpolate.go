@@ -3,6 +3,7 @@ package dat
 import (
 	"bytes"
 	"database/sql/driver"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -126,9 +127,23 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 
 		if v == nil {
 			buf.WriteString("NULL")
-		} else if _, ok := v.(defaultType); ok {
-			buf.WriteString("DEFAULT")
-		} else if kindOfV == reflect.String {
+			return nil
+		} else if val, ok := v.(UnsafeString); ok {
+			buf.WriteString(string(val))
+			return nil
+		}
+
+		// Dereference pointer values
+		if kindOfV == reflect.Ptr {
+			if valueOfV.IsNil() {
+				buf.WriteString("NULL")
+				return nil
+			}
+			valueOfV = valueOfV.Elem()
+			kindOfV = valueOfV.Kind()
+		}
+
+		if kindOfV == reflect.String {
 			var str = valueOfV.String()
 			if !utf8.ValidString(str) {
 				return ErrNotUTF8
@@ -200,8 +215,10 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			}
 			buf.WriteRune(')')
 		} else {
-			return ErrInvalidValue
+			return fmt.Errorf("Error trying to interpolate $%d value %q %q %#v", pos+1, valueOfV, kindOfV, v)
+			//return ErrInvalidValue
 		}
+
 		return nil
 	}
 

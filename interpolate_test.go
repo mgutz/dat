@@ -3,6 +3,7 @@ package dat
 import (
 	"database/sql/driver"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -117,6 +118,53 @@ func TestIntepolatingValuers(t *testing.T) {
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = 'wat' AND b = NULL")
 }
 
+func TestInterpolatingUnsafeStrings(t *testing.T) {
+	args := []interface{}{NOW, DEFAULT, UnsafeString(`hstore`)}
+	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3", args)
+	assert.NoError(t, err)
+	assert.Equal(t, str, "SELECT * FROM x WHERE one=NOW() AND two=DEFAULT AND three=hstore")
+}
+
+func TestInterpolatingPointers(t *testing.T) {
+	var one int32 = 1000
+	var two int64 = 2000
+	var three float32 = 3
+	var four float64 = 4
+	var five = "five"
+	var six = true
+
+	args := []interface{}{&one, &two, &three, &four, &five, &six}
+	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
+	assert.NoError(t, err)
+	assert.Equal(t, str, "SELECT * FROM x WHERE one=1000 AND two=2000 AND three=3 AND four=4 AND five='five' AND six=1")
+}
+
+func TestInterpolatingNulls(t *testing.T) {
+	var one *int32
+	var two *int64
+	var three *float32
+	var four *float64
+	var five *string
+	var six *bool
+
+	args := []interface{}{one, two, three, four, five, six}
+	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
+	assert.NoError(t, err)
+	assert.Equal(t, str, "SELECT * FROM x WHERE one=NULL AND two=NULL AND three=NULL AND four=NULL AND five=NULL AND six=NULL")
+}
+
+func TestInterpolatingTime(t *testing.T) {
+	var ptim *time.Time
+	tim2 := time.Date(2004, time.January, 1, 1, 1, 1, 1, time.UTC)
+	tim := time.Time{}
+
+	args := []interface{}{ptim, tim, &tim2}
+
+	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3", args)
+	assert.NoError(t, err)
+	assert.Equal(t, str, "SELECT * FROM x WHERE a = NULL AND b = '0001-01-01 00:00:00' AND c = '2004-01-01 01:01:01'")
+}
+
 func TestInterpolateErrors(t *testing.T) {
 	_, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", []interface{}{1})
 	assert.Equal(t, err, ErrArgumentMismatch)
@@ -133,10 +181,4 @@ func TestInterpolateErrors(t *testing.T) {
 
 	_, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{[]struct{}{{}, {}}})
 	assert.Equal(t, err, ErrInvalidSliceValue)
-}
-
-func TestInterpolateDefault(t *testing.T) {
-	sql, args := InsertInto("a").Columns("b", "c").Values(1, DEFAULT).ToSQL()
-	str, _ := Interpolate(sql, args)
-	assert.Equal(t, str, `INSERT INTO a ("b","c") VALUES (1,DEFAULT)`)
 }

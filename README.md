@@ -21,28 +21,33 @@ import (
 var connection *runner.Connection
 
 func init() {
+    // create a normal database connection through database/sql
     db, err := sql.Open("postgres", "dbname=dat_test user=dat password=!test host=localhost sslmode=disable")
     if err != nil {
         panic(err)
     }
+
     conn = runner.NewConnection(db)
 }
 
-type Suggestion struct {
+type Post struct {
     ID        int64         `db:"id"`
     Title     string
-    CreatedAt dat.NullTime  `db:"created_at"`
+    UserID    int64         `db:"user_id"`
+    State     string
+    UpdatedAt dat.Nulltime
+    CreatedAt dat.NullTime
 }
 
 func main() {
     // fetch a record
-    var suggestion Suggestion
+    var post Post
     err := conn.
         Select("id, title").
-        From("suggestions").
+        From("posts").
         Where("id = $1", 13).
-        QueryStruct(&suggestion)
-    fmt.Println("Title", suggestion.Title)
+        QueryStruct(&post)
+    fmt.Println("Title", post.Title)
 }
 ```
 
@@ -133,7 +138,7 @@ type Foo {
 `dat.Null*` types marshal to JSON correctly
 
 ```json
-{ "str1": "Hi!" }
+{"str1": "Hi!"}
 ```
 
 ## Usage Examples
@@ -149,25 +154,25 @@ For one-off operations, use a `Connection` directly
 // a global connection usually created in `init`
 conn = runner.NewConnection(db)
 
-err := conn.SQL(...).QueryStruct(&suggestion)
+err := conn.SQL(...).QueryStruct(&post)
 ```
 
 For multiple operations, create a session
 
 ```go
 
-func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
+func PostsIndex(rw http.ResponseWriter, r *http.Request) {
     sess := conn.NewSession()
 
     // Do queries with the session
-    var suggestion Suggestion
+    var post Post
     err := sess.Select("id, title").
-        From("suggestions").
-        Where("id = $1", suggestion.ID).
-        QueryStruct(&suggestion)
+        From("posts").
+        Where("id = $1", post.ID).
+        QueryStruct(&post)
     )
 
-    // do more queries
+    // do more queries with session
 }
 ```
 
@@ -176,25 +181,25 @@ func SuggestionsIndex(rw http.ResponseWriter, r *http.Request) {
 Create
 
 ```go
-suggestion := &Suggestion{Title: "Swith to Postgres", State: "open"}
+post := &Post{Title: "Swith to Postgres", State: "open"}
 
 // Use Returning() and QueryStruct to update ID and CreatedAt in one trip
 response, err := sess.
-    InsertInto("suggestions").
+    InsertInto("posts").
     Columns("title", "state").
-    Record(suggestion).
+    Record(post).
     Returning("id", "created_at", "updated_at").
-    QueryStruct(&suggestion)
+    QueryStruct(&post)
 ```
 
 Read
 
 ```go
-var other Suggestion
+var other Post
 err = sess.
     Select("id, title").
-    From("suggestions").
-    Where("id = $1", suggestion.ID).
+    From("posts").
+    Where("id = $1", post.ID).
     QueryStruct(&other)
 ```
 
@@ -202,11 +207,11 @@ Update
 
 ```go
 err = sess.
-    Update("suggestions").
+    Update("posts").
     Set("title", "My New Title").
-    Where("id = $1", suggestion.ID).
+    Where("id = $1", post.ID).
     Returning("updated_at").
-    QueryScalar(&suggestion.UpdatedAt)
+    QueryScalar(&post.UpdatedAt)
 
 // To reset values to their default value, use DEFAULT
 // eg, to reset payment_type to its default value in DDL
@@ -221,11 +226,31 @@ Delete
 
 ``` go
 response, err = sess.
-    DeleteFrom("suggestions").
-    Where("id = $1", otherSuggestion.ID).
+    DeleteFrom("posts").
+    Where("id = $1", otherPost.ID).
     Limit(1).
     Exec()
 ```
+
+### Constants
+
+There are a few constants that are often used in SQL statements
+
+* dat.DEFAULT - inserts `DEFAULT`
+* dat.NOW - inserts `NOW()`
+
+**BEGIN DANGER ZONE**
+To define your own SQL constants
+
+```go
+const CURRENT_TIMESTAMP = dat.UnsafeString("NOW()")
+conn.SQL("UPDATE table SET updated_at = $1", CURRENT_TIMESTAMP)
+```
+
+UnsafeString is exactly that, unsafe. If you must use it, create a constant
+and name it according to its SQL usage.
+**END**
+
 
 ### Primitive Values
 
@@ -235,10 +260,10 @@ Load scalar and slice primitive values
 var id int64
 var userID string
 n, err := sess.
-    Select("id", "user_id").From("suggestions").Limit(1).QueryScalar(&id, &userID)
+    Select("id", "user_id").From("posts").Limit(1).QueryScalar(&id, &userID)
 
 var ids []int64
-n, err := sess.Select("id").From("suggestions").QuerySlice(&ids)
+n, err := sess.Select("id").From("posts").QuerySlice(&ids)
 ```
 
 ### Overriding Column Names With Struct Tags
@@ -249,21 +274,19 @@ named like `ID`, `UserID`, which in snake case are `i_d`, `user_i_d`.
 If in doubt, use struct tags.
 
 ```go
-type Suggestion struct {
+type Post struct {
     ID        int64           `db:"id"`
     UserID    dat.NullString  `db:"user_id"`
-    UpdatedAt data.NullTime
+    UpdatedAt dat.NullTime
     CreatedAt dat.NullTime
 }
 ```
-
-Tip: Set
 
 ### Embedded structs
 
 ```go
 // Columns are mapped to fields breadth-first
-type Suggestion struct {
+type Post struct {
     ID        int64         `db:"id"`
     Title     string
     User      *struct {
@@ -271,20 +294,20 @@ type Suggestion struct {
     }
 }
 
-var suggestion Suggestion
+var post Post
 err := sess.
     Select("id, title, user_id").
-    From("suggestions").
+    From("posts").
     Limit(1).
-    QueryStruct(&suggestion)
+    QueryStruct(&post)
 ```
 
 ### JSON encoding of Null\* types
 
 ```go
 // dat.Null* types serialize to JSON properly
-suggestion := &Suggestion{ID: 1, Title: "Test Title"}
-jsonBytes, err := json.Marshal(&suggestion)
+post := &Post{ID: 1, Title: "Test Title"}
+jsonBytes, err := json.Marshal(&post)
 fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null}
 ```
 
@@ -292,23 +315,29 @@ fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null
 
 ```go
 // Start bulding an INSERT statement
-b := sess.InsertInto("developers").Columns("name", "language", "employee_number")
+b := sess.InsertInto("posts").Columns("title")
 
-// Add some new developers
+// Add some new posts.
 for i := 0; i < 3; i++ {
-	b.Record(&Dev{Name: "Gopher", Language: "Go", EmployeeNumber: i})
+	b.Record(&Post{Title: fmt.Sprintf("Article %s", i)})
+}
+
+// OR (this is more efficient)
+for i := 0; i < 3; i++ {
+	b.Values(fmt.Sprintf("Article %s", i))
 }
 
 // Execute statement
 _, err := b.Exec()
 ```
 
+
 ### Updating Records
 
 ```go
 // Update any rubyists to gophers
 result, err := sess.
-    Update("developers").
+    Update("posts").
     Set("name", "Gopher").
     Set("language", "Go").
     Where("language = $1", "Ruby").
@@ -337,7 +366,7 @@ defer tx.RollbackUnlessCommitted()
 
 // Issue statements that might cause errors
 res, err := tx.
-    Update("suggestions").
+    Update("posts").
     Set("state", "deleted").
     Where("deleted_at IS NOT NULL").
     Exec()
@@ -359,11 +388,11 @@ SQL builders.
 
 ```go
 import "github.com/mgutz/dat"
-b := dat.Select("*").From("suggestions").Where("subdomain_id = $1", 1)
+b := dat.Select("*").From("posts").Where("user_id = $1", 1)
 
 // Get builder's SQL and arguments
 sql, args := b.ToSQL()
-fmt.Println(sql)    // SELECT * FROM suggestions WHERE (subdomain_id = $1)
+fmt.Println(sql)    // SELECT * FROM posts WHERE (user_id = $1)
 fmt.Println(args)   // [1]
 
 // Use raw database/sql for actual query

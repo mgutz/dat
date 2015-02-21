@@ -6,7 +6,6 @@ import (
 )
 
 // Events is the event receiver.
-//var Events = NewLogEventReceiver("[dat ]")
 var Events EventReceiver
 
 // SetVerbose sets the verbosity of logging which defaults to none
@@ -40,7 +39,7 @@ func init() {
 	SetVerbose(false)
 
 	// There is a performance cost related to using ordinal placeholders.
-	// Using '?' placeholders is much more efficient but not very friendly
+	// Using '?' placeholders is much more efficient but not eye friendly
 	// when coding non-trivial queries.
 	//
 	// Most of the cost is incurred when converting between integers and

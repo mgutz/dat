@@ -68,6 +68,7 @@ type Person struct {
 	Foo       string
 	Email     dat.NullString
 	Key       dat.NullString
+	Doc       dat.NullString
 	CreatedAt dat.NullTime
 }
 
@@ -78,6 +79,7 @@ func installFixtures(db *sql.DB) {
 			name varchar(255) NOT NULL,
 			email varchar(255),
 			key varchar(255),
+			doc hstore,
 			foo varchar(255) default 'bar',
 			created_at timestamptz default now()
 		)

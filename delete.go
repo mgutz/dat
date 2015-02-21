@@ -92,12 +92,12 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 	return sql.String(), args
 }
 
-// Interpolate interpolates this builders sql.
+// Interpolate interpolates this builder's SQL.
 func (b *DeleteBuilder) Interpolate() (string, error) {
 	return interpolate(b)
 }
 
-// MustInterpolate interpolates this builders sql or panics.
+// MustInterpolate interpolates this builder's SQL or panics.
 func (b *DeleteBuilder) MustInterpolate() string {
 	return mustInterpolate(b)
 }
