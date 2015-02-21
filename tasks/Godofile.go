@@ -47,14 +47,15 @@ func createdb() {
 
 func tasks(p *Project) {
 	Env = `
-	DBR_DRIVER=postgres
-	DBR_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
+	DAT_DRIVER=postgres
+	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
 	`
 	p.Task("createdb", createdb).Description("Creates test database")
 
 	p.Task("test", func() {
 		Run(`go test`)
 		Run(`go test`, In{"sql-runner"})
+		Run(`go test`, In{"sqlx-runner"})
 	}).Watch("**/*.go")
 
 	p.Task("test-some", func() {
@@ -72,11 +73,6 @@ func tasks(p *Project) {
 		Bash("go test -bench . -benchmem 2>/dev/null | column -t")
 	})
 }
-
-// func dum() {
-//	b := sqb.Select("column, foobar").Returning("at")
-//  b := sqb.Interpolate("asdfasdfadsf", args)
-// }
 
 func main() {
 	Godo(tasks)

@@ -8,6 +8,9 @@ import (
 // Events is the event receiver.
 var Events EventReceiver
 
+// Strict tells dat to raise errors
+var Strict = false
+
 // SetVerbose sets the verbosity of logging which defaults to none
 func SetVerbose(verbose bool) {
 	if verbose {
@@ -15,6 +18,11 @@ func SetVerbose(verbose bool) {
 	} else {
 		Events = &NullEventReceiver{}
 	}
+}
+
+// SetStrict sets strict value
+func SetStrict(strict bool) {
+	Strict = strict
 }
 
 // maxLookup is the max lookup index for predefined lookup tables

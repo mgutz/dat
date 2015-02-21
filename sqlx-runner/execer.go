@@ -3,6 +3,7 @@ package runner
 import (
 	"database/sql"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/mgutz/dat"
 )
 
@@ -19,7 +20,9 @@ func NewExecer(runner runner, builder dat.Builder) *Execer {
 func (ex *Execer) Exec() (sql.Result, error) {
 	return exec(ex.runner, ex.builder)
 }
-
+func (ex *Execer) Queryx() (*sqlx.Rows, error) {
+	return query(ex.runner, ex.builder)
+}
 func (ex *Execer) QueryScalar(destinations ...interface{}) error {
 	return queryScan(ex.runner, ex.builder, destinations...)
 }

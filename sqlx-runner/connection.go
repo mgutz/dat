@@ -1,14 +1,19 @@
 package runner
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/jmoiron/sqlx"
+)
 
 // Connection is a connection to the database with an EventReceiver
 type Connection struct {
-	DB *sql.DB
+	DB *sqlx.DB
 	*Queryable
 }
 
 // NewConnection instantiates a Connection for a given database/sql connection
-func NewConnection(db *sql.DB) *Connection {
-	return &Connection{db, &Queryable{db}}
+func NewConnection(db *sql.DB, driverName string) *Connection {
+	DB := sqlx.NewDb(db, driverName)
+	return &Connection{DB, &Queryable{DB}}
 }

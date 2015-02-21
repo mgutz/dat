@@ -2,9 +2,32 @@
 
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
-`dat` (Data Access Toolkit) is a fast, lightweight and convenient Postgres
-specific library for Go. `dat`'s goal is to make SQL more accessible not hide
-it behind some cumbersome AST dialect.
+`dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
+library for Go. `dat` tries to make SQL more accessible.
+
+Highlights
+
+*   Ordinal placeholders - friendlier than `?`
+
+    ```go
+    conn.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
+    ```
+
+*   Intuitive - it looks like SQL
+
+    ```go
+    err := conn.
+        SELECT("id, user_name").
+        FROM("users").
+        WHERE("id = $1", id).
+        QueryStruct(&user)
+    ```
+
+*   Multiple Runners - use `sqlx` or `database/sql`
+
+*   Performant - `dat` interpolates queries locally before sending to server.
+    Ordinal placeholders logic has been optimized to be almost as fast as `?`
+    placeholders. The difference is negligible.
 
 ## Getting Started
 
@@ -13,7 +36,7 @@ import (
     "database/sql"
 
     "github.com/mgutz/dat"
-    "github.com/mgutz/dat/sql-runner" // use database/sql runner
+    "github.com/mgutz/dat/sqlx-runner"
     _ "github.com/lib/pq"
 )
 
@@ -27,16 +50,16 @@ func init() {
         panic(err)
     }
 
-    conn = runner.NewConnection(db)
+    conn = runner.NewConnection(db, "postgres")
 }
 
 type Post struct {
     ID        int64         `db:"id"`
-    Title     string
+    Title     string        `db:"title"`
     UserID    int64         `db:"user_id"`
-    State     string
-    UpdatedAt dat.Nulltime
-    CreatedAt dat.NullTime
+    State     string        `db:"state"`
+    UpdatedAt dat.Nulltime  `db:"updated_at"`
+    CreatedAt dat.NullTime  `db:"creatd_at"`
 }
 
 func main() {
@@ -52,6 +75,19 @@ func main() {
 ```
 
 ## Feature highlights
+
+### Runners
+
+`dat` was designed to have clear separation between SQL builders and Query execers.
+There are two runner implementations:
+
+* `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
+* `sql-runner` - based on [dbr](https://github.com/gocraft/dbr)
+
+I recommend `sqlx-runner`. There are times when you need to use the driver directly,
+for example when structs contain binary types, which cannot be interpolated efficiently
+and therefore not supported. `sqlx` is much friendlier than plain `database/sql`
+in those situations.
 
 ### Use Builders or SQL
 
@@ -152,7 +188,7 @@ For one-off operations, use a `Connection` directly
 
 ```go
 // a global connection usually created in `init`
-conn = runner.NewConnection(db)
+conn = runner.NewConnection(db, "postgres")
 
 err := conn.SQL(...).QueryStruct(&post)
 ```
@@ -234,7 +270,7 @@ response, err = sess.
 
 ### Constants
 
-There are a few constants that are often used in SQL statements
+`dat` provides often used constants in SQL statements
 
 * dat.DEFAULT - inserts `DEFAULT`
 * dat.NOW - inserts `NOW()`
@@ -383,17 +419,15 @@ if err := tx.Commit(); err != nil {
 }
 ```
 
-### Use With Other Libraries (sqlx, ...)
-
-Use the `github.com/mgutz/dat` package which contains the various
-SQL builders.
+### Use With Other Libraries
 
 ```go
 import "github.com/mgutz/dat"
-b := dat.Select("*").From("posts").Where("user_id = $1", 1)
+
+builder := dat.Select("*").From("posts").Where("user_id = $1", 1)
 
 // Get builder's SQL and arguments
-sql, args := b.ToSQL()
+sql, args := builder.ToSQL()
 fmt.Println(sql)    // SELECT * FROM posts WHERE (user_id = $1)
 fmt.Println(args)   // [1]
 
@@ -414,8 +448,8 @@ rows, err := db.Query(sql)
 
 *   [mapper](https://github.com/mgutz/mapper)
 
-    my SQL builder for node.js which has builder, interpolation and exec
-    functionality
+    My SQL builder for node.js which has builder, interpolation and exec
+    functionality.
 
 *   [dbr](https://github.com/gocraft/dbr)
 

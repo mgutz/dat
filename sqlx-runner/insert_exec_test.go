@@ -113,7 +113,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(n, 2)
 
-	people := []*Person{}
+	people := []Person{}
 	err = s.
 		Select("name").
 		From("people").

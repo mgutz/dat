@@ -3,14 +3,13 @@ package runner
 import (
 	"testing"
 
-	"github.com/mgutz/dat"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSelectQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
 
-	var people []*Person
+	var people []Person
 	err := s.
 		Select("id", "name", "email").
 		From("people").
@@ -57,7 +56,7 @@ func TestSelectQueryStruct(t *testing.T) {
 		Select("id", "name", "email").
 		From("people").Where("email = $1", "dontexist@uservoice.com").
 		QueryStruct(&person2)
-	assert.Equal(t, err, dat.ErrNotFound)
+	assert.Contains(t, err.Error(), "no rows")
 }
 
 func TestSelectBySqlQueryStructs(t *testing.T) {

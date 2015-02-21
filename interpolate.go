@@ -70,6 +70,7 @@ func isFloat(k reflect.Kind) bool {
 //   - booleans
 //   - times
 var typeOfTime = reflect.TypeOf(time.Time{})
+var typeOfUnsafeString = reflect.TypeOf(UnsafeString(""))
 
 // Interpolate takes a SQL string with placeholders and a list of arguments to
 // replace them with. Returns a blank string and error if the number of placeholders
@@ -124,6 +125,14 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 
 		valueOfV := reflect.ValueOf(v)
 		kindOfV := valueOfV.Kind()
+
+		if Strict {
+			if _, ok := v.([]byte); ok {
+				panic("[]byte not supported; converting to string would be inefficient")
+			} else if _, ok := v.(*[]byte); ok {
+				panic("*[]byte not supported; converting to string would be inefficient")
+			}
+		}
 
 		if v == nil {
 			buf.WriteString("NULL")

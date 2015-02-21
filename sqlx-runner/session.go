@@ -1,10 +1,10 @@
 package runner
 
-import "database/sql"
+import "github.com/jmoiron/sqlx"
 
 // Session represents a business unit of execution for some connection
 type Session struct {
-	DB *sql.DB
+	DB *sqlx.DB
 	*Queryable
 }
 

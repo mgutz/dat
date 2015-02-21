@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/mgutz/dat"
 )
@@ -17,7 +18,7 @@ import (
 var testConn *Connection
 
 func init() {
-	testConn = NewConnection(realDb())
+	testConn = NewConnection(realDb(), "postgres")
 }
 
 func createRealSession() *Session {
@@ -66,16 +67,16 @@ func realDb() *sql.DB {
 }
 
 type Person struct {
-	ID        int64 `db:"id"`
-	Name      string
-	Foo       string
-	Email     dat.NullString
-	Key       dat.NullString
-	Doc       dat.NullString
-	CreatedAt dat.NullTime
+	ID        int64          `db:"id"`
+	Name      string         `db:"name"`
+	Foo       string         `db:"foo"`
+	Email     dat.NullString `db:"email"`
+	Key       dat.NullString `db:"key"`
+	Doc       dat.NullString `db:"doc"`
+	CreatedAt dat.NullTime   `db:"created_at"`
 }
 
-func installFixtures(db *sql.DB) {
+func installFixtures(db *sqlx.DB) {
 	createTablePeople := `
 		CREATE TABLE people (
 			id SERIAL PRIMARY KEY,

@@ -3,18 +3,19 @@ package runner
 import (
 	"database/sql"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/mgutz/dat"
 )
 
 // Tx is a transaction for the given Session
 type Tx struct {
-	*sql.Tx
+	Tx *sqlx.Tx
 	*Queryable
 }
 
 // Begin creates a transaction for the given session
 func (sess *Session) Begin() (*Tx, error) {
-	tx, err := sess.DB.Begin()
+	tx, err := sess.DB.Beginx()
 	if err != nil {
 		return nil, dat.Events.EventErr("begin.error", err)
 	}
