@@ -11,48 +11,32 @@ import (
 	"unicode/utf8"
 )
 
-// Need to turn \x00, \n, \r, \, ', " and \x1a
-// Returns an escaped, quoted string. eg, "hello 'world'" -> "'hello \'world\''"
-func escapeAndQuoteString(val string) string {
-	escapeNeeded := false
+var escapeStringLiteral = pgEscapeStringLiteral
 
-	// check if we need to escape
+// see http://www.postgresql.org/docs/8.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS
+func pgEscapeStringLiteral(buf *bytes.Buffer, val string) {
 	for _, r := range val {
-		if r == '\'' || r == '\\' || r == '\n' || r == '\r' || r == '\t' || r == 0 || r == 0x1a {
-			escapeNeeded = true
+		if r == '\\' {
+			buf.WriteRune('E')
 			break
 		}
 	}
-	var buf bytes.Buffer
 
 	buf.WriteRune('\'')
-	if escapeNeeded {
-		for _, char := range val {
-			if char == '\'' { // single quote: ' -> \'
-				buf.WriteString("\\'")
-			} else if char == '"' { // double quote: " -> \"
-				buf.WriteString("\\\"")
-			} else if char == '\\' { // slash: \ -> "\\"
-				buf.WriteString("\\\\")
-			} else if char == '\n' { // control: newline: \n -> "\n"
-				buf.WriteString("\\n")
-			} else if char == '\r' { // control: return: \r -> "\r"
-				buf.WriteString("\\r")
-			} else if char == '\t' { // control: return: \t -> "\t"
-				buf.WriteString("\\t")
-			} else if char == 0 { // control: NUL: 0 -> "\x00"
-				buf.WriteString("\\x00")
-			} else if char == 0x1a { // control: \x1a -> "\x1a"
-				buf.WriteString("\\x1a")
-			} else {
-				buf.WriteRune(char)
-			}
+	for _, char := range val {
+		if char == '\\' {
+			// slash
+			buf.WriteString(`\\`)
+		} else if char == '\'' {
+			// apos
+			buf.WriteString(`\'`)
+		} else if char == 0 {
+			panic("postgres doesn't support NULL, see http://stackoverflow.com/questions/1347646/postgres-error-on-insert-error-invalid-byte-sequence-for-encoding-utf8-0x0")
+		} else {
+			buf.WriteRune(char)
 		}
-	} else {
-		buf.WriteString(val)
 	}
 	buf.WriteRune('\'')
-	return buf.String()
 }
 
 func isUint(k reflect.Kind) bool {
@@ -194,7 +178,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			if !utf8.ValidString(str) {
 				return ErrNotUTF8
 			}
-			buf.WriteString(escapeAndQuoteString(str))
+			escapeStringLiteral(&buf, str)
 		} else if isInt(kindOfV) {
 			var ival = valueOfV.Int()
 			writeInt64(&buf, ival)
@@ -214,7 +198,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 		} else if kindOfV == reflect.Struct {
 			if typeOfV := valueOfV.Type(); typeOfV == typeOfTime {
 				t := valueOfV.Interface().(time.Time)
-				buf.WriteString(escapeAndQuoteString(t.UTC().Format(timeFormat)))
+				escapeStringLiteral(&buf, t.UTC().Format(timeFormat))
 			} else {
 				return ErrInvalidValue
 			}
@@ -254,7 +238,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 					if !utf8.ValidString(str) {
 						return ErrNotUTF8
 					}
-					buf.WriteString(escapeAndQuoteString(str))
+					escapeStringLiteral(&buf, str)
 				}
 			} else {
 				return ErrInvalidSliceValue
@@ -262,7 +246,6 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			buf.WriteRune(')')
 		} else {
 			return fmt.Errorf("Error trying to interpolate $%d value %q %q %#v", pos+1, valueOfV, kindOfV, v)
-			//return ErrInvalidValue
 		}
 
 		return nil

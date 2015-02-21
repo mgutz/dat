@@ -82,12 +82,13 @@ func TestInterpolateFloats(t *testing.T) {
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = 0.15625 AND b = 3.14159")
 }
 
-func TestInterpolateStrings(t *testing.T) {
-	args := []interface{}{"hello", "\"hello's \\ world\" \n\r\x00\x1a"}
+func TestInterpolateEscapeStrings(t *testing.T) {
+	args := []interface{}{"hello", "\"hello's \\ world\" \b\f\n\r\t\x1a"}
 
 	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE a = 'hello' AND b = '\\\"hello\\'s \\\\ world\\\" \\n\\r\\x00\\x1a'")
+	// E'' is postgres-specific
+	assert.Equal(t, "SELECT * FROM x WHERE a = 'hello' AND b = E'\"hello\\'s \\\\ world\" \b\f\n\r\t\x1a'", str)
 }
 
 func TestInterpolateSlices(t *testing.T) {
