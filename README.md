@@ -207,7 +207,7 @@ Create
 post := Post{Title: "Swith to Postgres", State: "open"}
 
 // Use Returning() and QueryStruct to update ID and CreatedAt in one trip
-response, err := sess.
+err := sess.
     InsertInto("posts").
     Columns("title", "state").
     Record(post).
@@ -283,11 +283,11 @@ Load scalar and slice primitive values
 ```go
 var id int64
 var userID string
-n, err := sess.
+err := sess.
     Select("id", "user_id").From("posts").Limit(1).QueryScalar(&id, &userID)
 
 var ids []int64
-n, err := sess.Select("id").From("posts").QuerySlice(&ids)
+err = sess.Select("id").From("posts").QuerySlice(&ids)
 ```
 
 ### Embedded structs
@@ -314,7 +314,7 @@ err := sess.
 
 ```go
 // dat.Null* types serialize to JSON properly
-post := &Post{ID: 1, Title: "Test Title"}
+post := Post{ID: 1, Title: "Test Title"}
 jsonBytes, err := json.Marshal(&post)
 fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null}
 ```
