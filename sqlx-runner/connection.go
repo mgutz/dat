@@ -17,8 +17,9 @@ type Connection struct {
 var standardConformingString string
 
 // pgMustNotAllowEscapeSequence checks if Postgres prohibits using escaped
-// sequences in strings when dat.EnableInterpolation = true. If escape
-// sequences are allowed, this panics because it's not safe.
+// sequences in strings when dat.EnableInterpolation == true. If escape
+// sequences are allowed, then it is not safe to use interpoaltion, and
+// this function panics.
 func pgMustNotAllowEscapeSequence(conn *Connection) {
 	dat.EnableInterpolation = true
 	if !dat.EnableInterpolation {
@@ -46,6 +47,10 @@ func pgMustNotAllowEscapeSequence(conn *Connection) {
 func NewConnection(db *sql.DB, driverName string) *Connection {
 	DB := sqlx.NewDb(db, driverName)
 	conn := &Connection{DB, &Queryable{DB}}
-	pgMustNotAllowEscapeSequence(conn)
+	if driverName == "postgres" {
+		pgMustNotAllowEscapeSequence(conn)
+	} else {
+		panic("Unsupported driver: " + driverName)
+	}
 	return conn
 }

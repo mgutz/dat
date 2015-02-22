@@ -3,7 +3,7 @@
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
-library for Go. `dat` tries to make SQL more accessible.
+library for Go. `dat` likes SQL and so should you.
 
 Highlights
 
@@ -79,8 +79,6 @@ func main() {
 }
 ```
 
-
-
 ## Feature highlights
 
 ### Use Builders or SQL
@@ -137,7 +135,7 @@ sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 
 ### Blacklist and Whitelist
 
-You often want to control which columns get update when user data struct comes
+Control hich columns get inserted or updated when user data comes
 in from an application.
 
 
@@ -159,7 +157,7 @@ conn.Update("users").
 
 ### IN queries
 
-__available when `dat.EnableInterpolation=true`__
+__applicable when dat.EnableInterpolation == true__
 
 Simpler IN queries which expand correctly
 
@@ -175,13 +173,12 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 There are two runner implementations:
 
 *   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
-
-    __Will only support sqlx-runner going forward.__ The dbr runner was an
-    excercise to use `dat` with different libraries. The performance difference
-    is neglible and sqlx has proven to be robust and actively maintained.
-
 *   `sql-runner` - based on [dbr](https://github.com/gocraft/dbr)
 
+    __sql-runner will not be supported in the future__ The database/sql logic is
+    based on legacy code from the dbr project with some of my fixes and tweaks.
+    I feel sqlx complements `dat` better when interpolation is disabled which
+    is the default.
 
 ## CRUD
 
@@ -221,7 +218,6 @@ err := sess.
     Record(post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
-
 ```
 
 Inserting Multiple Records
@@ -270,8 +266,10 @@ err = sess.
     QueryScalar(&post.UpdatedAt)
 ```
 
-To reset values to their default value, use DEFAULT
-eg, to reset payment\_type to its default value in DDL
+To reset values to their default value, use `dat.DEFAULT`. For example,
+o reset `payment\_type` to its default value in DDL
+
+__applicable when dat.EnableInterpolation == true__
 
 ```go
 res, err := sess.
@@ -284,7 +282,8 @@ res, err := sess.
 Use `Blacklist` and `Whitelist` to control which columns get updated.
 
 ```go
-paymentBlacklist := []string{"id", "created_at"}
+// create blacklists for each of your structs
+blacklist := []string{"id", "created_at"}
 p := paymentStructFromHandler
 
 err := sess.
@@ -314,7 +313,6 @@ result, err = sess.
     Limit(1).
     Exec()
 ```
-
 
 ### Create a Session
 
@@ -351,32 +349,35 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 
 ### Constants
 
-__available when `dat.EnableInterpolation == true`__
+__applicable when dat.EnableInterpolation == true__
 
 `dat` provides often used constants in SQL statements
 
 * dat.DEFAULT - inserts `DEFAULT`
 * dat.NOW - inserts `NOW()`
 
-**BEGIN DANGER ZONE**
+### Defining Your Own Constants
 
 _UnsafeStrings and constants will panic unless_ `dat.EnableInterpolation == true`
 
-To define your own SQL constants, use `dat.UnsafeString`
+To define your own SQL constants, use `UnsafeString`
 
 ```go
 const CURRENT_TIMESTAMP = dat.UnsafeString("NOW()")
 conn.SQL("UPDATE table SET updated_at = $1", CURRENT_TIMESTAMP)
 ```
 
-`UnsafeString` is exactly that, **unsafe**. If you must use it, create a constant
-and name it according to its SQL usage.
+`UnsafeString` is exactly that, **UNSAFE**. If you must use it, create a
+constant and **NEVER** use `UnsafeString` directly as an argument. This
+is asking for a SQL injection attack
 
-**END**
+```go
+conn.SQL("UPDATE table SET updated_at = $1", dat.UnsafeString(someVar))
+```
 
 ### Primitive Values
 
-Load scalar and slice primitive values
+Load scalar and slice values.
 
 ```go
 var id int64
@@ -461,11 +462,12 @@ to enable.
 
 Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
-The built-in interpolation func disallows **ALL** escape sequence.
+The built-in interpolation func disallows **ALL** escape sequences.
 
 `dat` checks the value of `standard_conforming_strings` on a new connection if
 `data.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
-you should either set it to "on" or disable interpolation.
+you should either set it to "on" or disable interpolation. `dat` will panic
+if you try to use interpolation with an incorrect setting.
 
 ### Benchmarks
 
