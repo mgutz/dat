@@ -1,6 +1,9 @@
 package dat
 
-import "bytes"
+import (
+	"bytes"
+	"strings"
+)
 
 // PostgresDialect is the PostgeSQL dialect.
 type PostgresDialect struct{}
@@ -11,21 +14,31 @@ type PostgresDialect struct{}
 // sequences by default. See
 // http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE
 func (pd *PostgresDialect) WriteStringLiteral(buf *bytes.Buffer, val string) {
-	for _, r := range val {
-		if r == '\\' {
-			buf.WriteRune('E')
-			break
+	if !strings.Contains(val, "'") {
+		buf.WriteRune('\'')
+		if val != "" {
+			buf.WriteString(val)
 		}
+		buf.WriteRune('\'')
+		return
 	}
+
+	// for _, r := range val {
+	// 	if r == '\\' {
+	// 		buf.WriteRune('E')
+	// 		break
+	// 	}
+	// }
 
 	buf.WriteRune('\'')
 	for _, char := range val {
-		if char == '\\' {
-			// slash
-			buf.WriteString(`\\`)
-		} else if char == '\'' {
+		// if char == '\\' {
+		// 	// slash
+		// 	buf.WriteString(`\\`)
+		// } else if char == '\'' {
+		if char == '\'' {
 			// apos
-			buf.WriteString(`\'`)
+			buf.WriteString(`''`)
 		} else if char == 0 {
 			panic("postgres doesn't support NULL char in text, see http://stackoverflow.com/questions/1347646/postgres-error-on-insert-error-invalid-byte-sequence-for-encoding-utf8-0x0")
 		} else {

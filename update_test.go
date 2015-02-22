@@ -81,11 +81,6 @@ func TestUpdateWhitelist(t *testing.T) {
 }
 
 func TestUpdateBlacklist(t *testing.T) {
-	// type someRecord struct {
-	// 	SomethingID int   `db:"something_id"`
-	// 	UserID      int64 `db:"user_id"`
-	// 	Other       bool  `db:"other"`
-	// }
 	sr := &someRecord{1, 2, false}
 	sql, args := Update("a").
 		SetBlacklist(sr, "something_id").

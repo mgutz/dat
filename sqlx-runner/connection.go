@@ -2,8 +2,10 @@ package runner
 
 import (
 	"database/sql"
+	"log"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/mgutz/dat"
 )
 
 // Connection is a connection to the database with an EventReceiver
@@ -12,8 +14,38 @@ type Connection struct {
 	*Queryable
 }
 
+var standardConformingString string
+
+// pgMustNotAllowEscapeSequence checks if Postgres prohibits using escaped
+// sequences in strings when dat.EnableInterpolation = true. If escape
+// sequences are allowed, this panics because it's not safe.
+func pgMustNotAllowEscapeSequence(conn *Connection) {
+	dat.EnableInterpolation = true
+	if !dat.EnableInterpolation {
+		return
+	}
+
+	if standardConformingString == "" {
+		err := conn.
+			SQL("select setting from pg_settings where name='standard_conforming_strings'").
+			QueryScalar(&standardConformingString)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if standardConformingString != "on" {
+		log.Fatalf("Database allows escape sequences. Cannot be used with interpolation. "+
+			"standard_conforming_strings=%q\n"+
+			"See http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE",
+			standardConformingString)
+	}
+}
+
 // NewConnection instantiates a Connection for a given database/sql connection
 func NewConnection(db *sql.DB, driverName string) *Connection {
 	DB := sqlx.NewDb(db, driverName)
-	return &Connection{DB, &Queryable{DB}}
+	conn := &Connection{DB, &Queryable{DB}}
+	pgMustNotAllowEscapeSequence(conn)
+	return conn
 }

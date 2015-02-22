@@ -37,7 +37,7 @@ func TestEscapeSequences(t *testing.T) {
 	dat.EnableInterpolation = true
 	id := 0
 	str := ""
-	expect := "I said, \"a's \\ \\\b\f\n\r\t\x1a\""
+	expect := "I said, \"a's \\ \\\b\f\n\r\t\x1a\"你好"
 
 	err := testConn.InsertInto("people").
 		Columns("name", "foo").

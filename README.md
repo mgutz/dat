@@ -61,6 +61,7 @@ func init() {
 type Post struct {
     ID        int64         `db:"id"`
     Title     string        `db:"title"`
+    Body      string        `db:"body"`
     UserID    int64         `db:"user_id"`
     State     string        `db:"state"`
     UpdatedAt dat.Nulltime  `db:"updated_at"`
@@ -168,33 +169,6 @@ b := sess.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
-### Local Interpolation
-
-__Interpolation is DISABLED by default__ Set `dat.EnableInterpolation = true`
-to enable.
-
-`dat` can interpolate locally using a built-in escape function to inline
-query arguments which can result in performance improvements. Debugging is
-simpler too by looking at the interpolated SQL in your logs
-
-Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
-[String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE)
-
-Interpolation uses escape string constants `E''` and escapes only apostrophe `'` and backslash `\`
-
-#### Checking Postgres Settings
-
-Verify escape setting by executing this command in psql
-
-```sql
-SHOW standard_conforming_strings;
-```
-That value should be `on`.
-
-### Benchmarks
-
-TODO Add interpolation  benchmarks
-
 ### Runners
 
 `dat` was designed to have clear separation between SQL builders and Query execers.
@@ -208,8 +182,6 @@ There are two runner implementations:
 
 *   `sql-runner` - based on [dbr](https://github.com/gocraft/dbr)
 
-
-## Usage Examples
 
 ## CRUD
 
@@ -249,8 +221,28 @@ err := sess.
     Record(post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
+
 ```
 
+Inserting Multiple Records
+
+```go
+// create builder
+b := sess.InsertInto("posts").Columns("title")
+
+// add some new posts
+for i := 0; i < 3; i++ {
+	b.Record(&Post{Title: fmt.Sprintf("Article %s", i)})
+}
+
+// OR (this is more efficient as it does not do any reflection)
+for i := 0; i < 3; i++ {
+	b.Values(fmt.Sprintf("Article %s", i))
+}
+
+// Execute statement
+_, err := b.Exec()
+```
 
 ### Read
 
@@ -272,6 +264,7 @@ you might have an update trigger on "updated\_at"
 err = sess.
     Update("posts").
     Set("title", "My New Title").
+    Set("body", "markdown text here").
     Where("id = $1", post.ID).
     Returning("updated_at").
     QueryScalar(&post.UpdatedAt)
@@ -301,10 +294,21 @@ err := sess.
     Exec()
 ```
 
+Use a map of attributes
+
+``` go
+attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}
+result, err := sess.
+    Update("developers").
+    SetMap(attrsMap).
+    Where("language = $1", "Ruby").
+    Exec()
+```
+
 ### Delete
 
 ``` go
-response, err = sess.
+result, err = sess.
     DeleteFrom("posts").
     Where("id = $1", otherPost.ID).
     Limit(1).
@@ -413,47 +417,6 @@ jsonBytes, err := json.Marshal(&post)
 fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null}
 ```
 
-### Inserting Multiple Records
-
-```go
-// Start bulding an INSERT statement
-b := sess.InsertInto("posts").Columns("title")
-
-// Add some new posts.
-for i := 0; i < 3; i++ {
-	b.Record(&Post{Title: fmt.Sprintf("Article %s", i)})
-}
-
-// OR (this is more efficient)
-for i := 0; i < 3; i++ {
-	b.Values(fmt.Sprintf("Article %s", i))
-}
-
-// Execute statement
-_, err := b.Exec()
-```
-
-
-### Updating Records
-
-```go
-// Update any rubyists to gophers
-result, err := sess.
-    Update("posts").
-    Set("name", "Gopher").
-    Set("language", "Go").
-    Where("language = $1", "Ruby").
-    Exec()
-
-// Alternatively use a map of attributes
-attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}
-result, err := sess.
-    Update("developers").
-    SetMap(attrsMap).
-    Where("language = $1", "Ruby").
-    Exec()
-```
-
 ### Transactions
 
 ```go
@@ -482,6 +445,32 @@ if err := tx.Commit(); err != nil {
 	return err
 }
 ```
+
+### Local Interpolation
+
+`dat` can interpolate locally using a built-in escape function to inline
+query arguments. Some of the reasons you might want to use interpolation:
+
+*   Interpolation can result in perfomance improvements.
+*   Debugging is simpler too hen looking at the interpolated SQL in your logs.
+*   Enhanced features like use of dat.NOW and data.DEFAULT, inling slice
+    args ....
+
+__Interpolation is DISABLED by default__ Set `dat.EnableInterpolation = true`
+to enable.
+
+Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
+[String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
+The built-in interpolation func disallows **ALL** escape sequence.
+
+`dat` checks the value of `standard_conforming_strings` on a new connection if
+`data.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
+you should either set it to "on" or disable interpolation.
+
+### Benchmarks
+
+TODO Add interpolation  benchmarks
+
 
 ### Use With Other Libraries
 
