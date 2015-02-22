@@ -174,8 +174,7 @@ That value should be `on`.
 
 Interpolation uses escape string constants `E''` and escapes only apostrophe `'` and backslash `\`
 
-__Interpolation is DISABLED by default__ for those still not convinced.
-Set `dat.EnableInterpolation = true` to enable.
+__Interpolation is DISABLED by default__. Set `dat.EnableInterpolation = true` to enable.
 
 TODO Add benchmarks
 
