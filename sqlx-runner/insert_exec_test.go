@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/mgutz/dat"
@@ -134,4 +135,55 @@ func TestInsertMultipleRecords(t *testing.T) {
 		}
 	}
 	assert.Equal(n, 2)
+}
+
+func TestInsertWhitelist(t *testing.T) {
+	// Insert by specifying a record (struct)
+	person2 := Person{Name: "Barack"}
+	person2.Email.Valid = true
+	person2.Email.String = "obama2@whitehouse.gov"
+	var email sql.NullString
+	var name string
+	var id int64
+	err := testConn.
+		InsertInto("people").
+		Whitelist("name").
+		Record(person2).
+		Returning("id", "name", "email").
+		QueryScalar(&id, &name, &email)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.False(t, email.Valid)
+	assert.Equal(t, name, "Barack")
+}
+
+func TestInsertBlacklist(t *testing.T) {
+	// type Person struct {
+	// 	ID        int64          `db:"id"`
+	// 	Name      string         `db:"name"`
+	// 	Foo       string         `db:"foo"`
+	// 	Email     dat.NullString `db:"email"`
+	// 	Key       dat.NullString `db:"key"`
+	// 	Doc       dat.NullString `db:"doc"`
+	// 	CreatedAt dat.NullTime   `db:"created_at"`
+	// }
+
+	// Insert by specifying a record (struct)
+	person2 := Person{Name: "Barack"}
+	person2.Email.Valid = true
+	person2.Email.String = "obama2@whitehouse.gov"
+	var email sql.NullString
+	var name string
+	var id int64
+
+	err := testConn.
+		InsertInto("people").
+		Blacklist("id", "foo", "email", "key", "doc", "created_at").
+		Record(person2).
+		Returning("id", "name", "email").
+		QueryScalar(&id, &name, &email)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.False(t, email.Valid)
+	assert.Equal(t, name, "Barack")
 }

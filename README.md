@@ -13,7 +13,7 @@ Highlights
     conn.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
     ```
 
-*   Intuitive - it looks like SQL
+*   Intuitive - looks like SQL
 
     ```go
     err := conn.
@@ -27,9 +27,10 @@ Highlights
 
 *   Performant
 
-    -   `dat` can interpolates queries locally before sending to server which can speed things up
-    -   ordinal placeholder logic has been optimized to be almost as fast as `?`
+    -   ordinal placeholder logic has been optimized to be nearly as fast as `?`
         placeholders
+    -   `dat` can interpolate queries locally before sending to server which
+        can speed things up
 
 ## Getting Started
 
@@ -77,20 +78,9 @@ func main() {
 }
 ```
 
+
+
 ## Feature highlights
-
-### Runners
-
-`dat` was designed to have clear separation between SQL builders and Query execers.
-There are two runner implementations:
-
-* `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
-* `sql-runner` - based on [dbr](https://github.com/gocraft/dbr)
-
-I recommend `sqlx-runner`. There are times when you need to use the driver directly,
-for example when structs contain binary types, which cannot be interpolated efficiently
-and therefore not supported. `sqlx` is much friendlier than plain `database/sql`
-in those situations.
 
 ### Use Builders or SQL
 
@@ -144,6 +134,28 @@ sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
 sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
+### Blacklist and Whitelist
+
+You often want to control which columns get update when user data struct comes
+in from an application.
+
+
+```go
+// userData came in from http.Handler and prevent them from setting the created_at
+// date which is the payment date
+conn.InsertInto("payments").
+    SetBlacklist(userData, "id", "updated_at", "created_at").
+    Returning("id").
+    QueryScalar(&userData.ID)
+
+
+// ensure session user can only update his information
+conn.Update("users").
+    SetWhitelist(user, "user_name", "avatar", "quote").
+    Where("id = $1", session.UserID).
+    Exec()
+```
+
 ### IN queries
 
 __available when `dat.EnableInterpolation=true`__
@@ -158,27 +170,147 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 
 ### Local Interpolation
 
-`dat` interpolates locally using a built-in escape function to inline
-query arguments which can result in performance improvements. Another
-benefit is the interpolation SQL is much simpler to debug.
+__Interpolation is DISABLED by default__ Set `dat.EnableInterpolation = true`
+to enable.
+
+`dat` can interpolate locally using a built-in escape function to inline
+query arguments which can result in performance improvements. Debugging is
+simpler too by looking at the interpolated SQL in your logs
 
 Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE)
-Verify your database by executing this command in psql
+
+Interpolation uses escape string constants `E''` and escapes only apostrophe `'` and backslash `\`
+
+#### Checking Postgres Settings
+
+Verify escape setting by executing this command in psql
 
 ```sql
 SHOW standard_conforming_strings;
 ```
-
 That value should be `on`.
 
-Interpolation uses escape string constants `E''` and escapes only apostrophe `'` and backslash `\`
+### Benchmarks
 
-__Interpolation is DISABLED by default__. Set `dat.EnableInterpolation = true` to enable.
+TODO Add interpolation  benchmarks
 
-TODO Add benchmarks
+### Runners
+
+`dat` was designed to have clear separation between SQL builders and Query execers.
+There are two runner implementations:
+
+*   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
+
+    __Will only support sqlx-runner going forward.__ The dbr runner was an
+    excercise to use `dat` with different libraries. The performance difference
+    is neglible and sqlx has proven to be robust and actively maintained.
+
+*   `sql-runner` - based on [dbr](https://github.com/gocraft/dbr)
+
 
 ## Usage Examples
+
+## CRUD
+
+### Create
+
+Use `Returning` and `QueryStruct` to insert and update columns in one
+trip.
+
+```go
+post := Post{Title: "Swith to Postgres", State: "open"}
+
+err := sess.
+    InsertInto("posts").
+    Columns("title", "state").
+    Record(post).
+    Returning("id", "created_at", "updated_at").
+    QueryStruct(&post)
+```
+
+Use Blacklists and Whitelists to control which record columns get
+inserted.
+
+```go
+post := Post{Title: "Swith to Postgres", State: "open"}
+
+err := sess.
+    InsertInto("posts").
+    Blacklist("id", "user_id", "created_at", "updated_at").
+    Record(post).
+    Returning("id", "created_at", "updated_at").
+    QueryStruct(&post)
+
+// probably not safe but you get the idea
+err := sess.
+    InsertInto("posts").
+    Whitelist("*").
+    Record(post).
+    Returning("id", "created_at", "updated_at").
+    QueryStruct(&post)
+```
+
+
+### Read
+
+```go
+var other Post
+err = sess.
+    Select("id, title").
+    From("posts").
+    Where("id = $1", post.ID).
+    QueryStruct(&other)
+```
+
+### Update
+
+Use `Returning` to get fields which have update triggers. For example,
+you might have an update trigger on "updated\_at"
+
+```go
+err = sess.
+    Update("posts").
+    Set("title", "My New Title").
+    Where("id = $1", post.ID).
+    Returning("updated_at").
+    QueryScalar(&post.UpdatedAt)
+```
+
+To reset values to their default value, use DEFAULT
+eg, to reset payment\_type to its default value in DDL
+
+```go
+res, err := sess.
+    Update("payments").
+    Set("payment_type", dat.DEFAULT).
+    Where("id = $1", 1).
+    Exec()
+```
+
+Use `Blacklist` and `Whitelist` to control which columns get updated.
+
+```go
+paymentBlacklist := []string{"id", "created_at"}
+p := paymentStructFromHandler
+
+err := sess.
+    Update("payments").
+    SetBlacklist(p, blacklist...)
+    Where("id = $1", p.ID).
+    Exec()
+```
+
+### Delete
+
+``` go
+response, err = sess.
+    DeleteFrom("posts").
+    Where("id = $1", otherPost.ID).
+    Limit(1).
+    Exec()
+```
+
 
 ### Create a Session
 
@@ -211,62 +343,6 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 
     // do more queries with session
 }
-```
-
-### CRUD
-
-Create
-
-```go
-post := Post{Title: "Swith to Postgres", State: "open"}
-
-// Use Returning() and QueryStruct to update ID and CreatedAt in one trip
-err := sess.
-    InsertInto("posts").
-    Columns("title", "state").
-    Record(post).
-    Returning("id", "created_at", "updated_at").
-    QueryStruct(&post)
-```
-
-Read
-
-```go
-var other Post
-err = sess.
-    Select("id, title").
-    From("posts").
-    Where("id = $1", post.ID).
-    QueryStruct(&other)
-```
-
-Update
-
-```go
-err = sess.
-    Update("posts").
-    Set("title", "My New Title").
-    Where("id = $1", post.ID).
-    Returning("updated_at").
-    QueryScalar(&post.UpdatedAt)
-
-// To reset values to their default value, use DEFAULT
-// eg, to reset payment_type to its default value in DDL
-res, err := sess.
-    Update("payments").
-    Set("payment_type", dat.DEFAULT).
-    Where("id = $1", 1).
-    Exec()
-```
-
-Delete
-
-``` go
-response, err = sess.
-    DeleteFrom("posts").
-    Where("id = $1", otherPost.ID).
-    Limit(1).
-    Exec()
 ```
 
 ### Constants

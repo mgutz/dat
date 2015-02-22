@@ -2,6 +2,7 @@ package dat
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 )
 
@@ -10,6 +11,53 @@ var destDummy interface{}
 type fieldMapQueueElement struct {
 	Type reflect.Type
 	Idxs []int
+}
+
+type field struct {
+	// name of go field
+	goName string
+	// name of datbase column
+	dbName string
+}
+type record struct {
+	fields []*field
+}
+
+func newRecord() *record {
+	return &record{}
+}
+
+// structCache maps type name -> record
+var structCache = map[string]*record{}
+
+// reflectFields gets a cached field information about record
+func reflectFields(rec interface{}) *record {
+	val := reflect.Indirect(reflect.ValueOf(rec))
+	vname := val.String()
+	vtype := val.Type()
+
+	if structCache[vname] != nil {
+		return structCache[vname]
+	}
+
+	r := &record{}
+	//fmt.Println(val.Type().String(), val.Type().Name())
+	for i := 0; i < vtype.NumField(); i++ {
+		f := vtype.Field(i)
+
+		// skip unexported
+		if len(f.PkgPath) != 0 {
+			continue
+		}
+		name := f.Name
+		dbName := f.Tag.Get("db")
+		if dbName == "" {
+			log.Fatalf("%s must have db struct tags for all fields: `db:\"\"`", vname)
+		}
+		r.fields = append(r.fields, &field{goName: name, dbName: dbName})
+	}
+	structCache[vname] = r
+	return r
 }
 
 // CalculateFieldMap recordType is the type of a structure

@@ -63,3 +63,35 @@ func TestUpdateTenStaringFromTwentyToSql(t *testing.T) {
 	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1 LIMIT 10 OFFSET 20", "b"))
 	assert.Equal(t, args, []interface{}{1})
 }
+
+func TestUpdateWhitelist(t *testing.T) {
+	// type someRecord struct {
+	// 	SomethingID int   `db:"something_id"`
+	// 	UserID      int64 `db:"user_id"`
+	// 	Other       bool  `db:"other"`
+	// }
+	sr := &someRecord{1, 2, false}
+	sql, args := Update("a").
+		SetWhitelist(sr, "user_id", "other").
+		ToSQL()
+
+	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1, %s = $2", "user_id", "other"))
+	assert.Equal(t, args, []interface{}{2, false})
+
+}
+
+func TestUpdateBlacklist(t *testing.T) {
+	// type someRecord struct {
+	// 	SomethingID int   `db:"something_id"`
+	// 	UserID      int64 `db:"user_id"`
+	// 	Other       bool  `db:"other"`
+	// }
+	sr := &someRecord{1, 2, false}
+	sql, args := Update("a").
+		SetBlacklist(sr, "something_id").
+		ToSQL()
+
+	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1, %s = $2", "user_id", "other"))
+	assert.Equal(t, args, []interface{}{2, false})
+
+}

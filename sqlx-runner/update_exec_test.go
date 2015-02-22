@@ -59,3 +59,77 @@ func TestUpdateReal(t *testing.T) {
 	assert.Equal(t, person.Email.Valid, true)
 	assert.Equal(t, person.Email.String, "barack@whitehouse.gov")
 }
+
+func TestUpdateWhitelist(t *testing.T) {
+	createRealSessionWithFixtures()
+
+	// Insert by specifying a record (struct)
+	p := Person{Name: "Barack"}
+	p.Foo = "bar"
+	var foo string
+	var name string
+	var id int64
+	err := testConn.
+		InsertInto("people").
+		Whitelist("name", "foo").
+		Record(p).
+		Returning("id", "name", "foo").
+		QueryScalar(&id, &name, &foo)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.Equal(t, name, "Barack")
+	assert.Equal(t, foo, "bar")
+
+	p2 := Person{Name: "oy"}
+	p2.Foo = "bah"
+	var name2 string
+	var foo2 string
+	err = testConn.
+		Update("people").
+		SetWhitelist(p2, "foo").
+		Where("id = $1", id).
+		Returning("name", "foo").
+		QueryScalar(&name2, &foo2)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.Equal(t, name2, "Barack")
+	assert.Equal(t, foo2, "bah")
+
+}
+
+func TestUpdateBlacklist(t *testing.T) {
+	createRealSessionWithFixtures()
+
+	// Insert by specifying a record (struct)
+	p := Person{Name: "Barack"}
+	p.Foo = "bar"
+	var foo string
+	var name string
+	var id int64
+	err := testConn.
+		InsertInto("people").
+		Whitelist("name", "foo").
+		Record(p).
+		Returning("id", "name", "foo").
+		QueryScalar(&id, &name, &foo)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.Equal(t, name, "Barack")
+	assert.Equal(t, foo, "bar")
+
+	p2 := Person{Name: "oy"}
+	p2.Foo = "bah"
+	var name2 string
+	var foo2 string
+	err = testConn.
+		Update("people").
+		SetBlacklist(p2, "id", "name", "email", "key", "doc", "created_at").
+		Where("id = $1", id).
+		Returning("name", "foo").
+		QueryScalar(&name2, &foo2)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+	assert.Equal(t, name2, "Barack")
+	assert.Equal(t, foo2, "bah")
+
+}

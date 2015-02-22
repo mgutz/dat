@@ -4,17 +4,20 @@ import (
 	"bytes"
 	"reflect"
 	"strconv"
+
+	"github.com/mgutz/str"
 )
 
 // InsertBuilder contains the clauses for an INSERT statement
 type InsertBuilder struct {
 	Executable
 
-	table      string
-	cols       []string
-	vals       [][]interface{}
-	records    []interface{}
-	returnings []string
+	table       string
+	cols        []string
+	isBlacklist bool
+	vals        [][]interface{}
+	records     []interface{}
+	returnings  []string
 }
 
 // NewInsertBuilder creates a new InsertBuilder for the given table.
@@ -24,6 +27,20 @@ func NewInsertBuilder(table string) *InsertBuilder {
 
 // Columns appends columns to insert in the statement
 func (b *InsertBuilder) Columns(columns ...string) *InsertBuilder {
+	return b.Whitelist(columns...)
+}
+
+// Blacklist defines a blacklist of columns and should only be used
+// in conjunction with Record.
+func (b *InsertBuilder) Blacklist(columns ...string) *InsertBuilder {
+	b.isBlacklist = true
+	b.cols = columns
+	return b
+}
+
+// Whitelist defines a whitelist of columns to be inserted. To
+// specify all columsn of a record use "*".
+func (b *InsertBuilder) Whitelist(columns ...string) *InsertBuilder {
 	b.cols = columns
 	return b
 }
@@ -84,11 +101,46 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 	if len(b.table) == 0 {
 		panic("no table specified")
 	}
-	if len(b.cols) == 0 {
+	lenCols := len(b.cols)
+	lenRecords := len(b.records)
+	if lenCols == 0 {
 		panic("no columns specified")
 	}
-	if len(b.vals) == 0 && len(b.records) == 0 {
+	if len(b.vals) == 0 && lenRecords == 0 {
 		panic("no values or records specified")
+	}
+
+	if lenRecords == 0 && b.cols[0] == "*" {
+		panic(`"*" can only be used in conjunction with Record`)
+	}
+
+	if lenRecords == 0 && b.isBlacklist {
+		panic(`Blacklist can only be used in conjunction with Record`)
+	}
+
+	// reflect fields removing blacklisted columns
+	if lenRecords > 0 && b.isBlacklist {
+		info := reflectFields(b.records[0])
+		lenFields := len(info.fields)
+		cols := []string{}
+		for i := 0; i < lenFields; i++ {
+			f := info.fields[i]
+			if str.SliceContains(b.cols, f.dbName) {
+				continue
+			}
+			cols = append(cols, f.dbName)
+		}
+		b.cols = cols
+	}
+	// reflect all fields
+	if lenRecords > 0 && b.cols[0] == "*" {
+		info := reflectFields(b.records[0])
+		lenFields := len(info.fields)
+		b.cols = make([]string, lenFields)
+		for i := 0; i < lenFields; i++ {
+			f := info.fields[i]
+			b.cols[i] = f.dbName
+		}
 	}
 
 	var sql bytes.Buffer

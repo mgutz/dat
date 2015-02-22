@@ -6,10 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type missingDbTag struct {
+	ID int64
+}
+
 type someRecord struct {
 	SomethingID int   `db:"something_id"`
 	UserID      int64 `db:"user_id"`
-	Other       bool
+	Other       bool  `db:"other"`
 }
 
 func BenchmarkInsertValuesSql(b *testing.B) {
@@ -57,4 +61,35 @@ func TestInsertRecordsToSql(t *testing.T) {
 
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3),($4,$5,$6)", "something_id", "user_id", "other"))
 	assert.Equal(t, args, []interface{}{1, 88, false, 2, 99, true})
+}
+
+func TestInsertWhitelist(t *testing.T) {
+	objs := []someRecord{{1, 88, false}, {2, 99, true}}
+	sql, args := InsertInto("a").
+		Whitelist("*").
+		Record(objs[0]).
+		Record(objs[1]).
+		ToSQL()
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3),($4,$5,$6)", "something_id", "user_id", "other"))
+	assert.Equal(t, args, []interface{}{1, 88, false, 2, 99, true})
+
+	assert.Panics(t, func() {
+		InsertInto("a").Whitelist("*").Values("foo").ToSQL()
+	}, `must use "*" in conjunction with Record`)
+}
+
+func TestInsertBlacklist(t *testing.T) {
+	objs := []someRecord{{1, 88, false}, {2, 99, true}}
+	sql, args := InsertInto("a").
+		Blacklist("something_id").
+		Record(objs[0]).
+		Record(objs[1]).
+		ToSQL()
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4)", "user_id", "other"))
+	assert.Equal(t, args, []interface{}{88, false, 99, true})
+
+	assert.Panics(t, func() {
+		InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()
+	}, `must use "*" in conjunction with Record`)
+
 }

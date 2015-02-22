@@ -2,7 +2,11 @@ package dat
 
 import (
 	"bytes"
+	"log"
+	"reflect"
 	"strconv"
+
+	"github.com/mgutz/str"
 )
 
 // UpdateBuilder contains the clauses for an UPDATE statement
@@ -40,6 +44,57 @@ func (b *UpdateBuilder) Set(column string, value interface{}) *UpdateBuilder {
 func (b *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 	for col, val := range clauses {
 		b = b.Set(col, val)
+	}
+	return b
+}
+
+// SetBlacklist creates SET clause(s) using a record and blacklist of columns
+func (b *UpdateBuilder) SetBlacklist(rec interface{}, columns ...string) *UpdateBuilder {
+	val := reflect.Indirect(reflect.ValueOf(rec))
+	vname := val.String()
+	vtype := val.Type()
+
+	if len(columns) == 0 {
+		panic("SetBlacklist a list of columns names")
+	}
+
+	for i := 0; i < vtype.NumField(); i++ {
+		f := vtype.Field(i)
+		dbName := f.Tag.Get("db")
+		if dbName == "" {
+			log.Fatalf("%s must have db struct tags for all fields: `db:\"\"`", vname)
+		}
+		if !str.SliceContains(columns, dbName) {
+			value := val.Field(i).Interface()
+			b.Set(dbName, value)
+		}
+	}
+	return b
+}
+
+// SetWhitelist creates SET clause(s) using a record and whitelist of columns.
+// To specify all columns, use "*".
+func (b *UpdateBuilder) SetWhitelist(rec interface{}, columns ...string) *UpdateBuilder {
+	val := reflect.Indirect(reflect.ValueOf(rec))
+	vname := val.String()
+	vtype := val.Type()
+
+	isWildcard := len(columns) == 0 || columns[0] == "*"
+
+	for i := 0; i < vtype.NumField(); i++ {
+		f := vtype.Field(i)
+		dbName := f.Tag.Get("db")
+		if dbName == "" {
+			log.Fatalf("%s must have db struct tags for all fields: `db:\"\"`", vname)
+		}
+		value := val.Field(i).Interface()
+
+		if isWildcard {
+			b.Set(dbName, value)
+		} else if str.SliceContains(columns, dbName) {
+			b.Set(dbName, value)
+		}
+
 	}
 	return b
 }

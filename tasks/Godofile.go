@@ -72,6 +72,10 @@ func tasks(p *Project) {
 	p.Task("bench", func() {
 		Bash("go test -bench . -benchmem 2>/dev/null | column -t")
 	})
+
+	p.Task("install", func() {
+		Run("go install -a", In{"sqlx-runner"})
+	})
 }
 
 func main() {
