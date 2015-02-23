@@ -93,11 +93,11 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 }
 
 // Interpolate interpolates this builder's SQL.
-func (b *DeleteBuilder) Interpolate() (string, error) {
+func (b *DeleteBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
 // MustInterpolate interpolates this builder's SQL or panics.
-func (b *DeleteBuilder) MustInterpolate() string {
+func (b *DeleteBuilder) MustInterpolate() (string, []interface{}) {
 	return mustInterpolate(b)
 }

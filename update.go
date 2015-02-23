@@ -220,11 +220,11 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 }
 
 // Interpolate interpolates this builders sql.
-func (b *UpdateBuilder) Interpolate() (string, error) {
+func (b *UpdateBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
 // MustInterpolate interpolates this builders sql or panics.
-func (b *UpdateBuilder) MustInterpolate() string {
+func (b *UpdateBuilder) MustInterpolate() (string, []interface{}) {
 	return mustInterpolate(b)
 }

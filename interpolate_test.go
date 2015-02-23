@@ -42,7 +42,7 @@ func BenchmarkInterpolate(b *testing.B) {
 func TestInterpolateNil(t *testing.T) {
 	args := []interface{}{nil}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = NULL")
 }
@@ -61,7 +61,7 @@ func TestInterpolateInts(t *testing.T) {
 		uint64(10),
 	}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3 AND d = $4 AND e = $5 AND f = $6 AND g = $7 AND h = $8 AND i = $9 AND j = $10", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3 AND d = $4 AND e = $5 AND f = $6 AND g = $7 AND h = $8 AND i = $9 AND j = $10", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = 1 AND b = -2 AND c = 3 AND d = 4 AND e = 5 AND f = 6 AND g = 7 AND h = 8 AND i = 9 AND j = 10")
 }
@@ -69,7 +69,7 @@ func TestInterpolateInts(t *testing.T) {
 func TestInterpolateBools(t *testing.T) {
 	args := []interface{}{true, false}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = 1 AND b = 0")
 }
@@ -77,7 +77,7 @@ func TestInterpolateBools(t *testing.T) {
 func TestInterpolateFloats(t *testing.T) {
 	args := []interface{}{float32(0.15625), float64(3.14159)}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = 0.15625 AND b = 3.14159")
 }
@@ -85,7 +85,7 @@ func TestInterpolateFloats(t *testing.T) {
 func TestInterpolateEscapeStrings(t *testing.T) {
 	args := []interface{}{"hello", "\"pg's world\" \\\b\f\n\r\t\x1a"}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
 	// E'' is postgres-specific
 	assert.Equal(t, "SELECT * FROM x WHERE a = 'hello' AND b = '\"pg''s world\" \\\b\f\n\r\t\x1a'", str)
@@ -94,7 +94,7 @@ func TestInterpolateEscapeStrings(t *testing.T) {
 func TestInterpolateSlices(t *testing.T) {
 	args := []interface{}{[]int{1}, []int{1, 2, 3}, []uint32{5, 6, 7}, []string{"wat", "ok"}}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3 AND d = $4", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3 AND d = $4", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = (1) AND b = (1,2,3) AND c = (5,6,7) AND d = ('wat','ok')")
 }
@@ -114,14 +114,14 @@ func (m myString) Value() (driver.Value, error) {
 func TestIntepolatingValuers(t *testing.T) {
 	args := []interface{}{myString{true, "wat"}, myString{false, "fry"}}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = 'wat' AND b = NULL")
 }
 
 func TestInterpolatingUnsafeStrings(t *testing.T) {
 	args := []interface{}{NOW, DEFAULT, UnsafeString(`hstore`)}
-	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE one=NOW() AND two=DEFAULT AND three=hstore")
 }
@@ -135,7 +135,7 @@ func TestInterpolatingPointers(t *testing.T) {
 	var six = true
 
 	args := []interface{}{&one, &two, &three, &four, &five, &six}
-	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE one=1000 AND two=2000 AND three=3 AND four=4 AND five='five' AND six=1")
 }
@@ -149,7 +149,7 @@ func TestInterpolatingNulls(t *testing.T) {
 	var six *bool
 
 	args := []interface{}{one, two, three, four, five, six}
-	str, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE one=NULL AND two=NULL AND three=NULL AND four=NULL AND five=NULL AND six=NULL")
 }
@@ -161,25 +161,25 @@ func TestInterpolatingTime(t *testing.T) {
 
 	args := []interface{}{ptim, tim, &tim2}
 
-	str, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3", args)
 	assert.NoError(t, err)
 	assert.Equal(t, str, "SELECT * FROM x WHERE a = NULL AND b = '0001-01-01 00:00:00' AND c = '2004-01-01 01:01:01'")
 }
 
 func TestInterpolateErrors(t *testing.T) {
-	_, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", []interface{}{1})
+	_, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", []interface{}{1})
 	assert.Equal(t, err, ErrArgumentMismatch)
 
 	// no harm, no foul
-	_, err = Interpolate("SELECT * FROM x WHERE", []interface{}{1})
+	_, _, err = Interpolate("SELECT * FROM x WHERE", []interface{}{1})
 	assert.Equal(t, err, ErrArgumentMismatch)
 
-	_, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{string([]byte{0x34, 0xFF, 0xFE})})
+	_, _, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{string([]byte{0x34, 0xFF, 0xFE})})
 	assert.Equal(t, err, ErrNotUTF8)
 
-	_, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{struct{}{}})
+	_, _, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{struct{}{}})
 	assert.Equal(t, err, ErrInvalidValue)
 
-	_, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{[]struct{}{{}, {}}})
+	_, _, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{[]struct{}{{}, {}}})
 	assert.Equal(t, err, ErrInvalidSliceValue)
 }

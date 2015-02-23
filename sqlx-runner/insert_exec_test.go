@@ -192,3 +192,19 @@ func TestInsertBlacklist(t *testing.T) {
 	assert.False(t, email.Valid)
 	assert.Equal(t, name, "Barack")
 }
+
+func TestInsertBytes(t *testing.T) {
+	b := []byte{0x00, 0x11, 0x23}
+	var image []byte
+	var id int32
+	sql := `
+		INSERT INTO people (name, image)
+		VALUES ($1, $2)
+		RETURNING id, image
+	`
+	dat.EnableInterpolation = true
+	err := testConn.SQL(sql, "foo", b).QueryScalar(&id, &image)
+	assert.NoError(t, err)
+	assert.Exactly(t, b, image)
+	dat.EnableInterpolation = false
+}

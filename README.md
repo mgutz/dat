@@ -458,18 +458,46 @@ if err != nil {
 
 ### Local Interpolation
 
+__Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
+to enable.__
+
 `dat` can interpolate locally using a built-in escape function to inline
 query arguments. Some of the reasons you might want to use interpolation:
 
 *   Interpolation can result in perfomance improvements.
+
+    Here is a comment from [conn source](github.comlib/pq/blob/master/conn.go),
+    which was prompted by me asking why was Python's psycopg2 so much
+    faster in my benchmarks a year or so back:
+
+    ```go
+    // Check to see if we can use the "simpleExec" interface, which is
+    // *much* faster than going through prepare/exec
+    if len(args) == 0 {
+        // ignore commandTag, our caller doesn't care
+        r, _, err := cn.simpleExec(query)
+        return r, err
+    }
+```
+    That line bypasses the prepare/exec roundtrip to the database.
+
+    Keep in mind that prepared statements are only valid for the current
+    session. So unless you plan to execute the same query *MANY* times
+    there is not much benefit in using them over interpolation. The more
+    processing we keep on the application server means less load
+    on the database which is usually the bottleneck of applications.
+
 *   Debugging is simpler too with fully interpolated SQL in your logs.
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
-__Interpolation is DISABLED by default__ Set `dat.EnableInterpolation = true`
-to enable.
+What is not interpolated when `EnableInterpolation` is enabled? `[]byte`
+and `[]bytea` are passthroughs to the driver.
 
-Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
+#### Interpolation Safety
+
+
+As of Postgres 9.1, escaping is disabled by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
 
 `dat` disallows **ALL** escape sequences when interpolating.

@@ -54,7 +54,6 @@ func tasks(p *Project) {
 
 	p.Task("test", func(c *Context) {
 		Run(`go test`)
-		Run(`go test`, In{"sql-runner"})
 		Run(`go test`, In{"sqlx-runner"})
 	}).Watch("**/*.go")
 
@@ -63,8 +62,8 @@ func tasks(p *Project) {
 		Run(`go test`, In{dir})
 	})
 
-	p.Task("test-some", func() {
-		Run(`go test -run InsertReal`, In{"sql-runner"})
+	p.Task("test-one", func() {
+		Run(`go test -run TestInsertBytes`, In{"sqlx-runner"})
 	}).Watch("*.go")
 
 	p.Task("allocs", func() {

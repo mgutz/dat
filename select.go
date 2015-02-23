@@ -157,11 +157,11 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 }
 
 // Interpolate interpolates this builders sql.
-func (b *SelectBuilder) Interpolate() (string, error) {
+func (b *SelectBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
 // MustInterpolate interpolates this builders sql or panics.
-func (b *SelectBuilder) MustInterpolate() string {
+func (b *SelectBuilder) MustInterpolate() (string, []interface{}) {
 	return mustInterpolate(b)
 }

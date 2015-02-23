@@ -19,11 +19,11 @@ func (b *RawBuilder) ToSQL() (string, []interface{}) {
 }
 
 // Interpolate interpolates this builder's SQL.
-func (b *RawBuilder) Interpolate() (string, error) {
+func (b *RawBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
 // MustInterpolate interpolates this builder's SQL.
-func (b *RawBuilder) MustInterpolate() string {
+func (b *RawBuilder) MustInterpolate() (string, []interface{}) {
 	return mustInterpolate(b)
 }

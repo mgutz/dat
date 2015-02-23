@@ -3,7 +3,6 @@ package dat
 import (
 	"bytes"
 	"database/sql/driver"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -47,8 +46,7 @@ var typeOfUnsafeString = reflect.TypeOf(UnsafeString(""))
 // it ToSQL acts as an identify function returning sql and args.
 func ToSQL(sql string, args []interface{}) (string, []interface{}, error) {
 	if EnableInterpolation {
-		interpolated, err := Interpolate(sql, args)
-		return interpolated, nil, err
+		return Interpolate(sql, args)
 	}
 	return sql, args, nil
 }
@@ -59,8 +57,7 @@ func BuilderSQL(b Builder) (string, []interface{}, error) {
 	sql, args := b.ToSQL()
 
 	if EnableInterpolation {
-		interpolated, err := Interpolate(sql, args)
-		return interpolated, nil, err
+		return Interpolate(sql, args)
 	}
 	return sql, args, nil
 }
@@ -68,7 +65,7 @@ func BuilderSQL(b Builder) (string, []interface{}, error) {
 // Interpolate takes a SQL string with placeholders and a list of arguments to
 // replace them with. Returns a blank string and error if the number of placeholders
 // does not match the number of arguments.
-func Interpolate(sql string, vals []interface{}) (string, error) {
+func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) {
 	// Get the number of arguments to add to this query
 	lenVals := len(vals)
 
@@ -76,9 +73,9 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 	// Args with a blank query is an error
 	if sql == "" {
 		if lenVals != 0 {
-			return "", ErrArgumentMismatch
+			return "", nil, ErrArgumentMismatch
 		}
-		return "", nil
+		return "", nil, nil
 	}
 
 	hasPlaceholders := strings.Contains(sql, "$")
@@ -87,18 +84,21 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 	// No args for a query with place holders is an error
 	if lenVals == 0 {
 		if hasPlaceholders {
-			return "", ErrArgumentMismatch
+			return "", nil, ErrArgumentMismatch
 		}
-		return sql, nil
+		return sql, nil, nil
 	}
 
 	if lenVals > 0 && !hasPlaceholders {
-		return "", ErrArgumentMismatch
+		return "", nil, ErrArgumentMismatch
 	}
 
 	var buf bytes.Buffer
 	var accumulateDigits bool
 	var digits bytes.Buffer
+
+	newPlaceholderIndex := 0
+	var newArgs []interface{}
 
 	var writeValue = func(pos int) error {
 		if pos < 0 || pos >= lenVals {
@@ -107,17 +107,25 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 
 		v := vals[pos]
 
+		// mark any arguments not handled with a new placeholder
+		// and the arg to the new arguments slice
+		var passthroughArg = func() {
+			newPlaceholderIndex++
+			newArgs = append(newArgs, v)
+			buf.WriteString(placeholderTab[newPlaceholderIndex])
+		}
+
 		if val, ok := v.(UnsafeString); ok {
 			buf.WriteString(string(val))
 			return nil
-		}
-
-		if Strict {
-			if _, ok := v.([]byte); ok {
-				panic("[]byte not supported; converting to string would be inefficient")
-			} else if _, ok := v.(*[]byte); ok {
-				panic("*[]byte not supported; converting to string would be inefficient")
-			}
+		} else if _, ok := v.([]byte); ok {
+			passthroughArg()
+			return nil
+			//panic("[]byte not supported; converting to string would be inefficient")
+		} else if _, ok := v.(*[]byte); ok {
+			passthroughArg()
+			return nil
+			//panic("*[]byte not supported; converting to string would be inefficient")
 		}
 
 		valuer, ok := v.(driver.Valuer)
@@ -219,7 +227,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			}
 			buf.WriteRune(')')
 		} else {
-			return fmt.Errorf("Error trying to interpolate $%d value %q %q %#v", pos+1, valueOfV, kindOfV, v)
+			passthroughArg()
 		}
 
 		return nil
@@ -247,7 +255,7 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 			}
 			err := writeValue(pos - 1)
 			if err != nil {
-				return "", err
+				return "", nil, err
 			}
 
 			if done {
@@ -264,20 +272,20 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 		buf.WriteRune(r)
 	}
 
-	return buf.String(), nil
+	return buf.String(), newArgs, nil
 }
 
-func interpolate(builder Builder) (string, error) {
+func interpolate(builder Builder) (string, []interface{}, error) {
 	sql, args := builder.ToSQL()
 	return Interpolate(sql, args)
 }
 
-func mustInterpolate(builder Builder) string {
+func mustInterpolate(builder Builder) (string, []interface{}) {
 	sql, args := builder.ToSQL()
 
-	fullSql, err := Interpolate(sql, args)
+	fullSQL, iargs, err := Interpolate(sql, args)
 	if err != nil {
-		panic(Events.EventErrKv("mustInterpolate", err, kvs{"sql": fullSql}))
+		panic(Events.EventErrKv("mustInterpolate", err, kvs{"sql": fullSQL}))
 	}
-	return fullSql
+	return fullSQL, iargs
 }

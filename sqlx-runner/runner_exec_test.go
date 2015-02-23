@@ -16,12 +16,6 @@ import (
 //
 var testConn *Connection
 
-func init() {
-	testConn = NewConnection(realDb(), "postgres")
-	// dat.SetVerbose(true)
-	dat.Strict = true
-}
-
 func createRealSession() *Session {
 	sess, err := testConn.NewSession()
 	if err != nil {
@@ -73,11 +67,12 @@ func realDb() *sql.DB {
 
 type Person struct {
 	ID        int64          `db:"id"`
-	Name      string         `db:"name"`
-	Foo       string         `db:"foo"`
-	Email     dat.NullString `db:"email"`
-	Key       dat.NullString `db:"key"`
 	Doc       dat.NullString `db:"doc"`
+	Email     dat.NullString `db:"email"`
+	Foo       string         `db:"foo"`
+	Image     []byte         `db:"image"`
+	Key       dat.NullString `db:"key"`
+	Name      string         `db:"name"`
 	CreatedAt dat.NullTime   `db:"created_at"`
 }
 
@@ -88,6 +83,7 @@ func installFixtures() {
 			id SERIAL PRIMARY KEY,
 			name varchar(255) NOT NULL,
 			email varchar(255),
+			image bytea,
 			key varchar(255),
 			doc hstore,
 			foo varchar(255) default 'bar',
