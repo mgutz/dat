@@ -135,13 +135,10 @@ sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 
 ### Blacklist and Whitelist
 
-Control hich columns get inserted or updated when user data comes
-in from an application.
-
+Control which columns get inserted or updated when processing external data
 
 ```go
-// userData came in from http.Handler and prevent them from setting the created_at
-// date which is the payment date
+// userData came in from http.Handle, prevent them from setting protected fields
 conn.InsertInto("payments").
     SetBlacklist(userData, "id", "updated_at", "created_at").
     Returning("id").
@@ -177,8 +174,7 @@ There are two runner implementations:
 
     __sql-runner will not be supported in the future__ The database/sql logic is
     based on legacy code from the dbr project with some of my fixes and tweaks.
-    I feel sqlx complements `dat` better when interpolation is disabled which
-    is the default.
+    I feel sqlx complements `dat` better since interpolation is disabled by default.
 
 ## CRUD
 
@@ -267,7 +263,7 @@ err = sess.
 ```
 
 To reset values to their default value, use `dat.DEFAULT`. For example,
-o reset `payment\_type` to its default value in DDL
+to reset `payment\_type` to its default value in DDL
 
 __applicable when dat.EnableInterpolation == true__
 
@@ -317,7 +313,7 @@ result, err = sess.
 ### Create a Session
 
 All queries are made in the context of a session which are acquired
-from the pool in the underlying SQL driver
+from the underlying SQL driver's pool
 
 For one-off operations, use a `Connection` directly
 
