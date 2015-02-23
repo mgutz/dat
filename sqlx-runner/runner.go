@@ -68,7 +68,7 @@ func query(runner runner, builder dat.Builder) (*sqlx.Rows, error) {
 // one or more destinations.
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func queryScan(runner runner, builder dat.Builder, destinations ...interface{}) error {
+func queryScalar(runner runner, builder dat.Builder, destinations ...interface{}) error {
 	fullSQL, args, err := dat.BuilderSQL(builder)
 	if err != nil {
 		return err

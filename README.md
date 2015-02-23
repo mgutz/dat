@@ -19,7 +19,7 @@ Highlights
     err := conn.
         Select("id, user_name").
         From("users").
-        Where("id = $1", id).
+        Where("id = $1", id).
         QueryStruct(&user)
     ```
 
@@ -114,8 +114,9 @@ Note: `dat` does not clean the SQL string, thus any extra whitespace is
 transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason for this
-library existing is other SQL builders introduce their own domain language. I
-like SQL and prefer to deal with it directly.
+library existing is other SQL builders introduce their own domain language or
+use AST-like expressions which end up being more complex than the SQL they
+are attempting to simplify.
 
 Query builders shine when dealing with records (input structs).
 
@@ -479,23 +480,26 @@ query arguments. Some of the reasons you might want to use interpolation:
         return r, err
     }
 ```
-    That line bypasses the prepare/exec roundtrip to the database.
+    That snippet bypasses the prepare/exec roundtrip to the database.
 
     Keep in mind that prepared statements are only valid for the current
-    session. So unless you plan to execute the same query *MANY* times
-    there is not much benefit in using them over interpolation. The more
-    processing we keep on the application server means less load
-    on the database which is usually the bottleneck of applications.
+    session. So unless you plan to execute the same query *MANY* times in the
+    same session there is not much benefit in using them over interpolation.
+    One benefit prepared statements do provide is safety against SQL
+    injection by parameterizing queries. See Interpolation Safety below.
 
-*   Debugging is simpler too with fully interpolated SQL in your logs.
+    The more pre-processing performed on the application server means less
+    load and traffic to the database, which is usually the bottleneck of any
+    application.
+
+*   Debugging is simpler too with interpolated SQL in your logs.
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
-What is not interpolated when `EnableInterpolation` is enabled? `[]byte`
-and `[]bytea` are passthroughs to the driver.
+`[]byte`,  `[]*byte` and any unhandled values are passed through to the
+driver when interpolating.
 
 #### Interpolation Safety
-
 
 As of Postgres 9.1, escaping is disabled by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
@@ -534,6 +538,26 @@ if len(args) == 0 {
     rows, err = db.Query(sql, args...)
 }
 ```
+
+## Running Tests
+
+You will need to run the following inside this project
+
+```sh
+    # install godo task runner
+    go get -u gopkg.in/godo.v1/cmd/godo
+
+    # install dependencies
+    cd tasks
+    go get -a
+
+    # back to root and run
+    cd ..
+    godo test
+```
+
+When it asks your for superuser, that is the superuser needed to create
+the test database. On Mac + Postgress.app that is your user name.
 
 ## TODO
 
