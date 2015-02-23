@@ -163,7 +163,6 @@ conn.InsertInto("payments").
     Returning("id").
     QueryScalar(&userData.ID)
 
-
 // ensure session user can only update his information
 conn.Update("users").
     SetWhitelist(user, "user_name", "avatar", "quote").
@@ -440,9 +439,11 @@ tx, err := conn.Begin()
 if err != nil {
     return err
 }
+// safe to call tx.Rollback() or tx.Commit() when deferring AutoCommit()
+defer tx.AutoCommit()
 
-// tx.Rollback() may also be called manually
-defer tx.RollbackUnlessCommitted()
+// AutoRollback() is also available if you would rather Commit() at the end
+// and not deal with Rollback on every error.
 
 // Issue statements that might cause errors
 res, err := tx.
@@ -452,12 +453,8 @@ res, err := tx.
     Exec()
 
 if err != nil {
+    tx.Rollback()
     return err
-}
-
-// Commit the transaction
-if err := tx.Commit(); err != nil {
-	return err
 }
 ```
 
