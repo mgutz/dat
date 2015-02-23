@@ -3,7 +3,7 @@
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
-library for Go. `dat` likes SQL and so should you.
+library for Go. `dat` likes SQL.
 
 Highlights
 
@@ -22,8 +22,6 @@ Highlights
         Where("id = $1", id).
         QueryStruct(&user)
     ```
-
-*   Multiple Runners - use `sqlx` or `database/sql`
 
 *   Performant
 
@@ -53,11 +51,11 @@ func init() {
         panic(err)
     }
 
-    // set this to true to enable interpolation
+    // set this to enable interpolation
     dat.EnableInterpolation = true
     // set this to true to see logs
     dat.SetVerbose(false)
-    // Set this for dat to check things like sessions being closed.
+    // Set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
     conn = runner.NewConnection(db, "postgres")
@@ -70,7 +68,7 @@ type Post struct {
     UserID    int64         `db:"user_id"`
     State     string        `db:"state"`
     UpdatedAt dat.Nulltime  `db:"updated_at"`
-    CreatedAt dat.NullTime  `db:"creatd_at"`
+    CreatedAt dat.NullTime  `db:"created_at"`
 }
 
 func main() {
@@ -91,8 +89,8 @@ func main() {
 Query Builder
 
 ```go
-var posts []Post
-n, err := conn.
+var posts []*Post
+err := conn.
     Select("title", "body").
     From("posts").
     Where("created_at > $1", someTime).
@@ -112,14 +110,14 @@ conn.SQL(`
 ).QueryStructs(&posts)
 ```
 
-Note: `dat` does not clean the SQL string, thus any extra whitespace is 
+Note: `dat` does not clean the SQL string, thus any extra whitespace is
 transmitted to the database.
 
-In practice, SQL is easier to write with backticks. Indeed, the reason for this 
-library is because other SQL builders introduce their own domain language. I 
+In practice, SQL is easier to write with backticks. Indeed, the reason for this
+library existing is other SQL builders introduce their own domain language. I
 like SQL and prefer to deal with it directly.
 
-Query builders shine when dealing with records (input structs). 
+Query builders shine when dealing with records (input structs).
 
 ### Fetch Data Simply
 
@@ -275,10 +273,10 @@ err = conn.
     QueryScalar(&post.UpdatedAt)
 ```
 
-To reset columns to their default value, use `DEFAULT`. For example,
-to reset `payment\_type` to its default DDL value
-
 __applicable when dat.EnableInterpolation == true__
+
+To reset columns to their default DLL value, use `DEFAULT`. For example,
+to reset `payment\_type` to its default value
 
 ```go
 res, err := conn.
@@ -464,16 +462,17 @@ if err != nil {
 query arguments. Some of the reasons you might want to use interpolation:
 
 *   Interpolation can result in perfomance improvements.
-*   Debugging is simpler too hen looking at the interpolated SQL in your logs.
-*   Enhanced features like use of dat.NOW and data.DEFAULT, inling slice
-    args ....
+*   Debugging is simpler too with fully interpolated SQL in your logs.
+*   Use SQL constants like `NOW` and `DEFAULT`
+*   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
 __Interpolation is DISABLED by default__ Set `dat.EnableInterpolation = true`
 to enable.
 
 Is interpolation safe? As of Postgres 9.1, escaping is disabled by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
-The built-in interpolation func disallows **ALL** escape sequences.
+
+`dat` disallows **ALL** escape sequences when interpolating.
 
 `dat` checks the value of `standard_conforming_strings` on a new connection if
 `data.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
