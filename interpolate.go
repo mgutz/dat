@@ -110,7 +110,9 @@ func Interpolate(sql string, vals []interface{}) (string, error) {
 		if val, ok := v.(UnsafeString); ok {
 			buf.WriteString(string(val))
 			return nil
-		} else if Strict {
+		}
+
+		if Strict {
 			if _, ok := v.([]byte); ok {
 				panic("[]byte not supported; converting to string would be inefficient")
 			} else if _, ok := v.(*[]byte); ok {

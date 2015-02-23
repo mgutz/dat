@@ -93,67 +93,67 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 		panic("no table specified")
 	}
 
-	var sql bytes.Buffer
+	var buf bytes.Buffer
 	var args []interface{}
 
-	sql.WriteString("SELECT ")
+	buf.WriteString("SELECT ")
 
 	if b.isDistinct {
-		sql.WriteString("DISTINCT ")
+		buf.WriteString("DISTINCT ")
 	}
 
 	for i, s := range b.columns {
 		if i > 0 {
-			sql.WriteString(", ")
+			buf.WriteString(", ")
 		}
-		sql.WriteString(s)
+		buf.WriteString(s)
 	}
 
-	sql.WriteString(" FROM ")
-	sql.WriteString(b.table)
+	buf.WriteString(" FROM ")
+	buf.WriteString(b.table)
 
 	var placeholderStartPos int64 = 1
 	if len(b.whereFragments) > 0 {
-		sql.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
+		buf.WriteString(" WHERE ")
+		writeWhereFragmentsToSql(b.whereFragments, &buf, &args, &placeholderStartPos)
 	}
 
 	if len(b.groupBys) > 0 {
-		sql.WriteString(" GROUP BY ")
+		buf.WriteString(" GROUP BY ")
 		for i, s := range b.groupBys {
 			if i > 0 {
-				sql.WriteString(", ")
+				buf.WriteString(", ")
 			}
-			sql.WriteString(s)
+			buf.WriteString(s)
 		}
 	}
 
 	if len(b.havingFragments) > 0 {
-		sql.WriteString(" HAVING ")
-		writeWhereFragmentsToSql(b.havingFragments, &sql, &args, &placeholderStartPos)
+		buf.WriteString(" HAVING ")
+		writeWhereFragmentsToSql(b.havingFragments, &buf, &args, &placeholderStartPos)
 	}
 
 	if len(b.orderBys) > 0 {
-		sql.WriteString(" ORDER BY ")
+		buf.WriteString(" ORDER BY ")
 		for i, s := range b.orderBys {
 			if i > 0 {
-				sql.WriteString(", ")
+				buf.WriteString(", ")
 			}
-			sql.WriteString(s)
+			buf.WriteString(s)
 		}
 	}
 
 	if b.limitValid {
-		sql.WriteString(" LIMIT ")
-		writeUint64(&sql, b.limitCount)
+		buf.WriteString(" LIMIT ")
+		writeUint64(&buf, b.limitCount)
 	}
 
 	if b.offsetValid {
-		sql.WriteString(" OFFSET ")
-		writeUint64(&sql, b.offsetCount)
+		buf.WriteString(" OFFSET ")
+		writeUint64(&buf, b.offsetCount)
 	}
 
-	return sql.String(), args
+	return buf.String(), args
 }
 
 // Interpolate interpolates this builders sql.

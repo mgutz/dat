@@ -18,7 +18,7 @@ var testConn *Connection
 
 func init() {
 	testConn = NewConnection(realDb(), "postgres")
-	dat.SetVerbose(true)
+	// dat.SetVerbose(true)
 	dat.Strict = true
 }
 
