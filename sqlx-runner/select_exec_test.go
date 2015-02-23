@@ -9,6 +9,7 @@ import (
 
 func TestSelectQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var people []Person
 	err := s.
@@ -37,6 +38,7 @@ func TestSelectQueryStructs(t *testing.T) {
 
 func TestSelectQueryStruct(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	// Found:
 	var person Person
@@ -62,6 +64,7 @@ func TestSelectQueryStruct(t *testing.T) {
 
 func TestSelectBySqlQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var people []*Person
 	dat.EnableInterpolation = true
@@ -80,6 +83,7 @@ func TestSelectBySqlQueryStructs(t *testing.T) {
 
 func TestSelectQueryScalar(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var name string
 	err := s.
@@ -100,6 +104,7 @@ func TestSelectQueryScalar(t *testing.T) {
 
 func TestSelectQuerySlice(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var names []string
 	err := s.Select("name").From("people").QuerySlice(&names)
@@ -118,6 +123,7 @@ func TestSelectQuerySlice(t *testing.T) {
 
 func TestScalar(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var name string
 	err := s.Select("name").From("people").Where("email = 'jonathan@uservoice.com'").QueryScalar(&name)

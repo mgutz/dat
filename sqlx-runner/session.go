@@ -1,14 +1,26 @@
 package runner
 
-import "github.com/jmoiron/sqlx"
+import "github.com/mgutz/dat"
 
 // Session represents a business unit of execution for some connection
 type Session struct {
-	DB *sqlx.DB
-	*Queryable
+	*Tx
 }
 
 // NewSession instantiates a Session for the Connection
-func (cxn *Connection) NewSession() *Session {
-	return &Session{cxn.DB, &Queryable{cxn.DB}}
+func (cxn *Connection) NewSession() (*Session, error) {
+	tx, err := cxn.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &Session{tx}, nil
+}
+
+// Close closes the session.
+func (sess *Session) Close() error {
+	err := sess.Tx.AutoCommit()
+	if err != nil {
+		dat.Events.EventErr("session.close", err)
+	}
+	return err
 }

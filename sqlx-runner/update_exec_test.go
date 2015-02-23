@@ -9,6 +9,7 @@ import (
 
 func TestUpdateKeywordColumnName(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	// Insert a user with a key
 	res, err := s.
@@ -37,6 +38,7 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 
 func TestUpdateReal(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var id int64
 	// Insert a George
@@ -61,7 +63,7 @@ func TestUpdateReal(t *testing.T) {
 }
 
 func TestUpdateWhitelist(t *testing.T) {
-	createRealSessionWithFixtures()
+	installFixtures()
 
 	// Insert by specifying a record (struct)
 	p := Person{Name: "Barack"}
@@ -98,7 +100,7 @@ func TestUpdateWhitelist(t *testing.T) {
 }
 
 func TestUpdateBlacklist(t *testing.T) {
-	createRealSessionWithFixtures()
+	installFixtures()
 
 	// Insert by specifying a record (struct)
 	p := Person{Name: "Barack"}
@@ -131,5 +133,4 @@ func TestUpdateBlacklist(t *testing.T) {
 	assert.True(t, id > 0)
 	assert.Equal(t, name2, "Barack")
 	assert.Equal(t, foo2, "bah")
-
 }

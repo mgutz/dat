@@ -8,7 +8,7 @@ import (
 )
 
 func TestConnectionExec(t *testing.T) {
-	createRealSessionWithFixtures()
+	installFixtures()
 
 	id := 0
 	str := ""
@@ -32,7 +32,7 @@ func TestConnectionExec(t *testing.T) {
 }
 
 func TestEscapeSequences(t *testing.T) {
-	createRealSessionWithFixtures()
+	installFixtures()
 
 	dat.EnableInterpolation = true
 	id := 0

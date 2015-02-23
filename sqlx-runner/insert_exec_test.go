@@ -11,6 +11,8 @@ import (
 func TestInsertKeywordColumnName(t *testing.T) {
 	// Insert a column whose name is reserved
 	s := createRealSessionWithFixtures()
+	defer s.Close()
+
 	res, err := s.
 		InsertInto("people").
 		Columns("name", "key").
@@ -26,6 +28,7 @@ func TestInsertKeywordColumnName(t *testing.T) {
 
 func TestInsertDefault(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var str string
 	err := s.
@@ -50,6 +53,7 @@ func TestInsertDefault(t *testing.T) {
 func TestInsertReal(t *testing.T) {
 	// Insert by specifying values
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 	var id int64
 	err := s.InsertInto("people").
 		Columns("name", "email").
@@ -92,6 +96,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 	assert := assert.New(t)
 
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 	res, err := s.
 		InsertInto("people").
 		Columns("name", "email").

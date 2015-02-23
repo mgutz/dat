@@ -8,9 +8,9 @@ import (
 )
 
 func TestTransactionReal(t *testing.T) {
-	s := createRealSessionWithFixtures()
+	installFixtures()
 
-	tx, err := s.Begin()
+	tx, err := testConn.Begin()
 	assert.NoError(t, err)
 
 	var id int64
@@ -39,10 +39,9 @@ func TestTransactionReal(t *testing.T) {
 }
 
 func TestTransactionRollbackReal(t *testing.T) {
-	// Insert by specifying values
-	s := createRealSessionWithFixtures()
+	installFixtures()
 
-	tx, err := s.Begin()
+	tx, err := testConn.Begin()
 	assert.NoError(t, err)
 
 	var person Person

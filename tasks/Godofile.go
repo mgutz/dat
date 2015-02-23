@@ -52,11 +52,16 @@ func tasks(p *Project) {
 	`
 	p.Task("createdb", createdb).Description("Creates test database")
 
-	p.Task("test", func() {
+	p.Task("test", func(c *Context) {
 		Run(`go test`)
 		Run(`go test`, In{"sql-runner"})
 		Run(`go test`, In{"sqlx-runner"})
 	}).Watch("**/*.go")
+
+	p.Task("test-dir", func(c *Context) {
+		dir := c.Args.Leftover()[0]
+		Run(`go test`, In{dir})
+	})
 
 	p.Task("test-some", func() {
 		Run(`go test -run InsertReal`, In{"sql-runner"})

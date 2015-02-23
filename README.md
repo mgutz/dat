@@ -87,7 +87,7 @@ Query Builder
 
 ```go
 var posts []Post
-n, err := sess.
+n, err := conn.
     Select("title", "body").
     From("posts").
     Where("created_at > $1", someTime).
@@ -99,7 +99,7 @@ n, err := sess.
 Plain SQL
 
 ```go
-sess.SQL(`
+conn.SQL(`
     SELECT title, body
     FROM posts WHERE created_at > $1
     ORDER BY id ASC LIMIT 10`,
@@ -117,7 +117,7 @@ var posts []struct {
     Title string        `db:"title"`
     Body dat.NullString `db:"body"`
 }
-err := sess.
+err := conn.
     Select("id, title, body").
     From("posts").
     Where("id = $1", id).
@@ -129,8 +129,8 @@ Query scalar values or a slice of values
 ```go
 var n int64, ids []int64
 
-sess.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
-sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
+conn.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
+conn.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
 ### Blacklist and Whitelist
@@ -140,7 +140,8 @@ Control which columns get inserted or updated when processing external data
 ```go
 // userData came in from http.Handler, prevent them from setting protected fields
 conn.InsertInto("payments").
-    SetBlacklist(userData, "id", "updated_at", "created_at").
+    Blacklist("id", "updated_at", "created_at").
+    Record(userData).
     Returning("id").
     QueryScalar(&userData.ID)
 
@@ -160,7 +161,7 @@ Simpler IN queries which expand correctly
 
 ```go
 ids := []int64{10,20,30,40,50}
-b := sess.SQL("SELECT * FROM posts WHERE id IN $1", ids)
+b := conn.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
@@ -186,7 +187,7 @@ trip.
 ```go
 post := Post{Title: "Swith to Postgres", State: "open"}
 
-err := sess.
+err := conn.
     InsertInto("posts").
     Columns("title", "state").
     Record(post).
@@ -200,7 +201,7 @@ inserted.
 ```go
 post := Post{Title: "Swith to Postgres", State: "open"}
 
-err := sess.
+err := conn.
     InsertInto("posts").
     Blacklist("id", "user_id", "created_at", "updated_at").
     Record(post).
@@ -208,7 +209,7 @@ err := sess.
     QueryStruct(&post)
 
 // probably not safe but you get the idea
-err := sess.
+err := conn.
     InsertInto("posts").
     Whitelist("*").
     Record(post).
@@ -220,7 +221,7 @@ Insert Multiple Records
 
 ```go
 // create builder
-b := sess.InsertInto("posts").Columns("title")
+b := conn.InsertInto("posts").Columns("title")
 
 // add some new posts
 for i := 0; i < 3; i++ {
@@ -240,7 +241,7 @@ _, err := b.Exec()
 
 ```go
 var other Post
-err = sess.
+err = conn.
     Select("id, title").
     From("posts").
     Where("id = $1", post.ID).
@@ -253,7 +254,7 @@ Use `Returning` to fetch columns updated by triggers. For example,
 there might be an update trigger on "updated\_at" column
 
 ```go
-err = sess.
+err = conn.
     Update("posts").
     Set("title", "My New Title").
     Set("body", "markdown text here").
@@ -268,7 +269,7 @@ to reset `payment\_type` to its default value from DDL
 __applicable when dat.EnableInterpolation == true__
 
 ```go
-res, err := sess.
+res, err := conn.
     Update("payments").
     Set("payment_type", dat.DEFAULT).
     Where("id = $1", 1).
@@ -282,7 +283,7 @@ Use `Blacklist` and `Whitelist` to control which columns get updated.
 blacklist := []string{"id", "created_at"}
 p := paymentStructFromHandler
 
-err := sess.
+err := conn.
     Update("payments").
     SetBlacklist(p, blacklist...)
     Where("id = $1", p.ID).
@@ -293,7 +294,7 @@ Use a map of attributes
 
 ``` go
 attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}
-result, err := sess.
+result, err := conn.
     Update("developers").
     SetMap(attrsMap).
     Where("language = $1", "Ruby").
@@ -303,7 +304,7 @@ result, err := sess.
 ### Delete
 
 ``` go
-result, err = sess.
+result, err = conn.
     DeleteFrom("posts").
     Where("id = $1", otherPost.ID).
     Limit(1).
@@ -324,12 +325,15 @@ conn = runner.NewConnection(db, "postgres")
 err := conn.SQL(...).QueryStruct(&post)
 ```
 
-For multiple operations, create a session
+For multiple operations, create a session. Note that session
+is really a transaction due to `database/sql` connection pooling.
+__`Session.Close()` MUST be called__
 
 ```go
 
 func PostsIndex(rw http.ResponseWriter, r *http.Request) {
     sess := conn.NewSession()
+    defer sess.Close()
 
     // Do queries with the session
     var post Post
@@ -378,11 +382,11 @@ Load scalar and slice values.
 ```go
 var id int64
 var userID string
-err := sess.
+err := conn.
     Select("id", "user_id").From("posts").Limit(1).QueryScalar(&id, &userID)
 
 var ids []int64
-err = sess.Select("id").From("posts").QuerySlice(&ids)
+err = conn.Select("id").From("posts").QuerySlice(&ids)
 ```
 
 ### Embedded structs
@@ -398,7 +402,7 @@ type Post struct {
 }
 
 var post Post
-err := sess.
+err := conn.
     Select("id, title, user_id").
     From("posts").
     Limit(1).
@@ -418,7 +422,7 @@ fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null
 
 ```go
 // Start transaction
-tx, err := sess.Begin()
+tx, err := conn.Begin()
 if err != nil {
     return err
 }

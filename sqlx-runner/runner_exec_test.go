@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/mgutz/dat"
 )
@@ -22,12 +21,16 @@ func init() {
 }
 
 func createRealSession() *Session {
-	return testConn.NewSession()
+	sess, err := testConn.NewSession()
+	if err != nil {
+		panic(err)
+	}
+	return sess
 }
 
 func createRealSessionWithFixtures() *Session {
+	installFixtures()
 	sess := createRealSession()
-	installFixtures(sess.DB)
 	return sess
 }
 
@@ -76,7 +79,8 @@ type Person struct {
 	CreatedAt dat.NullTime   `db:"created_at"`
 }
 
-func installFixtures(db *sqlx.DB) {
+func installFixtures() {
+	db := testConn.DB
 	createTablePeople := `
 		CREATE TABLE people (
 			id SERIAL PRIMARY KEY,

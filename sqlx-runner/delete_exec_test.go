@@ -8,9 +8,9 @@ import (
 
 func TestDeleteReal(t *testing.T) {
 	s := createRealSessionWithFixtures()
+	defer s.Close()
 
 	var id int64
-
 	// Insert a Barack
 	s.InsertInto("people").
 		Columns("name", "email").
