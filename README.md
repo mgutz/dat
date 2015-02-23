@@ -112,9 +112,14 @@ conn.SQL(`
 ).QueryStructs(&posts)
 ```
 
-In practice, SQL is easier to write with backticks. Note, `dat` does not clean the
-SQL string, thus any extra whitespace is transmitted to the database. Use query builders
-when dealing with one or more records (input structs).
+Note: `dat` does not clean the SQL string, thus any extra whitespace is 
+transmitted to the database.
+
+In practice, SQL is easier to write with backticks. Indeed, the reason for this 
+library is because other SQL builders introduce their own domain language. I 
+like SQL and prefer to deal with it directly.
+
+Query builders shine when dealing with records (input structs). 
 
 ### Fetch Data Simply
 
@@ -139,9 +144,10 @@ err = sess.
 Query scalar values or a slice of values
 
 ```go
-var n int64, ids []int64
-
+var n int64
 conn.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
+
+var ids []int64
 conn.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
