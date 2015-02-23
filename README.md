@@ -101,7 +101,7 @@ n, err := conn.
     QueryStructs(&posts)
 ```
 
-Plain SQL. In practice, SQL is easier to write with backticks.
+Plain SQL
 
 ```go
 conn.SQL(`
@@ -113,7 +113,7 @@ conn.SQL(`
 ```
 
 In practice, SQL is easier to write with backticks. Note, `dat` does not clean the
-string and the extra whitespace is transmitted to the database. Use QueryBuilders
+SQL string, thus any extra whitespace is transmitted to the database. Use query builders
 when dealing with one or more records (input structs).
 
 ### Fetch Data Simply
@@ -283,7 +283,7 @@ res, err := conn.
     Exec()
 ```
 
-Use `Blacklist` and `Whitelist` to control which fields are updated.
+Use `SetBlacklist` and `SetWhitelist` to control which fields are updated.
 
 ```go
 // create blacklists for each of your structs
