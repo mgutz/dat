@@ -138,7 +138,7 @@ sess.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 Control which columns get inserted or updated when processing external data
 
 ```go
-// userData came in from http.Handle, prevent them from setting protected fields
+// userData came in from http.Handler, prevent them from setting protected fields
 conn.InsertInto("payments").
     SetBlacklist(userData, "id", "updated_at", "created_at").
     Returning("id").
@@ -180,7 +180,7 @@ There are two runner implementations:
 
 ### Create
 
-Use `Returning` and `QueryStruct` to insert and update columns in one
+Use `Returning` and `QueryStruct` to insert and update struct fields in one
 trip.
 
 ```go
@@ -194,7 +194,7 @@ err := sess.
     QueryStruct(&post)
 ```
 
-Use Blacklists and Whitelists to control which record columns get
+Use `Blacklist` and `Whitelist` to control which record columns get
 inserted.
 
 ```go
@@ -216,7 +216,7 @@ err := sess.
     QueryStruct(&post)
 ```
 
-Inserting Multiple Records
+Insert Multiple Records
 
 ```go
 // create builder
@@ -249,8 +249,8 @@ err = sess.
 
 ### Update
 
-Use `Returning` to get fields which have update triggers. For example,
-you might have an update trigger on "updated\_at"
+Use `Returning` to fetch columns updated by triggers. For example,
+there might be an update trigger on "updated\_at" column
 
 ```go
 err = sess.
@@ -262,8 +262,8 @@ err = sess.
     QueryScalar(&post.UpdatedAt)
 ```
 
-To reset values to their default value, use `dat.DEFAULT`. For example,
-to reset `payment\_type` to its default value in DDL
+To reset columns to their default value, use `DEFAULT`. For example,
+to reset `payment\_type` to its default value from DDL
 
 __applicable when dat.EnableInterpolation == true__
 
@@ -349,14 +349,14 @@ __applicable when dat.EnableInterpolation == true__
 
 `dat` provides often used constants in SQL statements
 
-* dat.DEFAULT - inserts `DEFAULT`
-* dat.NOW - inserts `NOW()`
+* `dat.DEFAULT` - inserts `DEFAULT`
+* `dat.NOW` - inserts `NOW()`
 
-### Defining Your Own Constants
+### Defining Constants
 
 _UnsafeStrings and constants will panic unless_ `dat.EnableInterpolation == true`
 
-To define your own SQL constants, use `UnsafeString`
+To define SQL constants, use `UnsafeString`
 
 ```go
 const CURRENT_TIMESTAMP = dat.UnsafeString("NOW()")
@@ -423,7 +423,7 @@ if err != nil {
     return err
 }
 
-// Rollback unless we're successful. tx.Rollback() may also be called manually
+// tx.Rollback() may also be called manually
 defer tx.RollbackUnlessCommitted()
 
 // Issue statements that might cause errors
