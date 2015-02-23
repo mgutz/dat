@@ -96,7 +96,7 @@ n, err := sess.
     QueryStructs(&posts)
 ```
 
-Plain SQL
+Plain SQL. In practice, SQL is easier to write with backticks.
 
 ```go
 sess.SQL(`
@@ -107,20 +107,27 @@ sess.SQL(`
 ).QueryStructs(&posts)
 ```
 
+In practice, SQL is easier to write with backticks. Note, `dat` does not clean the
+string and the extra whitespace is transmitted to the database. Use QueryBuilders 
+when dealing with one or more records (input structs).
+
 ### Fetch Data Simply
 
-Easily map results to structs
+Query then scan result to struct(s)
 
 ```go
-var posts []struct {
-    ID int64            `db:"id"`
-    Title string        `db:"title"`
-    Body dat.NullString `db:"body"`
-}
+var post Post
 err := sess.
     Select("id, title, body").
     From("posts").
     Where("id = $1", id).
+    QueryStruct(&post)
+
+var posts []*Post
+err = sess.
+    Select("id, title, body").
+    From("posts").
+    Where("id > $1", 100).
     QueryStructs(&posts)
 ```
 
@@ -174,14 +181,16 @@ There are two runner implementations:
 
     __sql-runner will not be supported in the future__ The database/sql logic is
     based on legacy code from the dbr project with some of my fixes and tweaks.
-    I feel sqlx complements `dat` better since interpolation is disabled by default.
+    sqlx complements `dat` better as interpolation is disabled by default.
+
+`Connection.DB` is the underlying `sqlx.DB`
 
 ## CRUD
 
 ### Create
 
 Use `Returning` and `QueryStruct` to insert and update struct fields in one
-trip.
+trip
 
 ```go
 post := Post{Title: "Swith to Postgres", State: "open"}
@@ -194,11 +203,11 @@ err := sess.
     QueryStruct(&post)
 ```
 
-Use `Blacklist` and `Whitelist` to control which record columns get
-inserted.
+Use `Blacklist` and `Whitelist` to control which record (input struct) fields
+are inserted.
 
 ```go
-post := Post{Title: "Swith to Postgres", State: "open"}
+post := Post{Title: "Go is awesome", State: "open"}
 
 err := sess.
     InsertInto("posts").
@@ -207,7 +216,7 @@ err := sess.
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 
-// probably not safe but you get the idea
+// use wildcard to include all columns
 err := sess.
     InsertInto("posts").
     Whitelist("*").
@@ -232,7 +241,7 @@ for i := 0; i < 3; i++ {
 	b.Values(fmt.Sprintf("Article %s", i))
 }
 
-// Execute statement
+// execute statement
 _, err := b.Exec()
 ```
 
@@ -250,7 +259,7 @@ err = sess.
 ### Update
 
 Use `Returning` to fetch columns updated by triggers. For example,
-there might be an update trigger on "updated\_at" column
+an update trigger on "updated\_at" column
 
 ```go
 err = sess.
@@ -263,7 +272,7 @@ err = sess.
 ```
 
 To reset columns to their default value, use `DEFAULT`. For example,
-to reset `payment\_type` to its default value from DDL
+to reset `payment\_type` to its default DDL value
 
 __applicable when dat.EnableInterpolation == true__
 
@@ -275,7 +284,7 @@ res, err := sess.
     Exec()
 ```
 
-Use `Blacklist` and `Whitelist` to control which columns get updated.
+Use `Blacklist` and `Whitelist` to control which fields are updated.
 
 ```go
 // create blacklists for each of your structs
@@ -319,6 +328,7 @@ For one-off operations, use a `Connection` directly
 
 ```go
 // a global connection usually created in `init`
+var conn *dat.Connection
 conn = runner.NewConnection(db, "postgres")
 
 err := conn.SQL(...).QueryStruct(&post)
