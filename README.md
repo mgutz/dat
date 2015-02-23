@@ -467,7 +467,7 @@ query arguments. Some of the reasons you might want to use interpolation:
 
 *   Interpolation can result in perfomance improvements.
 
-    Here is a comment from [conn source](github.comlib/pq/blob/master/conn.go),
+    Here is a comment from [pq conn source](https://github.com/lib/pq/blob/master/conn.go),
     which was prompted by me asking why was Python's psycopg2 so much
     faster in my benchmarks a year or so back:
 
