@@ -94,7 +94,26 @@ func (tx *Tx) RollbackUnlessCommitted() {
 	// }
 }
 
-// AutoCommit closes a session.
+// AutoRollback rolls back transaction IF neither Commit or Rollback were called.
+func (tx *Tx) AutoRollback() error {
+	tx.Lock()
+	defer tx.Unlock()
+
+	if tx.state == txRollbacked || tx.state == txCommitted {
+		return nil
+	}
+	err := tx.Tx.Rollback()
+	if err != nil {
+		if dat.Strict {
+			log.Fatalf("Could not rollback session: %s\n", err.Error())
+		}
+		return dat.Events.EventErr("transaction.AutoRollback.rollback_error", err)
+	}
+	dat.Events.Event("autorollback")
+	return err
+}
+
+// AutoCommit commits a transaction IF neither Commit or Rollback were called.
 func (tx *Tx) AutoCommit() error {
 	tx.Lock()
 	defer tx.Unlock()
