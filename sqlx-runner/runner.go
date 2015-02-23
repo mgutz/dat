@@ -76,7 +76,7 @@ func queryScan(runner runner, builder dat.Builder, destinations ...interface{}) 
 
 	// Start the timer:
 	startTime := time.Now()
-	defer func() { dat.Events.TimingKv("QueryScan", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
+	defer func() { dat.Events.TimingKv("QueryScalar", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
 
 	// Run the query:
 	var rows *sqlx.Rows
@@ -86,18 +86,18 @@ func queryScan(runner runner, builder dat.Builder, destinations ...interface{}) 
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		return dat.Events.EventErrKv("QueryScan.load_value.query", err, M{"sql": fullSQL})
+		return dat.Events.EventErrKv("QueryScalar.load_value.query", err, M{"sql": fullSQL})
 	}
 	defer rows.Close()
 	if rows.Next() {
 		err = rows.Scan(destinations...)
 		if err != nil {
-			return dat.Events.EventErrKv("QueryScan.load_value.scan", err, M{"sql": fullSQL})
+			return dat.Events.EventErrKv("QueryScalar.load_value.scan", err, M{"sql": fullSQL})
 		}
 		return nil
 	}
 	if err := rows.Err(); err != nil {
-		return dat.Events.EventErrKv("QueryScan.load_value.rows_err", err, M{"sql": fullSQL})
+		return dat.Events.EventErrKv("QueryScalar.load_value.rows_err", err, M{"sql": fullSQL})
 	}
 
 	return dat.ErrNotFound

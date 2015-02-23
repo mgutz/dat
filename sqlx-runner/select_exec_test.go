@@ -28,7 +28,7 @@ func TestSelectQueryStructs(t *testing.T) {
 
 	assert.Equal(t, people[0].Name, "Jonathan")
 	assert.True(t, people[0].Email.Valid)
-	assert.Equal(t, people[0].Email.String, "jonathan@uservoice.com")
+	assert.Equal(t, people[0].Email.String, "jonathan@acme.com")
 	assert.Equal(t, people[1].Name, "Dmitri")
 	assert.True(t, people[1].Email.Valid)
 	assert.Equal(t, people[1].Email.String, "zavorotni@jadius.com")
@@ -45,19 +45,19 @@ func TestSelectQueryStruct(t *testing.T) {
 	err := s.
 		Select("id", "name", "email").
 		From("people").
-		Where("email = $1", "jonathan@uservoice.com").
+		Where("email = $1", "jonathan@acme.com").
 		QueryStruct(&person)
 	assert.NoError(t, err)
 	assert.True(t, person.ID > 0)
 	assert.Equal(t, person.Name, "Jonathan")
 	assert.True(t, person.Email.Valid)
-	assert.Equal(t, person.Email.String, "jonathan@uservoice.com")
+	assert.Equal(t, person.Email.String, "jonathan@acme.com")
 
 	// Not found:
 	var person2 Person
 	err = s.
 		Select("id", "name", "email").
-		From("people").Where("email = $1", "dontexist@uservoice.com").
+		From("people").Where("email = $1", "dontexist@acme.com").
 		QueryStruct(&person2)
 	assert.Contains(t, err.Error(), "no rows")
 }
@@ -69,7 +69,7 @@ func TestSelectBySqlQueryStructs(t *testing.T) {
 	var people []*Person
 	dat.EnableInterpolation = true
 	err := s.
-		SQL("SELECT name FROM people WHERE email IN $1", []string{"jonathan@uservoice.com"}).
+		SQL("SELECT name FROM people WHERE email IN $1", []string{"jonathan@acme.com"}).
 		QueryStructs(&people)
 	dat.EnableInterpolation = false
 
@@ -89,7 +89,7 @@ func TestSelectQueryScalar(t *testing.T) {
 	err := s.
 		Select("name").
 		From("people").
-		Where("email = 'jonathan@uservoice.com'").
+		Where("email = 'jonathan@acme.com'").
 		QueryScalar(&name)
 
 	assert.NoError(t, err)
@@ -126,7 +126,7 @@ func TestScalar(t *testing.T) {
 	defer s.Close()
 
 	var name string
-	err := s.Select("name").From("people").Where("email = 'jonathan@uservoice.com'").QueryScalar(&name)
+	err := s.Select("name").From("people").Where("email = 'jonathan@acme.com'").QueryScalar(&name)
 	assert.NoError(t, err)
 	assert.Equal(t, name, "Jonathan")
 

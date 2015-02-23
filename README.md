@@ -55,6 +55,11 @@ func init() {
 
     // set this to true to enable interpolation
     dat.EnableInterpolation = true
+    // set this to true to see logs
+    dat.SetVerbose(false)
+    // Set this for dat to check things like sessions being closed.
+    // Should be disabled in production/release builds.
+    dat.Strict = false
     conn = runner.NewConnection(db, "postgres")
 }
 
@@ -96,7 +101,7 @@ n, err := conn.
     QueryStructs(&posts)
 ```
 
-Plain SQL
+Plain SQL. In practice, SQL is easier to write with backticks.
 
 ```go
 conn.SQL(`
@@ -107,20 +112,27 @@ conn.SQL(`
 ).QueryStructs(&posts)
 ```
 
+In practice, SQL is easier to write with backticks. Note, `dat` does not clean the
+string and the extra whitespace is transmitted to the database. Use QueryBuilders
+when dealing with one or more records (input structs).
+
 ### Fetch Data Simply
 
-Easily map results to structs
+Query then scan result to struct(s)
 
 ```go
-var posts []struct {
-    ID int64            `db:"id"`
-    Title string        `db:"title"`
-    Body dat.NullString `db:"body"`
-}
-err := conn.
+var post Post
+err := sess.
     Select("id, title, body").
     From("posts").
     Where("id = $1", id).
+    QueryStruct(&post)
+
+var posts []*Post
+err = sess.
+    Select("id, title, body").
+    From("posts").
+    Where("id > $1", 100).
     QueryStructs(&posts)
 ```
 
@@ -168,21 +180,16 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ### Runners
 
 `dat` was designed to have clear separation between SQL builders and Query execers.
-There are two runner implementations:
+That is why the runner is in its own package.
 
 *   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
-*   `sql-runner` - based on [dbr](https://github.com/gocraft/dbr)
-
-    __sql-runner will not be supported in the future__ The database/sql logic is
-    based on legacy code from the dbr project with some of my fixes and tweaks.
-    I feel sqlx complements `dat` better since interpolation is disabled by default.
 
 ## CRUD
 
 ### Create
 
 Use `Returning` and `QueryStruct` to insert and update struct fields in one
-trip.
+trip
 
 ```go
 post := Post{Title: "Swith to Postgres", State: "open"}
@@ -195,11 +202,11 @@ err := conn.
     QueryStruct(&post)
 ```
 
-Use `Blacklist` and `Whitelist` to control which record columns get
-inserted.
+Use `Blacklist` and `Whitelist` to control which record (input struct) fields
+are inserted.
 
 ```go
-post := Post{Title: "Swith to Postgres", State: "open"}
+post := Post{Title: "Go is awesome", State: "open"}
 
 err := conn.
     InsertInto("posts").
@@ -208,8 +215,8 @@ err := conn.
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 
-// probably not safe but you get the idea
-err := conn.
+// use wildcard to include all columns
+err := sess.
     InsertInto("posts").
     Whitelist("*").
     Record(post).
@@ -233,7 +240,7 @@ for i := 0; i < 3; i++ {
 	b.Values(fmt.Sprintf("Article %s", i))
 }
 
-// Execute statement
+// execute statement
 _, err := b.Exec()
 ```
 
@@ -251,7 +258,7 @@ err = conn.
 ### Update
 
 Use `Returning` to fetch columns updated by triggers. For example,
-there might be an update trigger on "updated\_at" column
+an update trigger on "updated\_at" column
 
 ```go
 err = conn.
@@ -264,7 +271,7 @@ err = conn.
 ```
 
 To reset columns to their default value, use `DEFAULT`. For example,
-to reset `payment\_type` to its default value from DDL
+to reset `payment\_type` to its default DDL value
 
 __applicable when dat.EnableInterpolation == true__
 
@@ -276,7 +283,7 @@ res, err := conn.
     Exec()
 ```
 
-Use `Blacklist` and `Whitelist` to control which columns get updated.
+Use `Blacklist` and `Whitelist` to control which fields are updated.
 
 ```go
 // create blacklists for each of your structs
@@ -320,6 +327,7 @@ For one-off operations, use a `Connection` directly
 
 ```go
 // a global connection usually created in `init`
+var conn *dat.Connection
 conn = runner.NewConnection(db, "postgres")
 
 err := conn.SQL(...).QueryStruct(&post)
@@ -472,7 +480,6 @@ if you try to use interpolation with an incorrect setting.
 ### Benchmarks
 
 TODO Add interpolation  benchmarks
-
 
 ### Use With Other Libraries
 

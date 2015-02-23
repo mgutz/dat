@@ -18,6 +18,8 @@ var testConn *Connection
 
 func init() {
 	testConn = NewConnection(realDb(), "postgres")
+	dat.SetVerbose(true)
+	dat.Strict = true
 }
 
 func createRealSession() *Session {
@@ -96,7 +98,7 @@ func installFixtures() {
 	sqlToRun := []string{
 		"DROP TABLE IF EXISTS people",
 		createTablePeople,
-		"INSERT INTO people (name,email) VALUES ('Jonathan', 'jonathan@uservoice.com')",
+		"INSERT INTO people (name,email) VALUES ('Jonathan', 'jonathan@acme.com')",
 		"INSERT INTO people (name,email) VALUES ('Dmitri', 'zavorotni@jadius.com')",
 	}
 

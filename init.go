@@ -17,15 +17,10 @@ var EnableInterpolation = false
 // SetVerbose sets the verbosity of logging which defaults to none
 func SetVerbose(verbose bool) {
 	if verbose {
-		Events = NewLogEventReceiver("[dat ]")
+		Events = NewLogEventReceiver("[dat] ")
 	} else {
 		Events = &NullEventReceiver{}
 	}
-}
-
-// SetStrict sets strict value
-func SetStrict(strict bool) {
-	Strict = strict
 }
 
 // maxLookup is the max lookup index for predefined lookup tables
