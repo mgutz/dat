@@ -19,7 +19,7 @@ Highlights
     err := conn.
         Select("id, user_name").
         From("users").
-        Where("id = $1", id).
+        Where("id = $1", id).
         QueryStruct(&user)
     ```
 
@@ -527,8 +527,12 @@ fmt.Println(args)   // [1]
 rows, err := db.Query(sql, args...)
 
 // Alternatively build the interpolated sql statement
-sql := builder.MustInterpolate()
-rows, err := db.Query(sql)
+sql, args := builder.MustInterpolate()
+if len(args) == 0 {
+    rows, err = db.Query(sql)
+} else {
+    rows, err = db.Query(sql, args...)
+}
 ```
 
 ## TODO
