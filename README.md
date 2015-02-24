@@ -276,8 +276,8 @@ err = conn.
 
 __applicable when dat.EnableInterpolation == true__
 
-To reset columns to their default DLL value, use `DEFAULT`. For example,
-to reset `payment\_type` to its default value
+To reset columns to their default DDL value, use `DEFAULT`. For example,
+to reset `payment\_type`
 
 ```go
 res, err := conn.
@@ -459,21 +459,21 @@ if err != nil {
 
 ### Local Interpolation
 
+TL;DR: Interpolation avoids prepared statements and argument processing. 
+
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
 `dat` can interpolate locally using a built-in escape function to inline
-query arguments.
-
-What is interpolation? An interpolated statement has all arguments inlined
-and this is what would be sent to the database
+query arguments. What is interpolation? An interpolated statement has all 
+arguments inlined and (usualy) a single SQL statement is sent to the DB:
 
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-Non-interpolated statements use prepared statements underneath and would
-send statements with arguments to the database like this
+Non-interpolated statements use prepared statements underneath and
+send statements with arguments to the DB:
 
 ```
 "INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
@@ -482,34 +482,8 @@ send statements with arguments to the database like this
 
 Some of the reasons you might want to use interpolation:
 
-*   Interpolation can result in performance improvements.
-
-    Here is a comment from [pq conn source](https://github.com/lib/pq/blob/master/conn.go),
-    which was prompted by me asking why was Python's psycopg2 so much
-    faster in my benchmarks a year or so back:
-
-    ```go
-    // Check to see if we can use the "simpleExec" interface, which is
-    // *much* faster than going through prepare/exec
-    if len(args) == 0 {
-        // ignore commandTag, our caller doesn't care
-        r, _, err := cn.simpleExec(query)
-        return r, err
-    }
-```
-    That snippet bypasses the prepare/exec roundtrip to the database.
-
-    Keep in mind that prepared statements are only valid for the current
-    session. So unless you plan to execute the same query *MANY* times in the
-    same session there is not much benefit in using them over interpolation.
-    One benefit prepared statements do provide is safety against SQL
-    injection by parameterizing queries. See Interpolation Safety below.
-
-    The more pre-processing performed on the application server means less
-    load and traffic to the database, which is usually the bottleneck of any
-    application.
-
-*   Debugging is simpler with interpolated SQL in your logs.
+*   Interpolation can result in performance improvements
+*   Debugging is simpler with interpolated SQL
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
@@ -528,18 +502,48 @@ As of Postgres 9.1, escaping is disabled by default. See
 you should either set it to "on" or disable interpolation. `dat` will panic
 if you try to use interpolation with an incorrect setting.
 
-### Benchmarks
+
+#### Why is Interpolation Faster?
+
+Here is a comment from [pq conn source](https://github.com/lib/pq/blob/master/conn.go),
+which was prompted by me asking why was Python's psycopg2 so much
+faster in my benchmarks a year or so back:
+
+```go
+// Check to see if we can use the "simpleExec" interface, which is
+// *much* faster than going through prepare/exec
+if len(args) == 0 {
+    // ignore commandTag, our caller doesn't care
+    r, _, err := cn.simpleExec(query)
+    return r, err
+}
+```
+
+That snippet bypasses the prepare/exec roundtrip to the database.
+
+Keep in mind that prepared statements are only valid for the current
+session. So unless you plan to execute the same query *MANY* times in the
+same session there is not much benefit in using them over interpolation.
+One benefit prepared statements do provide is safety against SQL
+injection by parameterizing queries. See Interpolation Safety below.
+
+The more pre-processing performed on the application server means less
+load and traffic to the database, which is usually the bottleneck of any
+application.
+
+#### Benchmarks
 
 * Dat2 - mgutz/dat runner with 2 args
 * Sql2 - database/sql with 2 args
 * Sqx2 - jmoiron/sqlx with 2 args
 
-Replace 2 with 4, 8. All source is under sql-runner/benchmark\*
+Replace 2 with 4, 8 for variants of argument benchmarks. All source is under 
+sqlx-runner/benchmark\*
 
 #### Interpolated v Non-Interpolated Queries
 
-These benchmarks compare the time to execute an interpolated SQL
-statement resulting in  zero args against executing the same SQL statement with
+This benchmark compares the time to execute an interpolated SQL
+statement with zero args against executing the same SQL statement with
 args.
 
 ```
@@ -562,14 +566,14 @@ conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
 db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
 ```
 
-To be fair, these tests are not meaningful. It doesn't take into account
+To be fair, this benchmark is not meaningful. It doesn't take into account
 the time to perform the interpolation. It's only meant to show that
-interpolated queries skip the prepare statement logic in the underlying
-driver.
+interpolated queries avoid the overhead of arguments and skip the prepare statement 
+logic in the underlying driver.
 
 #### Interpolating then Execing
 
-These benchmarks compare the time to build and execute interpolated SQL
+This benchmark compares the time to build and execute interpolated SQL
 statement resulting in zero args against executing the same SQL statement with
 args.
 
@@ -609,8 +613,8 @@ which would favor interpolation.
 
 ### Interpolation and Transactions
 
-This compares the performance of interpolation within a transaction to
-"level the playing field" with database/sql. As mentioned in a previous
+This benchmark compares the performance of interpolation within a transaction on 
+"level playing field" with database/sql. As mentioned in a previous
 section, prepared statements MUST be prepared and executed on the same
 connection to utilize them.
 
@@ -634,18 +638,22 @@ The logic is something like this
 // dat: interpolate the statement then exececute as part of the transaction
 tx := conn.Begin()
 defer tx.Commit()
-tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+for i : 0; i < b.N; i++ {
+	tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+}
 
 // non-interpolated
 tx = db.Begin()
 defer tx.Commit()
-tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+for i : 0; i < b.N; i++ {
+	tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+}
 ```
 
 Again, interpolation is faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
 *I expected database/sql to better interpolation here. Still thinking 
-about this one*
+about this one.*
 
 ### Use With Other Libraries
 
