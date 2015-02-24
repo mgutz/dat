@@ -53,9 +53,9 @@ func init() {
 
     // set this to enable interpolation
     dat.EnableInterpolation = true
-    // set this to true to see logs
+    // set to log SQL, etc
     dat.SetVerbose(false)
-    // Set to check things like sessions closing.
+    // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
     conn = runner.NewConnection(db, "postgres")
@@ -115,7 +115,7 @@ transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason for this
 library existing is other SQL builders introduce their own domain language or
-use AST-like expressions which end up being more complex than the SQL they
+use AST-like expressions which end up being more complicated than the SQL they
 are attempting to simplify.
 
 Query builders shine when dealing with records (input structs).
@@ -184,7 +184,7 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ### Runners
 
 `dat` was designed to have clear separation between SQL builders and Query execers.
-That is why the runner is in its own package.
+This is why the runner is in its own package.
 
 *   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
 
@@ -201,7 +201,7 @@ post := Post{Title: "Swith to Postgres", State: "open"}
 err := conn.
     InsertInto("posts").
     Columns("title", "state").
-    Record(post).
+    Values("My Post", "draft").
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 ```
@@ -339,13 +339,13 @@ err := conn.SQL(...).QueryStruct(&post)
 
 For multiple operations, create a session. Note that session
 is really a transaction due to `database/sql` connection pooling.
-__`Session.Close()` MUST be called__
+__`Session.AutoCommit() or Session.AutoRollback()` MUST be called__
 
 ```go
 
 func PostsIndex(rw http.ResponseWriter, r *http.Request) {
     sess := conn.NewSession()
-    defer sess.Close()
+    defer sess.AutoRollback()
 
     // Do queries with the session
     var post Post
@@ -354,8 +354,16 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
         Where("id = $1", post.ID).
         QueryStruct(&post)
     )
+    if err != nil {
+    	// `defer AutoRollback()` is used, no need to rollback on error
+    	r.WriteHeader(500)
+    	return
+    }
 
-    // do more queries with session
+    // do more queries with session ...
+    
+    // MUST commit or AutoRollback() will rollback
+    sess.Commit()
 }
 ```
 
@@ -466,7 +474,8 @@ to enable.__
 
 `dat` can interpolate locally using a built-in escape function to inline
 query arguments. What is interpolation? An interpolated statement has all 
-arguments inlined and (usualy) a single SQL statement is sent to the DB:
+arguments inlined and often results in a single SQL statement with no arguments
+sent to the DB:
 
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
@@ -497,15 +506,14 @@ As of Postgres 9.1, escaping is disabled by default. See
 
 `dat` disallows **ALL** escape sequences when interpolating.
 
-`dat` checks the value of `standard_conforming_strings` on a new connection if
-`data.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
-you should either set it to "on" or disable interpolation. `dat` will panic
+`dat` checks the Postgres database `standard_conforming_strings` setting value on a new connection when
+`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
+you should either set it to `"on"` or disable interpolation. `dat` will panic
 if you try to use interpolation with an incorrect setting.
-
 
 #### Why is Interpolation Faster?
 
-Here is a comment from [pq conn source](https://github.com/lib/pq/blob/master/conn.go),
+Here is a comment from [lib/pq connection source](https://github.com/lib/pq/blob/master/conn.go),
 which was prompted by me asking why was Python's psycopg2 so much
 faster in my benchmarks a year or so back:
 
@@ -522,14 +530,16 @@ if len(args) == 0 {
 That snippet bypasses the prepare/exec roundtrip to the database.
 
 Keep in mind that prepared statements are only valid for the current
-session. So unless you plan to execute the same query *MANY* times in the
+sessio, so unless you plan to execute the same query *MANY* times in the
 same session there is not much benefit in using them over interpolation.
-One benefit prepared statements do provide is safety against SQL
-injection by parameterizing queries. See Interpolation Safety below.
+The main benefit of using prepared statements for every query is they provide 
+safety against SQL injection by parameterizing queries. 
+See Interpolation Safety below.
 
-The more pre-processing performed on the application server means less
-load and traffic to the database, which is usually the bottleneck of any
-application.
+Another benefit of interpolation is offloading dabatabase workload to your
+application servers. There is less work and less network chatter when 
+interpolation is performed locally. It's usually much simpler to add application servers
+than to vertically scale a database server.
 
 #### Benchmarks
 
@@ -560,10 +570,14 @@ The logic is something like this
 
 ```go
 // already interpolated
-conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
+for i := 0; i < b.N; i++ {
+    conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
+}
 
 // not interpolated
-db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+for i := 0; i < b.N; i++ {
+    db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+}
 ```
 
 To be fair, this benchmark is not meaningful. It doesn't take into account
@@ -595,10 +609,14 @@ The logic is something like this
 
 ```go
 // dat's SQL interpolates the statment then exececutes
-conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+for i := 0; i < b.N; i++ {
+    conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+}
 
 // non-interpolated
-db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+for i := 0; i < b.N; i++ {
+    db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+}
 ```
 
 The results suggests that local interpolation is both faster and does less
@@ -607,9 +625,9 @@ to inspect the args and splice them into the statement.
 
 database/sql when presented with arguments prepares a
 statement on the connection by sending it to the database then using the
-prepared statement to execute the query.
+prepared statement on the same connection to execute the query.
 Keep in mind, these benchmarks are local so network latency is not a factor
-which would favor interpolation.
+which would favor interpolation even more.
 
 ### Interpolation and Transactions
 
@@ -635,22 +653,22 @@ BenchmarkTransactedSqx8    10000  222460   ns/op  1194  B/op  44  allocs/op
 The logic is something like this
 
 ```go
-// dat: interpolate the statement then exececute as part of the transaction
+// dat: interpolate the statement then exececute as within the transactionn
 tx := conn.Begin()
 defer tx.Commit()
-for i : 0; i < b.N; i++ {
+for i := 0; i < b.N; i++ {
 	tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
 }
 
 // non-interpolated
 tx = db.Begin()
 defer tx.Commit()
-for i : 0; i < b.N; i++ {
+for i := 0; i < b.N; i++ {
 	tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
 }
 ```
 
-Again, interpolation is faster with less allocations. The underlying driver
+Again, interpolation seems faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
 *I expected database/sql to better interpolation here. Still thinking 
 about this one.*
