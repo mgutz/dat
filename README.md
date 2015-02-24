@@ -53,9 +53,9 @@ func init() {
 
     // set this to enable interpolation
     dat.EnableInterpolation = true
-    // set this to true to see logs
+    // set to log SQL, etc
     dat.SetVerbose(false)
-    // Set to check things like sessions closing.
+    // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
     conn = runner.NewConnection(db, "postgres")
@@ -113,10 +113,10 @@ conn.SQL(`
 Note: `dat` does not clean the SQL string, thus any extra whitespace is
 transmitted to the database.
 
-In practice, SQL is easier to write with backticks. Indeed, the reason for this
-library existing is other SQL builders introduce their own domain language or
-use AST-like expressions which end up being more complex than the SQL they
-are attempting to simplify.
+In practice, SQL is easier to write with backticks. Indeed, the reason this
+library exists is my dissatisfactoin with other SQL builders introducing their 
+own domain language or AST-like expressions which end up being more complicated than 
+plain SQL.
 
 Query builders shine when dealing with records (input structs).
 
@@ -184,7 +184,7 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ### Runners
 
 `dat` was designed to have clear separation between SQL builders and Query execers.
-That is why the runner is in its own package.
+This is why the runner is in its own package.
 
 *   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
 
@@ -201,7 +201,7 @@ post := Post{Title: "Swith to Postgres", State: "open"}
 err := conn.
     InsertInto("posts").
     Columns("title", "state").
-    Record(post).
+    Values("My Post", "draft").
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 ```
@@ -276,8 +276,8 @@ err = conn.
 
 __applicable when dat.EnableInterpolation == true__
 
-To reset columns to their default DLL value, use `DEFAULT`. For example,
-to reset `payment\_type` to its default value
+To reset columns to their default DDL value, use `DEFAULT`. For example,
+to reset `payment\_type`
 
 ```go
 res, err := conn.
@@ -339,13 +339,13 @@ err := conn.SQL(...).QueryStruct(&post)
 
 For multiple operations, create a session. Note that session
 is really a transaction due to `database/sql` connection pooling.
-__`Session.Close()` MUST be called__
+__`Session.AutoCommit() or Session.AutoRollback()` MUST be called__
 
 ```go
 
 func PostsIndex(rw http.ResponseWriter, r *http.Request) {
     sess := conn.NewSession()
-    defer sess.Close()
+    defer sess.AutoRollback()
 
     // Do queries with the session
     var post Post
@@ -354,8 +354,16 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
         Where("id = $1", post.ID).
         QueryStruct(&post)
     )
+    if err != nil {
+    	// `defer AutoRollback()` is used, no need to rollback on error
+    	r.WriteHeader(500)
+    	return
+    }
 
-    // do more queries with session
+    // do more queries with session ...
+    
+    // MUST commit or AutoRollback() will rollback
+    sess.Commit()
 }
 ```
 
@@ -459,21 +467,22 @@ if err != nil {
 
 ### Local Interpolation
 
+TL;DR: Interpolation avoids prepared statements and argument processing. 
+
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
 `dat` can interpolate locally using a built-in escape function to inline
-query arguments.
-
-What is interpolation? An interpolated statement has all arguments inlined
-and this is what would be sent to the database
+query arguments. What is interpolation? An interpolated statement has all 
+arguments inlined and often results in a single SQL statement with no arguments
+sent to the DB:
 
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-Non-interpolated statements use prepared statements underneath and would
-send statements with arguments to the database like this
+Non-interpolated statements use prepared statements underneath and
+send statements with arguments to the DB:
 
 ```
 "INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
@@ -482,34 +491,8 @@ send statements with arguments to the database like this
 
 Some of the reasons you might want to use interpolation:
 
-*   Interpolation can result in performance improvements.
-
-    Here is a comment from [pq conn source](https://github.com/lib/pq/blob/master/conn.go),
-    which was prompted by me asking why was Python's psycopg2 so much
-    faster in my benchmarks a year or so back:
-
-    ```go
-    // Check to see if we can use the "simpleExec" interface, which is
-    // *much* faster than going through prepare/exec
-    if len(args) == 0 {
-        // ignore commandTag, our caller doesn't care
-        r, _, err := cn.simpleExec(query)
-        return r, err
-    }
-```
-    That snippet bypasses the prepare/exec roundtrip to the database.
-
-    Keep in mind that prepared statements are only valid for the current
-    session. So unless you plan to execute the same query *MANY* times in the
-    same session there is not much benefit in using them over interpolation.
-    One benefit prepared statements do provide is safety against SQL
-    injection by parameterizing queries. See Interpolation Safety below.
-
-    The more pre-processing performed on the application server means less
-    load and traffic to the database, which is usually the bottleneck of any
-    application.
-
-*   Debugging is simpler with interpolated SQL in your logs.
+*   Interpolation can result in performance improvements
+*   Debugging is simpler with interpolated SQL
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
@@ -523,23 +506,54 @@ As of Postgres 9.1, escaping is disabled by default. See
 
 `dat` disallows **ALL** escape sequences when interpolating.
 
-`dat` checks the value of `standard_conforming_strings` on a new connection if
-`data.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
-you should either set it to "on" or disable interpolation. `dat` will panic
+`dat` checks the Postgres database `standard_conforming_strings` setting value on a new connection when
+`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
+you should either set it to `"on"` or disable interpolation. `dat` will panic
 if you try to use interpolation with an incorrect setting.
 
-### Benchmarks
+#### Why is Interpolation Faster?
+
+Here is a comment from [lib/pq connection source](https://github.com/lib/pq/blob/master/conn.go),
+which was prompted by me asking why was Python's psycopg2 so much
+faster in my benchmarks a year or so back:
+
+```go
+// Check to see if we can use the "simpleExec" interface, which is
+// *much* faster than going through prepare/exec
+if len(args) == 0 {
+    // ignore commandTag, our caller doesn't care
+    r, _, err := cn.simpleExec(query)
+    return r, err
+}
+```
+
+That snippet bypasses the prepare/exec roundtrip to the database.
+
+Keep in mind that prepared statements are only valid for the current
+session and uless the same query will be executed *MANY* times in the
+same session there is little benefit in using prepared statements.
+One benefit of using prepared statements is they provide 
+safety against SQL injection by parameterizing queries. 
+See Interpolation Safety below.
+
+Another benefit of interpolation is offloading dabatabase workload to your
+application servers. There is less work and less network chatter when 
+interpolation is performed locally. It's usually much simpler to add application servers
+than to vertically scale a database server.
+
+#### Benchmarks
 
 * Dat2 - mgutz/dat runner with 2 args
 * Sql2 - database/sql with 2 args
 * Sqx2 - jmoiron/sqlx with 2 args
 
-Replace 2 with 4, 8. All source is under sql-runner/benchmark\*
+Replace 2 with 4, 8 for variants of argument benchmarks. All source is under 
+sqlx-runner/benchmark\*
 
 #### Interpolated v Non-Interpolated Queries
 
-These benchmarks compare the time to execute an interpolated SQL
-statement resulting in  zero args against executing the same SQL statement with
+This benchmark compares the time to execute an interpolated SQL
+statement with zero args against executing the same SQL statement with
 args.
 
 ```
@@ -556,20 +570,24 @@ The logic is something like this
 
 ```go
 // already interpolated
-conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
+for i := 0; i < b.N; i++ {
+    conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
+}
 
 // not interpolated
-db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+for i := 0; i < b.N; i++ {
+    db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+}
 ```
 
-To be fair, these tests are not meaningful. It doesn't take into account
+To be fair, this benchmark is not meaningful. It doesn't take into account
 the time to perform the interpolation. It's only meant to show that
-interpolated queries skip the prepare statement logic in the underlying
-driver.
+interpolated queries avoid the overhead of arguments and skip the prepare statement 
+logic in the underlying driver.
 
 #### Interpolating then Execing
 
-These benchmarks compare the time to build and execute interpolated SQL
+This benchmark compares the time to build and execute interpolated SQL
 statement resulting in zero args against executing the same SQL statement with
 args.
 
@@ -591,26 +609,31 @@ The logic is something like this
 
 ```go
 // dat's SQL interpolates the statment then exececutes
-conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+for i := 0; i < b.N; i++ {
+    conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+}
 
 // non-interpolated
-db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+for i := 0; i < b.N; i++ {
+    db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+}
 ```
 
 The results suggests that local interpolation is both faster and does less
 allocation. Interpolation comes with a cost of more bytes used as it has
 to inspect the args and splice them into the statement.
 
-database/sql and jmoiron/sql when presented with arguments prepares a
-statement by sending it to the database then using the prepared statement.
-Keep in mind, these benchmarks are local so network latency isn't involved
-which would favor interpolation.
+database/sql when presented with arguments prepares a
+statement on the connection by sending it to the database then using the
+prepared statement on the same connection to execute the query.
+Keep in mind, these benchmarks are local so network latency is not a factor
+which would favor interpolation even more.
 
 ### Interpolation and Transactions
 
-This compares the performance of interpolation within a transaction to
-"level the playing field" with database/sql. As mentioned in a previous
-section, prepared statements must be prepared and executed on the same
+This benchmark compares the performance of interpolation within a transaction on 
+"level playing field" with database/sql. As mentioned in a previous
+section, prepared statements MUST be prepared and executed on the same
 connection to utilize them.
 
 ```
@@ -630,20 +653,25 @@ BenchmarkTransactedSqx8    10000  222460   ns/op  1194  B/op  44  allocs/op
 The logic is something like this
 
 ```go
-// dat: interpolate the statement then exececute as part of the transaction
+// dat: interpolate the statement then exececute as within the transactionn
 tx := conn.Begin()
 defer tx.Commit()
-tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+for i := 0; i < b.N; i++ {
+	tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+}
 
 // non-interpolated
 tx = db.Begin()
 defer tx.Commit()
-tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+for i := 0; i < b.N; i++ {
+	tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+}
 ```
 
-Again, interpolation is faster with less allocations. The memory difference
-is due to the statement being processed locally. The underlying driver
+Again, interpolation seems faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
+*I expected database/sql to better interpolation here. Still thinking 
+about this one.*
 
 ### Use With Other Libraries
 
@@ -683,17 +711,25 @@ Run the following inside project root
 
     # back to root and run
     cd ..
+    
+    # create database
+    godo createdb
+    
+    # run tests
     godo test
+    
+    # run benchmarks
     godo bench
 ```
 
-When it asks your for superuser, that is the superuser needed to create
-the test database. On Mac + Postgress.app that is your user name.
+When createdb prompst for superuser, enter a super like 'postgres' to create
+the test database. On Mac + Postgress.app user your user name.
 
 ## TODO
 
 * more tests
 * hstore query suppport
+* stored procedure support
 
 ## Inspiration
 
