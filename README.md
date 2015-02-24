@@ -601,16 +601,17 @@ The results suggests that local interpolation is both faster and does less
 allocation. Interpolation comes with a cost of more bytes used as it has
 to inspect the args and splice them into the statement.
 
-database/sql and jmoiron/sql when presented with arguments prepares a
-statement by sending it to the database then using the prepared statement.
-Keep in mind, these benchmarks are local so network latency isn't involved
+database/sql when presented with arguments prepares a
+statement on the connection by sending it to the database then using the
+prepared statement to execute the query.
+Keep in mind, these benchmarks are local so network latency is not a factor
 which would favor interpolation.
 
 ### Interpolation and Transactions
 
 This compares the performance of interpolation within a transaction to
 "level the playing field" with database/sql. As mentioned in a previous
-section, prepared statements must be prepared and executed on the same
+section, prepared statements MUST be prepared and executed on the same
 connection to utilize them.
 
 ```
@@ -641,9 +642,10 @@ defer tx.Commit()
 tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
 ```
 
-Again, interpolation is faster with less allocations. The memory difference
-is due to the statement being processed locally. The underlying driver
+Again, interpolation is faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
+*I expected database/sql to better interpolation here. Still thinking 
+about this one*
 
 ### Use With Other Libraries
 
