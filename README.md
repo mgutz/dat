@@ -113,10 +113,10 @@ conn.SQL(`
 Note: `dat` does not clean the SQL string, thus any extra whitespace is
 transmitted to the database.
 
-In practice, SQL is easier to write with backticks. Indeed, the reason for this
-library existing is other SQL builders introduce their own domain language or
-use AST-like expressions which end up being more complicated than the SQL they
-are attempting to simplify.
+In practice, SQL is easier to write with backticks. Indeed, the reason this
+library exists is my dissatisfactoin with other SQL builders introducing their 
+own domain language or AST-like expressions which end up being more complicated than 
+plain SQL.
 
 Query builders shine when dealing with records (input structs).
 
@@ -530,9 +530,9 @@ if len(args) == 0 {
 That snippet bypasses the prepare/exec roundtrip to the database.
 
 Keep in mind that prepared statements are only valid for the current
-sessio, so unless you plan to execute the same query *MANY* times in the
-same session there is not much benefit in using them over interpolation.
-The main benefit of using prepared statements for every query is they provide 
+session and uless the same query will be executed *MANY* times in the
+same session there is little benefit in using prepared statements.
+One benefit of using prepared statements is they provide 
 safety against SQL injection by parameterizing queries. 
 See Interpolation Safety below.
 
@@ -711,17 +711,25 @@ Run the following inside project root
 
     # back to root and run
     cd ..
+    
+    # create database
+    godo createdb
+    
+    # run tests
     godo test
+    
+    # run benchmarks
     godo bench
 ```
 
-When it asks your for superuser, that is the superuser needed to create
-the test database. On Mac + Postgress.app that is your user name.
+When createdb prompst for superuser, enter a super like 'postgres' to create
+the test database. On Mac + Postgress.app user your user name.
 
 ## TODO
 
 * more tests
 * hstore query suppport
+* stored procedure support
 
 ## Inspiration
 
