@@ -30,7 +30,7 @@ const maxLookup = 100
 var atoiTab = make(map[string]int, maxLookup)
 
 // itoaTab holds 0 => "0", 1 => "1" ... n => "n" to avod strconv.Itoa
-var itoaTab = make(map[int]string, maxLookup)
+var itoaTab = make([]string, maxLookup)
 
 // placeholdersTab holds $0, $1 ... $n to avoid using  "$" + strconv.FormatInt()
 var placeholderTab = make([]string, maxLookup)

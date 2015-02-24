@@ -5,7 +5,7 @@ import (
 	"github.com/mgutz/dat"
 )
 
-// Execer implements Executable
+// Execer implements dat.Execer
 type Execer struct {
 	runner
 	builder dat.Builder
