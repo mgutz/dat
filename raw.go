@@ -2,7 +2,7 @@ package dat
 
 // RawBuilder builds SQL from raw SQL.
 type RawBuilder struct {
-	Executable
+	Execer
 
 	sql  string
 	args []interface{}

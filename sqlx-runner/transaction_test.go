@@ -10,7 +10,7 @@ import (
 func TestTransactionReal(t *testing.T) {
 	installFixtures()
 
-	tx, err := testConn.Begin()
+	tx, err := conn.Begin()
 	assert.NoError(t, err)
 
 	var id int64
@@ -41,7 +41,7 @@ func TestTransactionReal(t *testing.T) {
 func TestTransactionRollbackReal(t *testing.T) {
 	installFixtures()
 
-	tx, err := testConn.Begin()
+	tx, err := conn.Begin()
 	assert.NoError(t, err)
 
 	var person Person

@@ -21,7 +21,6 @@ var standardConformingString string
 // sequences are allowed, then it is not safe to use interpoaltion, and
 // this function panics.
 func pgMustNotAllowEscapeSequence(conn *Connection) {
-	dat.EnableInterpolation = true
 	if !dat.EnableInterpolation {
 		return
 	}
@@ -53,4 +52,28 @@ func NewConnection(db *sql.DB, driverName string) *Connection {
 		panic("Unsupported driver: " + driverName)
 	}
 	return conn
+}
+
+func (conn *Connection) Exec(sql string, args ...interface{}) (sql.Result, error) {
+	if len(args) == 0 {
+		return conn.DB.Exec(sql)
+	} else {
+		return conn.DB.Exec(sql, args...)
+	}
+}
+
+// ExecMulti executes group SQL statemetns in a string marked by a marker.
+// The deault marker is "GO"
+func (conn *Connection) ExecMulti(sql string) error {
+	statements, err := dat.SQLSliceFromString(sql)
+	if err != nil {
+		return err
+	}
+	for _, sq := range statements {
+		_, err := conn.DB.Exec(sq)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -1,10 +1,14 @@
 package dat
 
-import "database/sql"
+// Result is Execer result.
+type Result struct {
+	LastInsertID int64
+	RowsAffected int64
+}
 
 // Executable is an object that can be queried.
-type Executable interface {
-	Exec() (sql.Result, error)
+type Execer interface {
+	Exec() (*Result, error)
 	//Query() (*sql.Rows, error)
 	QueryScalar(destinations ...interface{}) error
 	QuerySlice(dest interface{}) error

@@ -1,5 +1,6 @@
 package dat
 
+// Expression is used by query builder to hold a sub expression.
 type Expression struct {
 	Sql    string
 	Values []interface{}

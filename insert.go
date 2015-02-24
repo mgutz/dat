@@ -10,7 +10,7 @@ import (
 
 // InsertBuilder contains the clauses for an INSERT statement
 type InsertBuilder struct {
-	Executable
+	Execer
 
 	table       string
 	cols        []string

@@ -4,7 +4,7 @@ import "bytes"
 
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
-	Executable
+	Execer
 
 	isDistinct      bool
 	columns         []string

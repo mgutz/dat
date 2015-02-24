@@ -4,7 +4,7 @@ import "bytes"
 
 // DeleteBuilder contains the clauses for a DELETE statement
 type DeleteBuilder struct {
-	Executable
+	Execer
 
 	table          string
 	whereFragments []*whereFragment

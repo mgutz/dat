@@ -42,26 +42,6 @@ func isFloat(k reflect.Kind) bool {
 var typeOfTime = reflect.TypeOf(time.Time{})
 var typeOfUnsafeString = reflect.TypeOf(UnsafeString(""))
 
-// ToSQL interpolates sql and args if EnableInterpolation is set, otherwise
-// it ToSQL acts as an identify function returning sql and args.
-func ToSQL(sql string, args []interface{}) (string, []interface{}, error) {
-	if EnableInterpolation {
-		return Interpolate(sql, args)
-	}
-	return sql, args, nil
-}
-
-// BuilderSQL interpolates sql and args if EnableInterpolation is set, otherwise
-// it ToSQL acts as an identify function returning sql and args.
-func BuilderSQL(b Builder) (string, []interface{}, error) {
-	sql, args := b.ToSQL()
-
-	if EnableInterpolation {
-		return Interpolate(sql, args)
-	}
-	return sql, args, nil
-}
-
 // Interpolate takes a SQL string with placeholders and a list of arguments to
 // replace them with. Returns a blank string and error if the number of placeholders
 // does not match the number of arguments.
@@ -112,7 +92,12 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		var passthroughArg = func() {
 			newPlaceholderIndex++
 			newArgs = append(newArgs, v)
-			buf.WriteString(placeholderTab[newPlaceholderIndex])
+			if newPlaceholderIndex < maxLookup {
+				buf.WriteString(placeholderTab[newPlaceholderIndex])
+			} else {
+				buf.WriteRune('$')
+				buf.WriteString(strconv.Itoa(newPlaceholderIndex))
+			}
 		}
 
 		if val, ok := v.(UnsafeString); ok {
@@ -277,15 +262,16 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 
 func interpolate(builder Builder) (string, []interface{}, error) {
 	sql, args := builder.ToSQL()
+	if !EnableInterpolation {
+		return sql, args, nil
+	}
 	return Interpolate(sql, args)
 }
 
 func mustInterpolate(builder Builder) (string, []interface{}) {
-	sql, args := builder.ToSQL()
-
-	fullSQL, iargs, err := Interpolate(sql, args)
+	sql, args, err := interpolate(builder)
 	if err != nil {
-		panic(Events.EventErrKv("mustInterpolate", err, kvs{"sql": fullSQL}))
+		panic(Events.EventErrKv("mustInterpolate", err, kvs{"sql": sql}))
 	}
-	return fullSQL, iargs
+	return sql, args
 }

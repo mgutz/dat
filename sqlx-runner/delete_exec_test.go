@@ -23,9 +23,7 @@ func TestDeleteReal(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Ensure we only reflected one row and that the id no longer exists
-	rowsAff, err := res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, rowsAff, 1)
+	assert.Equal(t, res.RowsAffected, 1)
 
 	var count int64
 	err = s.Select("count(*)").

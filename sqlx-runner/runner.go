@@ -29,7 +29,7 @@ type M map[string]string
 
 // Exec executes the query built by builder.
 func exec(runner runner, builder dat.Builder) (sql.Result, error) {
-	fullSQL, args, err := dat.BuilderSQL(builder)
+	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
 		return nil, dat.Events.EventErrKv("exec.interpolate", err, M{"sql": fullSQL})
 	}
@@ -53,7 +53,7 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 
 // Query delegates to the internal runner's Query.
 func query(runner runner, builder dat.Builder) (*sqlx.Rows, error) {
-	fullSQL, args, err := dat.BuilderSQL(builder)
+	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func query(runner runner, builder dat.Builder) (*sqlx.Rows, error) {
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
 func queryScalar(runner runner, builder dat.Builder, destinations ...interface{}) error {
-	fullSQL, args, err := dat.BuilderSQL(builder)
+	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 		reflect.ValueOf(dest)
 	}
 
-	fullSQL, args, err := dat.BuilderSQL(builder)
+	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 //
 // Returns ErrNotFound if nothing was found
 func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
-	fullSQL, args, err := dat.BuilderSQL(builder)
+	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 // Returns the number of items found (which is not necessarily the # of items
 // set)
 func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
-	fullSQL, args, err := dat.BuilderSQL(builder)
+	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
 		return dat.Events.EventErr("QueryStructs.interpolate", err)
 	}

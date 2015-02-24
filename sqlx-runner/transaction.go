@@ -25,8 +25,8 @@ type Tx struct {
 }
 
 // Begin creates a transaction for the given session
-func (cxn *Connection) Begin() (*Tx, error) {
-	tx, err := cxn.DB.Beginx()
+func (conn *Connection) Begin() (*Tx, error) {
+	tx, err := conn.DB.Beginx()
 	if err != nil {
 		return nil, dat.Events.EventErr("begin.error", err)
 	}
@@ -83,7 +83,7 @@ func (tx *Tx) Rollback() error {
 // Useful to defer tx.RollbackUnlessCommitted() -- so you don't have to handle N failure cases
 // Keep in mind the only way to detect an error on the rollback is via the event log.
 func (tx *Tx) RollbackUnlessCommitted() {
-	panic("RollbackUnlessCommitted has been obsoleted. Use AutoCommit")
+	panic("RollbackUnlessCommitted has been obsoleted. Use AutoRollback")
 	// err := tx.Tx.Rollback()
 	// if err == sql.ErrTxDone {
 	// 	// ok

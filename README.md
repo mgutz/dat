@@ -463,9 +463,26 @@ __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
 `dat` can interpolate locally using a built-in escape function to inline
-query arguments. Some of the reasons you might want to use interpolation:
+query arguments.
 
-*   Interpolation can result in perfomance improvements.
+What is interpolation? An interpolated statement has all arguments inlined
+and this is what would be sent to the database
+
+```
+"INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
+```
+
+Non-interpolated statements use prepared statements underneath and would
+send statements with arguments to the database like this
+
+```
+"INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
+[]interface{}[1, 2, 3, 4]
+```
+
+Some of the reasons you might want to use interpolation:
+
+*   Interpolation can result in performance improvements.
 
     Here is a comment from [pq conn source](https://github.com/lib/pq/blob/master/conn.go),
     which was prompted by me asking why was Python's psycopg2 so much
@@ -492,7 +509,7 @@ query arguments. Some of the reasons you might want to use interpolation:
     load and traffic to the database, which is usually the bottleneck of any
     application.
 
-*   Debugging is simpler too with interpolated SQL in your logs.
+*   Debugging is simpler with interpolated SQL in your logs.
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
@@ -513,7 +530,120 @@ if you try to use interpolation with an incorrect setting.
 
 ### Benchmarks
 
-TODO Add interpolation  benchmarks
+* Dat2 - mgutz/dat runner with 2 args
+* Sql2 - database/sql with 2 args
+* Sqx2 - jmoiron/sqlx with 2 args
+
+Replace 2 with 4, 8. All source is under sql-runner/benchmark\*
+
+#### Interpolated v Non-Interpolated Queries
+
+These benchmarks compare the time to execute an interpolated SQL
+statement resulting in  zero args against executing the same SQL statement with
+args.
+
+```
+BenchmarkExecSQLDat2       5000   208345   ns/op  280   B/op  10  allocs/op
+BenchmarkExecSQLSql2       5000   298789   ns/op  881   B/op  30  allocs/op
+BenchmarkExecSQLSqx2       5000   296948   ns/op  881   B/op  30  allocs/op
+
+BenchmarkExecSQLDat4       5000   210759   ns/op  296   B/op  10  allocs/op
+BenchmarkExecSQLSql4       5000   306558   ns/op  978   B/op  35  allocs/op
+BenchmarkExecSQLSqx4       5000   305569   ns/op  978   B/op  35  allocs/op
+```
+
+The logic is something like this
+
+```go
+// already interpolated
+conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
+
+// not interpolated
+db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+```
+
+To be fair, these tests are not meaningful. It doesn't take into account
+the time to perform the interpolation. It's only meant to show that
+interpolated queries skip the prepare statement logic in the underlying
+driver.
+
+#### Interpolating then Execing
+
+These benchmarks compare the time to build and execute interpolated SQL
+statement resulting in zero args against executing the same SQL statement with
+args.
+
+```
+BenchmarkBuildExecSQLDat2  5000   215449   ns/op  832   B/op  21  allocs/op
+BenchmarkBuildExecSQLSql2  5000   296281   ns/op  881   B/op  30  allocs/op
+BenchmarkBuildExecSQLSqx2  5000   296259   ns/op  881   B/op  30  allocs/op
+
+BenchmarkBuildExecSQLDat4  5000   221287   ns/op  1232  B/op  26  allocs/op
+BenchmarkBuildExecSQLSql4  5000   305807   ns/op  978   B/op  35  allocs/op
+BenchmarkBuildExecSQLSqx4  5000   305671   ns/op  978   B/op  35  allocs/op
+
+BenchmarkBuildExecSQLDat8  5000   254252   ns/op  1480  B/op  33  allocs/op
+BenchmarkBuildExecSQLSql8  5000   347407   ns/op  1194  B/op  44  allocs/op
+BenchmarkBuildExecSQLSqx8  5000   346576   ns/op  1194  B/op  44  allocs/op
+```
+
+The logic is something like this
+
+```go
+// dat's SQL interpolates the statment then exececutes
+conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+
+// non-interpolated
+db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+```
+
+The results suggests that local interpolation is both faster and does less
+allocation. Interpolation comes with a cost of more bytes used as it has
+to inspect the args and splice them into the statement.
+
+database/sql and jmoiron/sql when presented with arguments prepares a
+statement by sending it to the database then using the prepared statement.
+Keep in mind, these benchmarks are local so network latency isn't involved
+which would favor interpolation.
+
+### Interpolation and Transactions
+
+This compares the performance of interpolation within a transaction to
+"level the playing field" with database/sql. As mentioned in a previous
+section, prepared statements must be prepared and executed on the same
+connection to utilize them.
+
+```
+BenchmarkTransactedDat2    10000  111959   ns/op  832   B/op  21  allocs/op
+BenchmarkTransactedSql2    10000  173137   ns/op  881   B/op  30  allocs/op
+BenchmarkTransactedSqx2    10000  175342   ns/op  881   B/op  30  allocs/op
+
+BenchmarkTransactedDat4    10000  115383   ns/op  1232  B/op  26  allocs/op
+BenchmarkTransactedSql4    10000  182626   ns/op  978   B/op  35  allocs/op
+BenchmarkTransactedSqx4    10000  181641   ns/op  978   B/op  35  allocs/op
+
+BenchmarkTransactedDat8    10000  145419   ns/op  1480  B/op  33  allocs/op
+BenchmarkTransactedSql8    10000  221476   ns/op  1194  B/op  44  allocs/op
+BenchmarkTransactedSqx8    10000  222460   ns/op  1194  B/op  44  allocs/op
+```
+
+The logic is something like this
+
+```go
+// dat: interpolate the statement then exececute as part of the transaction
+tx := conn.Begin()
+defer tx.Commit()
+tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+
+// non-interpolated
+tx = db.Begin()
+defer tx.Commit()
+tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+```
+
+Again, interpolation is faster with less allocations. The memory difference
+is due to the statement being processed locally. The underlying driver
+still has to process and send the arguments with the prepared statement name.
 
 ### Use With Other Libraries
 
@@ -539,9 +669,9 @@ if len(args) == 0 {
 }
 ```
 
-## Running Tests
+## Running Tests and Benchmarks
 
-You will need to run the following inside this project
+Run the following inside project root
 
 ```sh
     # install godo task runner
@@ -554,6 +684,7 @@ You will need to run the following inside this project
     # back to root and run
     cd ..
     godo test
+    godo bench
 ```
 
 When it asks your for superuser, that is the superuser needed to create

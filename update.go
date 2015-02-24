@@ -11,7 +11,7 @@ import (
 
 // UpdateBuilder contains the clauses for an UPDATE statement
 type UpdateBuilder struct {
-	Executable
+	Execer
 
 	table          string
 	setClauses     []*setClause

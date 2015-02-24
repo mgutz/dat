@@ -20,10 +20,7 @@ func TestInsertKeywordColumnName(t *testing.T) {
 		Exec()
 
 	assert.NoError(t, err)
-
-	rowsAff, err := res.RowsAffected()
-	assert.NoError(t, err)
-	assert.Equal(t, rowsAff, 1)
+	assert.Equal(t, res.RowsAffected, 1)
 }
 
 func TestInsertDefault(t *testing.T) {
@@ -105,8 +102,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 		Values("pear", "pear@fruits.local").
 		Exec()
 	assert.NoError(err)
-	n, err := res.RowsAffected()
-	assert.Equal(n, 3)
+	assert.Equal(res.RowsAffected, 3)
 
 	person1 := Person{Name: "john_timr"}
 	person2 := Person{Name: "jane_timr"}
@@ -117,8 +113,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 		Record(&person2).
 		Exec()
 	assert.NoError(err)
-	n, err = res.RowsAffected()
-	assert.NoError(err)
+	n := res.RowsAffected
 	assert.Equal(n, 2)
 
 	people := []Person{}
@@ -150,7 +145,7 @@ func TestInsertWhitelist(t *testing.T) {
 	var email sql.NullString
 	var name string
 	var id int64
-	err := testConn.
+	err := conn.
 		InsertInto("people").
 		Whitelist("name").
 		Record(person2).
@@ -181,7 +176,7 @@ func TestInsertBlacklist(t *testing.T) {
 	var name string
 	var id int64
 
-	err := testConn.
+	err := conn.
 		InsertInto("people").
 		Blacklist("id", "foo", "email", "key", "doc", "created_at").
 		Record(person2).
@@ -203,7 +198,7 @@ func TestInsertBytes(t *testing.T) {
 		RETURNING id, image
 	`
 	dat.EnableInterpolation = true
-	err := testConn.SQL(sql, "foo", b).QueryScalar(&id, &image)
+	err := conn.SQL(sql, "foo", b).QueryScalar(&id, &image)
 	assert.NoError(t, err)
 	assert.Exactly(t, b, image)
 	dat.EnableInterpolation = false
