@@ -54,6 +54,7 @@ func tasks(p *Project) {
 
 	p.Task("test", func(c *Context) {
 		Run(`go test`)
+		Run(`go test`, In{"sql-runner"})
 		Run(`go test`, In{"sqlx-runner"})
 	}).Watch("**/*.go")
 
@@ -75,15 +76,17 @@ func tasks(p *Project) {
 
 	p.Task("bench", func() {
 		Bash("go test -bench . -benchmem 2>/dev/null | column -t")
+		Bash("go test -bench . -benchmem 2>/dev/null | column -t", In{"sql-runner"})
 		Bash("go test -bench . -benchmem 2>/dev/null | column -t", In{"sqlx-runner"})
+		Bash("go test -bench . -benchmem 2>/dev/null | column -t", In{"pgx"})
 	})
 
 	p.Task("bench-builder", func() {
 		Bash(`
 		go test -c
 		#GODEBUG=allocfreetrace=1 ./sqlx-runner.test -test.bench=BenchmarkInsertTransactionDat100 -test.run=none -test.benchtime=1s -test.benchmem 2>trace.log
-		GODEBUG=allocfreetrace=1 ./sqlx-runner.test -test.run=none -test.bench . -test.benchmem 2>trace.log
-		`, In{"sqlx-runner"})
+		GODEBUG=allocfreetrace=1 ./sql-runner.test -test.run=none -test.bench . -test.benchmem 2>trace.log
+		`, In{"sql-runner"})
 	})
 
 	p.Task("install", func() {
