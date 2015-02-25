@@ -576,7 +576,7 @@ for i := 0; i < b.N; i++ {
 
 // not interpolated
 for i := 0; i < b.N; i++ {
-    db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+    db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
 }
 ```
 
@@ -610,12 +610,12 @@ The logic is something like this
 ```go
 // dat's SQL interpolates the statment then exececutes
 for i := 0; i < b.N; i++ {
-    conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+    conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
 }
 
 // non-interpolated
 for i := 0; i < b.N; i++ {
-    db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+    db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
 }
 ```
 
@@ -657,14 +657,14 @@ The logic is something like this
 tx := conn.Begin()
 defer tx.Commit()
 for i := 0; i < b.N; i++ {
-	tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4).Exec()
+	tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
 }
 
 // non-interpolated
 tx = db.Begin()
 defer tx.Commit()
 for i := 0; i < b.N; i++ {
-	tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $)", 1, 2, 3, 4)
+	tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
 }
 ```
 
