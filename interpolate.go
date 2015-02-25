@@ -92,12 +92,7 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		var passthroughArg = func() {
 			newPlaceholderIndex++
 			newArgs = append(newArgs, v)
-			if newPlaceholderIndex < maxLookup {
-				buf.WriteString(placeholderTab[newPlaceholderIndex])
-			} else {
-				buf.WriteRune('$')
-				buf.WriteString(strconv.Itoa(newPlaceholderIndex))
-			}
+			writePlaceholder(&buf, newPlaceholderIndex)
 		}
 
 		if val, ok := v.(UnsafeString); ok {

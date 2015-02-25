@@ -3,7 +3,6 @@ package dat
 import (
 	"bytes"
 	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -49,12 +48,7 @@ func remapPlaceholders(buf *bytes.Buffer, statement string, pos int64) int64 {
 			buf.WriteRune(r)
 		} else if r == '$' {
 			// replace relative $1 with absolute like $4
-			if pos+replaced < maxLookup {
-				buf.WriteString(placeholderTab[pos+replaced])
-			} else {
-				buf.WriteRune('$')
-				buf.WriteString(strconv.FormatInt(pos+replaced, 10))
-			}
+			writePlaceholder64(buf, pos+replaced)
 			replaced++
 			discardDigits = true
 		}

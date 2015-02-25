@@ -82,6 +82,24 @@ func writeUint64(buf *bytes.Buffer, n uint64) {
 	}
 }
 
+func writePlaceholder(buf *bytes.Buffer, pos int) {
+	if pos < maxLookup {
+		buf.WriteString(placeholderTab[pos])
+	} else {
+		buf.WriteRune('$')
+		buf.WriteString(strconv.Itoa(pos))
+	}
+}
+
+func writePlaceholder64(buf *bytes.Buffer, pos int64) {
+	if pos < maxLookup {
+		buf.WriteString(placeholderTab[pos])
+	} else {
+		buf.WriteRune('$')
+		buf.WriteString(strconv.FormatInt(pos, 10))
+	}
+}
+
 // SQLMapFromReader creates a SQL map from an io.Reader.
 func SQLMapFromReader(r io.Reader) (map[string]string, error) {
 	scanner := bufio.NewScanner(r)

@@ -27,8 +27,7 @@ Highlights
 
     -   ordinal placeholder logic has been optimized to be nearly as fast as `?`
         placeholders
-    -   `dat` can interpolate queries locally before sending to server which
-        can speed things up
+    -   `dat` can interpolate queries locally before sending to server
 
 ## Getting Started
 
@@ -114,11 +113,12 @@ Note: `dat` does not clean the SQL string, thus any extra whitespace is
 transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason this
-library exists is my dissatisfactoin with other SQL builders introducing their 
-own domain language or AST-like expressions which end up being more complicated than 
-plain SQL.
+library exists is my dissatisfaction with other SQL builders introducing
+another domain language or AST-like expressions.
 
-Query builders shine when dealing with records (input structs).
+Query builders shine when dealing with data transfer objects,
+records (input structs).
+
 
 ### Fetch Data Simply
 
@@ -361,7 +361,7 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
     }
 
     // do more queries with session ...
-    
+
     // MUST commit or AutoRollback() will rollback
     sess.Commit()
 }
@@ -467,13 +467,13 @@ if err != nil {
 
 ### Local Interpolation
 
-TL;DR: Interpolation avoids prepared statements and argument processing. 
+TL;DR: Interpolation avoids prepared statements and argument processing.
 
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
 `dat` can interpolate locally using a built-in escape function to inline
-query arguments. What is interpolation? An interpolated statement has all 
+query arguments. What is interpolation? An interpolated statement has all
 arguments inlined and often results in a single SQL statement with no arguments
 sent to the DB:
 
@@ -532,12 +532,12 @@ That snippet bypasses the prepare/exec roundtrip to the database.
 Keep in mind that prepared statements are only valid for the current
 session and uless the same query will be executed *MANY* times in the
 same session there is little benefit in using prepared statements.
-One benefit of using prepared statements is they provide 
-safety against SQL injection by parameterizing queries. 
+One benefit of using prepared statements is they provide
+safety against SQL injection by parameterizing queries.
 See Interpolation Safety below.
 
 Another benefit of interpolation is offloading dabatabase workload to your
-application servers. There is less work and less network chatter when 
+application servers. There is less work and less network chatter when
 interpolation is performed locally. It's usually much simpler to add application servers
 than to vertically scale a database server.
 
@@ -547,7 +547,7 @@ than to vertically scale a database server.
 * Sql2 - database/sql with 2 args
 * Sqx2 - jmoiron/sqlx with 2 args
 
-Replace 2 with 4, 8 for variants of argument benchmarks. All source is under 
+Replace 2 with 4, 8 for variants of argument benchmarks. All source is under
 sqlx-runner/benchmark\*
 
 #### Interpolated v Non-Interpolated Queries
@@ -582,7 +582,7 @@ for i := 0; i < b.N; i++ {
 
 To be fair, this benchmark is not meaningful. It doesn't take into account
 the time to perform the interpolation. It's only meant to show that
-interpolated queries avoid the overhead of arguments and skip the prepare statement 
+interpolated queries avoid the overhead of arguments and skip the prepare statement
 logic in the underlying driver.
 
 #### Interpolating then Execing
@@ -631,7 +631,7 @@ which would favor interpolation even more.
 
 ### Interpolation and Transactions
 
-This benchmark compares the performance of interpolation within a transaction on 
+This benchmark compares the performance of interpolation within a transaction on
 "level playing field" with database/sql. As mentioned in a previous
 section, prepared statements MUST be prepared and executed on the same
 connection to utilize them.
@@ -670,7 +670,7 @@ for i := 0; i < b.N; i++ {
 
 Again, interpolation seems faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
-*I expected database/sql to better interpolation here. Still thinking 
+*I expected database/sql to better interpolation here. Still thinking
 about this one.*
 
 ### Use With Other Libraries
@@ -711,13 +711,13 @@ Run the following inside project root
 
     # back to root and run
     cd ..
-    
+
     # create database
     godo createdb
-    
+
     # run tests
     godo test
-    
+
     # run benchmarks
     godo bench
 ```

@@ -3,7 +3,6 @@ package dat
 import (
 	"bytes"
 	"reflect"
-	"strconv"
 
 	"github.com/mgutz/str"
 )
@@ -85,12 +84,7 @@ func buildPlaceholders(buf *bytes.Buffer, start, length int) {
 		if i > start {
 			buf.WriteRune(',')
 		}
-		if i < maxLookup {
-			buf.WriteString(placeholderTab[i])
-		} else {
-			buf.WriteRune('$')
-			buf.WriteString(strconv.Itoa(i))
-		}
+		writePlaceholder(buf, i)
 	}
 	buf.WriteRune(')')
 }
