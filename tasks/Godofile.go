@@ -6,15 +6,12 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/mgutz/str"
-	"github.com/peterh/liner"
 	. "gopkg.in/godo.v1"
 )
 
-func createdb() {
-	line := liner.NewLiner()
-
-	user, _ := line.Prompt("superuser: ")
-	password, _ := line.PasswordPrompt("password: ")
+func createdb(c *Context) {
+	user := Prompt("superuser: ")
+	password := PromptPassword("password: ")
 
 	dsn := str.Template("user={{user}} password={{password}} dbname=postgres host=localhost sslmode=disable", M{
 		"user":     user,
@@ -42,6 +39,26 @@ func createdb() {
 			panic(err)
 		}
 	}
+
+	// close superser db connection
+	err = db.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	dsn = str.Template("user={{user}} password={{password}} dbname=dbr_test host=localhost sslmode=disable", M{
+		"user":     user,
+		"password": password,
+	})
+	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("create extension hstore")
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Println("OK")
 }
 

@@ -171,8 +171,10 @@ func TestInterpolateErrors(t *testing.T) {
 	assert.Equal(t, err, ErrArgumentMismatch)
 
 	// no harm, no foul
-	_, _, err = Interpolate("SELECT * FROM x WHERE", []interface{}{1})
-	assert.Equal(t, err, ErrArgumentMismatch)
+	if Strict {
+		_, _, err = Interpolate("SELECT * FROM x WHERE", []interface{}{1})
+		assert.Equal(t, err, ErrArgumentMismatch)
+	}
 
 	_, _, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{string([]byte{0x34, 0xFF, 0xFE})})
 	assert.Equal(t, err, ErrNotUTF8)

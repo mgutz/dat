@@ -13,6 +13,7 @@ type DeleteBuilder struct {
 	limitValid     bool
 	offsetCount    uint64
 	offsetValid    bool
+	id             int
 }
 
 // NewDeleteBuilder creates a new DeleteBuilder for the given table.

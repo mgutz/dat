@@ -101,6 +101,21 @@ func writePlaceholder64(buf *bytes.Buffer, pos int64) {
 }
 
 // SQLMapFromReader creates a SQL map from an io.Reader.
+//
+// This string
+//
+//		`
+//		--@selectUsers
+//		SELECT * FROM users;
+//
+//		--@selectAccounts
+//		SELECT * FROM accounts;
+//		`
+//
+//		returns map[string]string{
+//			"selectUsers": "SELECT * FROM users;",
+//			"selectACcounts": "SELECT * FROM accounts;",
+//		}
 func SQLMapFromReader(r io.Reader) (map[string]string, error) {
 	scanner := bufio.NewScanner(r)
 	var buf bytes.Buffer
@@ -140,8 +155,6 @@ func SQLMapFromReader(r io.Reader) (map[string]string, error) {
 
 // SQLMapFromFile loads a file containing special markers and loads
 // the SQL statements into a map.
-//
-// TODO strip comments from SQL
 func SQLMapFromFile(filename string) (map[string]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -162,6 +175,16 @@ var goRe = regexp.MustCompile(`(?m)^GO$`)
 
 // SQLSliceFromString converts a multiline string marked by `^GO$`
 // into a slice of SQL statements.
+//
+// This string
+//
+//		SELECT *
+//		FROM users;
+//		GO
+//		SELECT *
+//		FROM accounts;
+//
+//		returns []string{"SELECT *\nFROM users;", "SELECT *\nFROM accounts"}
 func SQLSliceFromString(s string) ([]string, error) {
 	sli := goRe.Split(s, -1)
 	return sli, nil

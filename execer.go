@@ -6,10 +6,9 @@ type Result struct {
 	RowsAffected int64
 }
 
-// Executable is an object that can be queried.
+// Execer is an object that can be execute/query a database.
 type Execer interface {
 	Exec() (*Result, error)
-	//Query() (*sql.Rows, error)
 	QueryScalar(destinations ...interface{}) error
 	QuerySlice(dest interface{}) error
 	QueryStruct(dest interface{}) error
