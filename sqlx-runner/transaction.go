@@ -79,19 +79,23 @@ func (tx *Tx) Rollback() error {
 	return nil
 }
 
-// RollbackUnlessCommitted rollsback the transaction unless it has already been committed or rolled back.
-// Useful to defer tx.RollbackUnlessCommitted() -- so you don't have to handle N failure cases
-// Keep in mind the only way to detect an error on the rollback is via the event log.
-func (tx *Tx) RollbackUnlessCommitted() {
-	panic("RollbackUnlessCommitted has been obsoleted. Use AutoRollback")
-	// err := tx.Tx.Rollback()
-	// if err == sql.ErrTxDone {
-	// 	// ok
-	// } else if err != nil {
-	// 	dat.Events.EventErr("rollback_unless_committed", err)
-	// } else {
-	// 	dat.Events.Event("rollback")
-	// }
+// AutoCommit commits a transaction IF neither Commit or Rollback were called.
+func (tx *Tx) AutoCommit() error {
+	tx.Lock()
+	defer tx.Unlock()
+
+	if tx.state == txRollbacked || tx.state == txCommitted {
+		return nil
+	}
+	err := tx.Tx.Commit()
+	if err != nil {
+		if dat.Strict {
+			log.Fatalf("Could not close session: %s\n", err.Error())
+		}
+		return dat.Events.EventErr("transaction.AutoCommit.commit_error", err)
+	}
+	dat.Events.Event("autocommit")
+	return err
 }
 
 // AutoRollback rolls back transaction IF neither Commit or Rollback were called.
@@ -110,25 +114,6 @@ func (tx *Tx) AutoRollback() error {
 		return dat.Events.EventErr("transaction.AutoRollback.rollback_error", err)
 	}
 	dat.Events.Event("autorollback")
-	return err
-}
-
-// AutoCommit commits a transaction IF neither Commit or Rollback were called.
-func (tx *Tx) AutoCommit() error {
-	tx.Lock()
-	defer tx.Unlock()
-
-	if tx.state == txRollbacked || tx.state == txCommitted {
-		return nil
-	}
-	err := tx.Tx.Commit()
-	if err != nil {
-		if dat.Strict {
-			log.Fatalf("Could not close session: %s\n", err.Error())
-		}
-		return dat.Events.EventErr("transaction.AutoCommit.commit_error", err)
-	}
-	dat.Events.Event("autocommit")
 	return err
 }
 

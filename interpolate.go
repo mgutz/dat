@@ -41,6 +41,7 @@ func isFloat(k reflect.Kind) bool {
 //   - times
 var typeOfTime = reflect.TypeOf(time.Time{})
 var typeOfUnsafeString = reflect.TypeOf(UnsafeString(""))
+var typeOfBytes = reflect.TypeOf([]byte{})
 
 // Interpolate takes a SQL string with placeholders and a list of arguments to
 // replace them with. Returns a blank string and error if the number of placeholders
@@ -58,19 +59,25 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		return "", nil, nil
 	}
 
-	hasPlaceholders := strings.Contains(sql, "$")
+	if Strict {
+		hasPlaceholders := strings.Contains(sql, "$")
 
-	// If we have no args and the query has no place holders return early
-	// No args for a query with place holders is an error
-	if lenVals == 0 {
-		if hasPlaceholders {
+		// If we have no args and the query has no place holders return early
+		// No args for a query with place holders is an error
+		if lenVals == 0 {
+			if hasPlaceholders {
+				return "", nil, ErrArgumentMismatch
+			}
+			return sql, nil, nil
+		}
+
+		if lenVals > 0 && !hasPlaceholders {
 			return "", nil, ErrArgumentMismatch
 		}
-		return sql, nil, nil
-	}
 
-	if lenVals > 0 && !hasPlaceholders {
-		return "", nil, ErrArgumentMismatch
+		if !hasPlaceholders {
+			return sql, nil, nil
+		}
 	}
 
 	var buf bytes.Buffer
@@ -98,18 +105,9 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		if val, ok := v.(UnsafeString); ok {
 			buf.WriteString(string(val))
 			return nil
-		} else if _, ok := v.([]byte); ok {
-			passthroughArg()
-			return nil
-			//panic("[]byte not supported; converting to string would be inefficient")
-		} else if _, ok := v.(*[]byte); ok {
-			passthroughArg()
-			return nil
-			//panic("*[]byte not supported; converting to string would be inefficient")
 		}
 
-		valuer, ok := v.(driver.Valuer)
-		if ok {
+		if valuer, ok := v.(driver.Valuer); ok {
 			val, err := valuer.Value()
 			if err != nil {
 				return err
@@ -164,6 +162,12 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			} else {
 				return ErrInvalidValue
 			}
+		} else if _, ok := v.([]byte); ok {
+			passthroughArg()
+			return nil
+		} else if _, ok := v.(*[]byte); ok {
+			passthroughArg()
+			return nil
 		} else if kindOfV == reflect.Slice {
 			typeOfV := reflect.TypeOf(v)
 			subtype := typeOfV.Elem()

@@ -72,7 +72,7 @@ func (b *InsertBuilder) Pair(column string, value interface{}) *InsertBuilder {
 	} else if lenVals == 1 {
 		b.vals[0] = append(b.vals[0], value)
 	} else {
-		panic("pair only allows you to specify 1 record to insret")
+		panic("pair only allows you to specify 1 record to insert")
 	}
 	return b
 }
@@ -129,12 +129,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 	// reflect all fields
 	if lenRecords > 0 && b.cols[0] == "*" {
 		info := reflectFields(b.records[0])
-		lenFields := len(info.fields)
-		b.cols = make([]string, lenFields)
-		for i := 0; i < lenFields; i++ {
-			f := info.fields[i]
-			b.cols[i] = f.dbName
-		}
+		b.cols = info.Columns()
 	}
 
 	var sql bytes.Buffer

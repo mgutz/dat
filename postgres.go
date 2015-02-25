@@ -10,8 +10,9 @@ type PostgresDialect struct{}
 
 // WriteStringLiteral is part of Dialect implementation.
 //
-// Postgres is much safer as of 9.1. Postgres does not allow any escape
+// Postgres 9.1+ does not allow any escape
 // sequences by default. See http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE
+// In short, all backslashes are treated literally not as escape sequences.
 func (pd *PostgresDialect) WriteStringLiteral(buf *bytes.Buffer, val string) {
 	if val == "" {
 		buf.WriteString("''")

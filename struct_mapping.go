@@ -20,7 +20,21 @@ type field struct {
 	dbName string
 }
 type record struct {
-	fields []*field
+	fields    []*field
+	dbColumns []string
+}
+
+func (r *record) Columns() []string {
+	if r.dbColumns != nil {
+		return r.dbColumns
+	}
+
+	lenFields := len(r.fields)
+	r.dbColumns = make([]string, lenFields)
+	for i, f := range r.fields {
+		r.dbColumns[i] = f.dbName
+	}
+	return r.dbColumns
 }
 
 func newRecord() *record {

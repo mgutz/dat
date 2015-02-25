@@ -20,6 +20,7 @@ Highlights
         Select("id, user_name").
         From("users").
         Where("id = $1", id).
+
         QueryStruct(&user)
     ```
 
@@ -472,26 +473,31 @@ TL;DR: Interpolation avoids prepared statements and argument processing.
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
-`dat` can interpolate locally using a built-in escape function to inline
-query arguments. What is interpolation? An interpolated statement has all
-arguments inlined and often results in a single SQL statement with no arguments
-sent to the DB:
+`dat` can interpolate locally to inline query arguments. Let's start with a
+normal SQL statements with arguments
+
+```
+db.Exec(
+    "INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
+    []interface{}[1, 2, 3, 4],
+)
+```
+
+The driver first asks the database to create a prepared statement for the
+INSERT statement, then it will send the arguments with the prepared
+statement to the database
+
+In contrast, `dat` can interpolate the statement locally resulting in
+a SQL statement with often no arguments. The code above results in
+this interpolated SQL
 
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-Non-interpolated statements use prepared statements underneath and
-send statements with arguments to the DB:
-
-```
-"INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
-[]interface{}[1, 2, 3, 4]
-```
-
 Some of the reasons you might want to use interpolation:
 
-*   Interpolation can result in performance improvements
+*   Performance improvement
 *   Debugging is simpler with interpolated SQL
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
@@ -501,15 +507,19 @@ driver when interpolating.
 
 #### Interpolation Safety
 
-As of Postgres 9.1, escaping is disabled by default. See
+Postgres 9.1+ does not allow any escape sequences by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
+In short, all backslashes are treated literally not as escape sequences.
 
-`dat` disallows **ALL** escape sequences when interpolating.
+It's rare to need backslashes to represent special characters in user input. Do
+you trust users to enter C-like expressions? `dat` only escapes apostrophes to
+double apostrophes, eg `"Go's world"` becomes `'Go''s world'`.
 
-`dat` checks the Postgres database `standard_conforming_strings` setting value on a new connection when
-`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"`
-you should either set it to `"on"` or disable interpolation. `dat` will panic
-if you try to use interpolation with an incorrect setting.
+As an added safety measure, `dat` checks the Postgres database
+`standard_conforming_strings` setting value on a new connection when
+`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` you
+should either set it to `"on"` or disable interpolation. `dat` will panic if
+you try to use interpolation with an unsafe setting.
 
 #### Why is Interpolation Faster?
 
@@ -529,17 +539,15 @@ if len(args) == 0 {
 
 That snippet bypasses the prepare/exec roundtrip to the database.
 
-Keep in mind that prepared statements are only valid for the current
-session and uless the same query will be executed *MANY* times in the
-same session there is little benefit in using prepared statements.
-One benefit of using prepared statements is they provide
-safety against SQL injection by parameterizing queries.
-See Interpolation Safety below.
+Keep in mind that prepared statements are only valid for the current session
+and unless the same query is be executed *MANY* times in the same session there
+is little benefit in using prepared statements other than protecting against
+SQL injections. See Interpolation Safety below.
 
-Another benefit of interpolation is offloading dabatabase workload to your
-application servers. There is less work and less network chatter when
-interpolation is performed locally. It's usually much simpler to add application servers
-than to vertically scale a database server.
+Interpolation also offloads dabatabase workload to your application servers.
+The database does less work and less network chatter when interpolation is
+performed locally. It's usually much more cost effective to add application
+servers than to vertically scale a database server.
 
 #### Benchmarks
 
@@ -580,10 +588,10 @@ for i := 0; i < b.N; i++ {
 }
 ```
 
-To be fair, this benchmark is not meaningful. It doesn't take into account
-the time to perform the interpolation. It's only meant to show that
-interpolated queries avoid the overhead of arguments and skip the prepare statement
-logic in the underlying driver.
+To be fair, this benchmark is not meaningful. It doesn't take into account the
+time to perform the interpolation. It's only meant to show that interpolated
+queries avoid the overhead of arguments and skip the prepared statement logic
+in the underlying driver.
 
 #### Interpolating then Execing
 
@@ -670,8 +678,8 @@ for i := 0; i < b.N; i++ {
 
 Again, interpolation seems faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
-*I expected database/sql to better interpolation here. Still thinking
-about this one.*
+*I expected database/sql to better interpolation here. Still thinking about
+this one.*
 
 ### Use With Other Libraries
 
@@ -690,7 +698,7 @@ rows, err := db.Query(sql, args...)
 
 // Alternatively build the interpolated sql statement
 sql, args := builder.MustInterpolate()
-if len(args) == 0 {
+if len(args) {
     rows, err = db.Query(sql)
 } else {
     rows, err = db.Query(sql, args...)
@@ -699,7 +707,7 @@ if len(args) == 0 {
 
 ## Running Tests and Benchmarks
 
-Run the following inside project root
+To setup the task runner and create database
 
 ```sh
 # install godo task runner
@@ -712,7 +720,12 @@ go get -a
 # back to root and run
 cd ..
 
-# create database
+```
+
+Then run any task
+
+```sh
+# (re)create database
 godo createdb
 
 # run tests
@@ -720,10 +733,13 @@ godo test
 
 # run benchmarks
 godo bench
+
+# see other tasks
+godo
 ```
 
 When createdb prompts for superuser, enter superuser like 'postgres' to create
-the test database. On Mac + Postgress.app user your user name.
+the test database. On Mac + Postgress.app use your own user name and password.
 
 ## TODO
 

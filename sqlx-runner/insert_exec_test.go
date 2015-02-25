@@ -189,7 +189,7 @@ func TestInsertBlacklist(t *testing.T) {
 }
 
 func TestInsertBytes(t *testing.T) {
-	b := []byte{0x00, 0x11, 0x23}
+	b := []byte{0, 0, 0}
 	var image []byte
 	var id int32
 	sql := `
