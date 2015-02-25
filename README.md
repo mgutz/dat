@@ -702,27 +702,27 @@ if len(args) == 0 {
 Run the following inside project root
 
 ```sh
-    # install godo task runner
-    go get -u gopkg.in/godo.v1/cmd/godo
+# install godo task runner
+go get -u gopkg.in/godo.v1/cmd/godo
 
-    # install dependencies
-    cd tasks
-    go get -a
+# install dependencies
+cd tasks
+go get -a
 
-    # back to root and run
-    cd ..
+# back to root and run
+cd ..
 
-    # create database
-    godo createdb
+# create database
+godo createdb
 
-    # run tests
-    godo test
+# run tests
+godo test
 
-    # run benchmarks
-    godo bench
+# run benchmarks
+godo bench
 ```
 
-When createdb prompst for superuser, enter a super like 'postgres' to create
+When createdb prompts for superuser, enter superuser like 'postgres' to create
 the test database. On Mac + Postgress.app user your user name.
 
 ## TODO
