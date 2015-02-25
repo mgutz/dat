@@ -588,8 +588,8 @@ for i := 0; i < b.N; i++ {
 }
 ```
 
-To be fair, this benchmark is not meaningful. It doesn't take into account the
-time to perform the interpolation. It's only meant to show that interpolated
+To be fair, this benchmark is not meaningful. It does not take into account the
+time to perform the interpolation. It is only meant to show that interpolated
 queries avoid the overhead of arguments and skip the prepared statement logic
 in the underlying driver.
 
@@ -616,19 +616,19 @@ BenchmarkBuildExecSQLSqx8  5000   346576   ns/op  1194  B/op  44  allocs/op
 The logic is something like this
 
 ```go
-// dat's SQL interpolates the statment then exececutes
+// dat's SQL interpolates the statement then executes it
 for i := 0; i < b.N; i++ {
     conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
 }
 
-// non-interpolated
+// non interpolated
 for i := 0; i < b.N; i++ {
     db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
 }
 ```
 
 The results suggests that local interpolation is both faster and does less
-allocation. Interpolation comes with a cost of more bytes used as it has
+allocations. Interpolation comes with a cost of more bytes used as it has
 to inspect the args and splice them into the statement.
 
 database/sql when presented with arguments prepares a
@@ -661,7 +661,7 @@ BenchmarkTransactedSqx8    10000  222460   ns/op  1194  B/op  44  allocs/op
 The logic is something like this
 
 ```go
-// dat: interpolate the statement then exececute as within the transactionn
+// dat interpolates the statement then execute it as part of transaction
 tx := conn.Begin()
 defer tx.Commit()
 for i := 0; i < b.N; i++ {
