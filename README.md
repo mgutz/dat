@@ -555,12 +555,14 @@ servers than to vertically scale a database server.
 
 #### Benchmarks
 
+Benchmark legend
 
+```
 N         int           // The number of iterations.
-T         time.Duration // The total time taken.
-Bytes     int64         // Bytes processed in one iteration.
-MemAllocs uint64        // The total number of memory allocations.
-
+T         time.Duration // The total time taken (ns/op).
+Bytes     int64         // Bytes processed in one iteration. (B/op)
+MemAllocs uint64        // The total number of memory allocations. (allocs/op)
+```
 
 #### Interpolated v Non-Interpolated Queries
 
