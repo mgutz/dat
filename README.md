@@ -512,11 +512,11 @@ Postgres 9.1+ does not allow any escape sequences by default. See
 In short, all backslashes are treated literally not as escape sequences.
 
 It's rare to need backslashes to represent special characters in user input. Do
-you trust users to enter C-like expressions? `dat` only escapes apostrophes on
-small strings, otherwise it uses Postgres' [dollar
+you trust users to enter C-like expressions? `dat` escapes apostrophes on
+small strings, otherwise Postgres' [dollar
 quotes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING)
-to escape string. The dollar tag is randomize at start and if the a string contains the
-dollar tag, the tag is randomized again and if it still contains the tag, then
+are used to escape the string. The dollar quote tag is randomized at init. If a string contains the
+dollar quote tag, the tag is randomized again and if the string still contains the tag, then
 single quote escaping is used.
 
 As an added safety measure, `dat` checks the Postgres database
