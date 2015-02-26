@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 )
 
 // pgDollarTag is the double dollar tag for escaping strings.
 var pgDollarTag string
+var pgDollarMutex sync.Mutex
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -19,6 +21,8 @@ var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 var lenLetters = len(letters)
 
 func randomizePgDollarTag() {
+	pgDollarMutex.Lock()
+	defer pgDollarMutex.Unlock()
 	var buf bytes.Buffer
 	buf.WriteRune('$')
 	buf.WriteString(RandomString(3))

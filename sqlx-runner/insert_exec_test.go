@@ -39,7 +39,9 @@ func TestInsertDoubleDollarQuote(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, str)
 
-	expected = dat.RandomString(1024) + "'"
+	// ensure the tag cannot be escaped by user
+	oldDollarTag := dat.GetPgDollarTag()
+	expected = dat.RandomString(1024) + "'" + oldDollarTag
 	builder := s.
 		InsertInto("people").
 		Columns("name", "key").
@@ -47,6 +49,7 @@ func TestInsertDoubleDollarQuote(t *testing.T) {
 		Returning("key")
 
 	sql, _, _ := builder.SetIsInterpolated(true).Interpolate()
+	assert.NotEqual(t, oldDollarTag, dat.GetPgDollarTag())
 	assert.True(t, strings.Contains(sql, dat.GetPgDollarTag()))
 
 	builder.QueryScalar(&str)
