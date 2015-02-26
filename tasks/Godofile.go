@@ -91,8 +91,13 @@ func tasks(p *Project) {
 	})
 
 	p.Task("bench", func() {
-		Bash("go test -bench . -benchmem 2>/dev/null | column -t")
-		Bash("go test -bench . -benchmem 2>/dev/null | column -t", In{"sqlx-runner"})
+		// Bash("go test -bench . -benchmem 2>/dev/null | column -t")
+		// Bash("go test -bench . -benchmem 2>/dev/null | column -t", In{"sqlx-runner"})
+		Bash("go test -bench . -benchmem")
+		Bash("go test -bench . -benchmem", In{"sqlx-runner"})
+	})
+	p.Task("bench2", func() {
+		Bash("go test -bench . -benchmem", In{"sqlx-runner"})
 	})
 
 	p.Task("bench-builder", func() {

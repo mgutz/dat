@@ -50,6 +50,15 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 	// Get the number of arguments to add to this query
 	lenVals := len(vals)
 
+	// if there are any []byte types, just pass it through to save memory allocations
+	for i := 0; i < lenVals; i++ {
+		if _, ok := vals[i].([]byte); ok {
+			return sql, vals, nil
+		} else if _, ok := vals[i].(*[]byte); ok {
+			return sql, vals, nil
+		}
+	}
+
 	// If our query is blank and has no args return early
 	// Args with a blank query is an error
 	if sql == "" {
@@ -151,9 +160,9 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		} else if kindOfV == reflect.Bool {
 			var bval = valueOfV.Bool()
 			if bval {
-				buf.WriteRune('1')
+				buf.WriteString(`'t'`)
 			} else {
-				buf.WriteRune('0')
+				buf.WriteString(`'f'`)
 			}
 		} else if kindOfV == reflect.Struct {
 			if typeOfV := valueOfV.Type(); typeOfV == typeOfTime {
@@ -162,12 +171,6 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			} else {
 				return ErrInvalidValue
 			}
-		} else if _, ok := v.([]byte); ok {
-			passthroughArg()
-			return nil
-		} else if _, ok := v.(*[]byte); ok {
-			passthroughArg()
-			return nil
 		} else if kindOfV == reflect.Slice {
 			typeOfV := reflect.TypeOf(v)
 			subtype := typeOfV.Elem()
@@ -261,10 +264,10 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 
 func interpolate(builder Builder) (string, []interface{}, error) {
 	sql, args := builder.ToSQL()
-	if !EnableInterpolation {
-		return sql, args, nil
+	if builder.IsInterpolated() {
+		return Interpolate(sql, args)
 	}
-	return Interpolate(sql, args)
+	return sql, args, nil
 }
 
 func mustInterpolate(builder Builder) (string, []interface{}) {

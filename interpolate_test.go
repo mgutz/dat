@@ -71,7 +71,7 @@ func TestInterpolateBools(t *testing.T) {
 
 	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE a = 1 AND b = 0")
+	assert.Equal(t, str, "SELECT * FROM x WHERE a = 't' AND b = 'f'")
 }
 
 func TestInterpolateFloats(t *testing.T) {
@@ -87,7 +87,6 @@ func TestInterpolateEscapeStrings(t *testing.T) {
 
 	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2", args)
 	assert.NoError(t, err)
-	// E'' is postgres-specific
 	assert.Equal(t, "SELECT * FROM x WHERE a = 'hello' AND b = '\"pg''s world\" \\\b\f\n\r\t\x1a'", str)
 }
 
@@ -137,7 +136,7 @@ func TestInterpolatingPointers(t *testing.T) {
 	args := []interface{}{&one, &two, &three, &four, &five, &six}
 	str, _, err := Interpolate("SELECT * FROM x WHERE one=$1 AND two=$2 AND three=$3 AND four=$4 AND five=$5 AND six=$6", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE one=1000 AND two=2000 AND three=3 AND four=4 AND five='five' AND six=1")
+	assert.Equal(t, str, "SELECT * FROM x WHERE one=1000 AND two=2000 AND three=3 AND four=4 AND five='five' AND six='t'")
 }
 
 func TestInterpolatingNulls(t *testing.T) {

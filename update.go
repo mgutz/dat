@@ -13,6 +13,7 @@ import (
 type UpdateBuilder struct {
 	Execer
 
+	isInterpolated bool
 	table          string
 	setClauses     []*setClause
 	whereFragments []*whereFragment
@@ -31,7 +32,7 @@ type setClause struct {
 
 // NewUpdateBuilder creates a new UpdateBuilder for the given table
 func NewUpdateBuilder(table string) *UpdateBuilder {
-	return &UpdateBuilder{table: table}
+	return &UpdateBuilder{table: table, isInterpolated: EnableInterpolation}
 }
 
 // Set appends a column/value pair for the statement
@@ -224,7 +225,14 @@ func (b *UpdateBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
-// MustInterpolate interpolates this builders sql or panics.
-func (b *UpdateBuilder) MustInterpolate() (string, []interface{}) {
-	return mustInterpolate(b)
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *UpdateBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *UpdateBuilder) SetIsInterpolated(enable bool) *UpdateBuilder {
+	b.isInterpolated = enable
+	return b
 }

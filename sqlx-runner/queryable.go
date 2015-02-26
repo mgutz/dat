@@ -1,6 +1,10 @@
 package runner
 
-import "github.com/mgutz/dat"
+import (
+	"database/sql"
+
+	"github.com/mgutz/dat"
+)
 
 // Queryable is an object that can be queried.
 type Queryable struct {
@@ -12,6 +16,23 @@ func (q *Queryable) DeleteFrom(table string) *dat.DeleteBuilder {
 	b := dat.NewDeleteBuilder(table)
 	b.Execer = NewExecer(q.runner, b)
 	return b
+}
+
+// Exec executes a SQL query with optional arguments.
+func (q *Queryable) Exec(cmd string, args ...interface{}) (*dat.Result, error) {
+	var result sql.Result
+	var err error
+
+	if len(args) == 0 {
+		result, err = q.runner.Exec(cmd)
+	} else {
+		result, err = q.runner.Exec(cmd, args...)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	return &dat.Result{RowsAffected: rowsAffected}, nil
 }
 
 // ExecBuilder executes the SQL in builder.

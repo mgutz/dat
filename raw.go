@@ -4,13 +4,14 @@ package dat
 type RawBuilder struct {
 	Execer
 
-	sql  string
-	args []interface{}
+	isInterpolated bool
+	sql            string
+	args           []interface{}
 }
 
 // NewRawBuilder creates a new RawBuilder for the given SQL string and arguments
 func NewRawBuilder(sql string, args ...interface{}) *RawBuilder {
-	return &RawBuilder{sql: sql, args: args}
+	return &RawBuilder{sql: sql, args: args, isInterpolated: EnableInterpolation}
 }
 
 // ToSQL implements builder interface
@@ -23,7 +24,14 @@ func (b *RawBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
-// MustInterpolate interpolates this builder's SQL.
-func (b *RawBuilder) MustInterpolate() (string, []interface{}) {
-	return mustInterpolate(b)
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *RawBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *RawBuilder) SetIsInterpolated(enable bool) *RawBuilder {
+	b.isInterpolated = enable
+	return b
 }

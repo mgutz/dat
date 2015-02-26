@@ -11,17 +11,18 @@ import (
 type InsertBuilder struct {
 	Execer
 
-	table       string
-	cols        []string
-	isBlacklist bool
-	vals        [][]interface{}
-	records     []interface{}
-	returnings  []string
+	isInterpolated bool
+	table          string
+	cols           []string
+	isBlacklist    bool
+	vals           [][]interface{}
+	records        []interface{}
+	returnings     []string
 }
 
 // NewInsertBuilder creates a new InsertBuilder for the given table.
 func NewInsertBuilder(table string) *InsertBuilder {
-	return &InsertBuilder{table: table}
+	return &InsertBuilder{table: table, isInterpolated: EnableInterpolation}
 }
 
 // Columns appends columns to insert in the statement
@@ -198,7 +199,14 @@ func (b *InsertBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
-// MustInterpolate must interpolate or panic.
-func (b *InsertBuilder) MustInterpolate() (string, []interface{}) {
-	return mustInterpolate(b)
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *InsertBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *InsertBuilder) SetIsInterpolated(enable bool) *InsertBuilder {
+	b.isInterpolated = enable
+	return b
 }

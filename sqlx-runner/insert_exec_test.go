@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 
 	"github.com/mgutz/dat"
@@ -21,6 +22,36 @@ func TestInsertKeywordColumnName(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, res.RowsAffected, 1)
+}
+
+func TestInsertDoubleDollarQuote(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.Close()
+
+	expected := dat.RandomString(16)
+	var str string
+	err := s.
+		InsertInto("people").
+		Columns("name", "key").
+		Values("test", expected).
+		Returning("key").
+		QueryScalar(&str)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, str)
+
+	expected = dat.RandomString(1024) + "'"
+	builder := s.
+		InsertInto("people").
+		Columns("name", "key").
+		Values("test", expected).
+		Returning("key")
+
+	sql, _, _ := builder.SetIsInterpolated(true).Interpolate()
+	assert.True(t, strings.Contains(sql, dat.GetPgDollarTag()))
+
+	builder.QueryScalar(&str)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, str)
 }
 
 func TestInsertDefault(t *testing.T) {

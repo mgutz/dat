@@ -14,11 +14,12 @@ type DeleteBuilder struct {
 	offsetCount    uint64
 	offsetValid    bool
 	id             int
+	isInterpolated bool
 }
 
 // NewDeleteBuilder creates a new DeleteBuilder for the given table.
 func NewDeleteBuilder(table string) *DeleteBuilder {
-	return &DeleteBuilder{table: table}
+	return &DeleteBuilder{table: table, isInterpolated: EnableInterpolation}
 }
 
 // Where appends a WHERE clause to the statement whereSqlOrMap can be a
@@ -98,7 +99,14 @@ func (b *DeleteBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
-// MustInterpolate interpolates this builder's SQL or panics.
-func (b *DeleteBuilder) MustInterpolate() (string, []interface{}) {
-	return mustInterpolate(b)
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *DeleteBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *DeleteBuilder) SetIsInterpolated(enable bool) *DeleteBuilder {
+	b.isInterpolated = enable
+	return b
 }

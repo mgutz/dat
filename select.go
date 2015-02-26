@@ -7,6 +7,7 @@ type SelectBuilder struct {
 	Execer
 
 	isDistinct      bool
+	isInterpolated  bool
 	columns         []string
 	table           string
 	whereFragments  []*whereFragment
@@ -21,7 +22,7 @@ type SelectBuilder struct {
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
 func NewSelectBuilder(columns ...string) *SelectBuilder {
-	return &SelectBuilder{columns: columns}
+	return &SelectBuilder{columns: columns, isInterpolated: EnableInterpolation}
 }
 
 // Distinct marks the statement as a DISTINCT SELECT
@@ -161,7 +162,14 @@ func (b *SelectBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }
 
-// MustInterpolate interpolates this builders sql or panics.
-func (b *SelectBuilder) MustInterpolate() (string, []interface{}) {
-	return mustInterpolate(b)
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *SelectBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *SelectBuilder) SetIsInterpolated(enable bool) *SelectBuilder {
+	b.isInterpolated = enable
+	return b
 }

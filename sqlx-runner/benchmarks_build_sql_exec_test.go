@@ -17,20 +17,12 @@ func BenchmarkBuildExecSQLSql2(b *testing.B) {
 	benchmarkBuildInsertSqlN(b, 1, 2)
 }
 
-func BenchmarkBuildExecSQLSqx2(b *testing.B) {
-	benchmarkBuildInsertSqlxN(b, 1, 2)
-}
-
 func BenchmarkBuildExecSQLDat4(b *testing.B) {
 	benchmarkBuildInsertDatN(b, 1, 4)
 }
 
 func BenchmarkBuildExecSQLSql4(b *testing.B) {
 	benchmarkBuildInsertSqlN(b, 1, 4)
-}
-
-func BenchmarkBuildExecSQLSqx4(b *testing.B) {
-	benchmarkBuildInsertSqlxN(b, 1, 4)
 }
 
 func BenchmarkBuildExecSQLDat8(b *testing.B) {
@@ -41,26 +33,28 @@ func BenchmarkBuildExecSQLSql8(b *testing.B) {
 	benchmarkBuildInsertSqlN(b, 2, 4)
 }
 
-func BenchmarkBuildExecSQLSqx8(b *testing.B) {
-	benchmarkBuildInsertSqlxN(b, 2, 4)
-}
-
 func benchmarkBuildInsertDatN(b *testing.B, rows int, argc int) {
 	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)
 	if err != nil {
 		b.Fatal(err)
 	}
+	sql, args := builder.ToSQL()
+	if err != nil {
+		b.Fatal(err)
+	}
 
-	dat.EnableInterpolation = true
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err = conn.ExecBuilder(builder)
+		sql2, args2, err := dat.Interpolate(sql, args)
 		if err != nil {
-			b.Error(err.Error())
+			b.Fatal(err)
+		}
+		_, err = conn.Exec(sql2, args2...)
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
-	dat.EnableInterpolation = false
 }
 
 func benchmarkBuildInsertSqlN(b *testing.B, rows int, argc int) {
@@ -70,7 +64,7 @@ func benchmarkBuildInsertSqlN(b *testing.B, rows int, argc int) {
 		b.Fatal(err)
 	}
 
-	sql, args, err := builder.Interpolate()
+	sql, args := builder.ToSQL()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -85,12 +79,12 @@ func benchmarkBuildInsertSqlN(b *testing.B, rows int, argc int) {
 }
 
 func benchmarkBuildInsertSqlxN(b *testing.B, rows int, argc int) {
+	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)
 	if err != nil {
 		b.Fatal(err)
 	}
-
-	sql, args, err := builder.Interpolate()
+	sql, args := builder.ToSQL()
 	if err != nil {
 		b.Fatal(err)
 	}

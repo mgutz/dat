@@ -237,12 +237,12 @@ b := conn.InsertInto("posts").Columns("title")
 
 // add some new posts
 for i := 0; i < 3; i++ {
-	b.Record(&Post{Title: fmt.Sprintf("Article %s", i)})
+    b.Record(&Post{Title: fmt.Sprintf("Article %s", i)})
 }
 
 // OR (this is more efficient as it does not do any reflection)
 for i := 0; i < 3; i++ {
-	b.Values(fmt.Sprintf("Article %s", i))
+    b.Values(fmt.Sprintf("Article %s", i))
 }
 
 // execute statement
@@ -356,9 +356,9 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
         QueryStruct(&post)
     )
     if err != nil {
-    	// `defer AutoRollback()` is used, no need to rollback on error
-    	r.WriteHeader(500)
-    	return
+        // `defer AutoRollback()` is used, no need to rollback on error
+        r.WriteHeader(500)
+        return
     }
 
     // do more queries with session ...
@@ -508,12 +508,16 @@ driver when interpolating.
 #### Interpolation Safety
 
 Postgres 9.1+ does not allow any escape sequences by default. See
-[String Constants with C-style Escapes](http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
+[String Constants with C-style Escapes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
 In short, all backslashes are treated literally not as escape sequences.
 
 It's rare to need backslashes to represent special characters in user input. Do
-you trust users to enter C-like expressions? `dat` only escapes apostrophes to
-double apostrophes, eg `"Go's world"` becomes `'Go''s world'`.
+you trust users to enter C-like expressions? `dat` only escapes apostrophes on
+small strings, otherwise it uses Postgres' [dollar
+quotes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING)
+to escape string. The dollar tag is randomize at start and if the a string contains the
+dollar tag, the tag is randomized again and if it still contains the tag, then
+single quote escaping is used.
 
 As an added safety measure, `dat` checks the Postgres database
 `standard_conforming_strings` setting value on a new connection when
@@ -551,12 +555,12 @@ servers than to vertically scale a database server.
 
 #### Benchmarks
 
-* Dat2 - mgutz/dat runner with 2 args
-* Sql2 - database/sql with 2 args
-* Sqx2 - jmoiron/sqlx with 2 args
 
-Replace 2 with 4, 8 for variants of argument benchmarks. All source is under
-sqlx-runner/benchmark\*
+N         int           // The number of iterations.
+T         time.Duration // The total time taken.
+Bytes     int64         // Bytes processed in one iteration.
+MemAllocs uint64        // The total number of memory allocations.
+
 
 #### Interpolated v Non-Interpolated Queries
 
@@ -565,13 +569,14 @@ statement with zero args against executing the same SQL statement with
 args.
 
 ```
-BenchmarkExecSQLDat2       5000   208345   ns/op  280   B/op  10  allocs/op
-BenchmarkExecSQLSql2       5000   298789   ns/op  881   B/op  30  allocs/op
-BenchmarkExecSQLSqx2       5000   296948   ns/op  881   B/op  30  allocs/op
+# Dat is this package, Sql is database/sql
+# 2, 4 are number of arguments
 
-BenchmarkExecSQLDat4       5000   210759   ns/op  296   B/op  10  allocs/op
-BenchmarkExecSQLSql4       5000   306558   ns/op  978   B/op  35  allocs/op
-BenchmarkExecSQLSqx4       5000   305569   ns/op  978   B/op  35  allocs/op
+BenchmarkExecSQLDat2     5000      214717   ns/op   624     B/op    18  allocs/op
+BenchmarkExecSQLSql2     5000      299056   ns/op   881     B/op    30  allocs/op
+
+BenchmarkExecSQLDat4     5000      220359   ns/op   800     B/op    21  allocs/op
+BenchmarkExecSQLSql4     5000      306468   ns/op   978     B/op    35  allocs/op
 ```
 
 The logic is something like this
@@ -600,17 +605,16 @@ statement resulting in zero args against executing the same SQL statement with
 args.
 
 ```
-BenchmarkBuildExecSQLDat2  5000   215449   ns/op  832   B/op  21  allocs/op
-BenchmarkBuildExecSQLSql2  5000   296281   ns/op  881   B/op  30  allocs/op
-BenchmarkBuildExecSQLSqx2  5000   296259   ns/op  881   B/op  30  allocs/op
+# 2, 4, 8 are number of arguments
 
-BenchmarkBuildExecSQLDat4  5000   221287   ns/op  1232  B/op  26  allocs/op
-BenchmarkBuildExecSQLSql4  5000   305807   ns/op  978   B/op  35  allocs/op
-BenchmarkBuildExecSQLSqx4  5000   305671   ns/op  978   B/op  35  allocs/op
+BenchmarkBuildExecSQLDat2       5000    215863 ns/op         624 B/op         18 allocs/op
+BenchmarkBuildExecSQLSql2       5000    298859 ns/op         881 B/op         30 allocs/op
 
-BenchmarkBuildExecSQLDat8  5000   254252   ns/op  1480  B/op  33  allocs/op
-BenchmarkBuildExecSQLSql8  5000   347407   ns/op  1194  B/op  44  allocs/op
-BenchmarkBuildExecSQLSqx8  5000   346576   ns/op  1194  B/op  44  allocs/op
+BenchmarkBuildExecSQLDat4       5000    221579 ns/op         800 B/op         21 allocs/op
+BenchmarkBuildExecSQLSql4       5000    305038 ns/op         977 B/op         35 allocs/op
+
+BenchmarkBuildExecSQLDat8       5000    251322 ns/op         904 B/op         27 allocs/op
+BenchmarkBuildExecSQLSql8       5000    344899 ns/op        1194 B/op         44 allocs/op
 ```
 
 The logic is something like this
@@ -628,34 +632,33 @@ for i := 0; i < b.N; i++ {
 ```
 
 The results suggests that local interpolation is both faster and does less
-allocations. Interpolation comes with a cost of more bytes used as it has
-to inspect the args and splice them into the statement.
+allocations. Interpolation comes with a cost of more bytes used as it has to
+inspect the args and splice them into the statement.
 
-database/sql when presented with arguments prepares a
-statement on the connection by sending it to the database then using the
-prepared statement on the same connection to execute the query.
-Keep in mind, these benchmarks are local so network latency is not a factor
-which would favor interpolation even more.
+database/sql when presented with arguments prepares a statement on the
+connection by sending it to the database then using the prepared statement on
+the same connection to execute the query.  Keep in mind, these benchmarks are
+local so network latency is not a factor which would favor interpolation even
+more.
 
-### Interpolation and Transactions
+#### Interpolation and Transactions
 
-This benchmark compares the performance of interpolation within a transaction on
-"level playing field" with database/sql. As mentioned in a previous
-section, prepared statements MUST be prepared and executed on the same
-connection to utilize them.
+This benchmark compares the performance of interpolation within a transaction
+on "level playing field" with database/sql. As mentioned in a previous section,
+prepared statements MUST be prepared and executed on the same connection to
+utilize them.
+
+2, 4, 8 are number of arguments
 
 ```
-BenchmarkTransactedDat2    10000  111959   ns/op  832   B/op  21  allocs/op
-BenchmarkTransactedSql2    10000  173137   ns/op  881   B/op  30  allocs/op
-BenchmarkTransactedSqx2    10000  175342   ns/op  881   B/op  30  allocs/op
+BenchmarkTransactedDat2    10000        112358 ns/op         624 B/op         18 allocs/op
+BenchmarkTransactedSql2    10000        173155 ns/op         881 B/op         30 allocs/op
 
-BenchmarkTransactedDat4    10000  115383   ns/op  1232  B/op  26  allocs/op
-BenchmarkTransactedSql4    10000  182626   ns/op  978   B/op  35  allocs/op
-BenchmarkTransactedSqx4    10000  181641   ns/op  978   B/op  35  allocs/op
+BenchmarkTransactedDat4    10000        116873 ns/op         800 B/op         21 allocs/op
+BenchmarkTransactedSql4    10000        183447 ns/op         977 B/op         35 allocs/op
 
-BenchmarkTransactedDat8    10000  145419   ns/op  1480  B/op  33  allocs/op
-BenchmarkTransactedSql8    10000  221476   ns/op  1194  B/op  44  allocs/op
-BenchmarkTransactedSqx8    10000  222460   ns/op  1194  B/op  44  allocs/op
+BenchmarkTransactedDat8    10000        146121 ns/op         904 B/op         27 allocs/op
+BenchmarkTransactedSql8     5000        220571 ns/op        1194 B/op         44 allocs/op
 ```
 
 The logic is something like this
@@ -665,21 +668,73 @@ The logic is something like this
 tx := conn.Begin()
 defer tx.Commit()
 for i := 0; i < b.N; i++ {
-	tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
+    tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
 }
 
 // non-interpolated
 tx = db.Begin()
 defer tx.Commit()
 for i := 0; i < b.N; i++ {
-	tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
+    tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
 }
 ```
 
 Again, interpolation seems faster with less allocations. The underlying driver
 still has to process and send the arguments with the prepared statement name.
-*I expected database/sql to better interpolation here. Still thinking about
-this one.*
+
+#### Interpolation and Text
+
+This benchmarks compares the performance of interpolation against database/sql
+when text of varying length.
+
+128, 512, 4K, 8K, 64K are number of bytes
+
+```
+BenchmarkVaryingLengthDatText128       10000        215654 ns/op        1088 B/op         16 allocs/op
+BenchmarkVaryingLengthSqlText128        5000        297229 ns/op         896 B/op         27 allocs/op
+
+BenchmarkVaryingLengthDatText512        5000        231806 ns/op        3282 B/op         17 allocs/op
+BenchmarkVaryingLengthSqlText512        5000        303941 ns/op        2304 B/op         28 allocs/op
+
+BenchmarkVaryingLengthDatText4K         3000        371230 ns/op       18904 B/op         17 allocs/op
+BenchmarkVaryingLengthSqlText4K         3000        371708 ns/op        9474 B/op         28 allocs/op
+
+BenchmarkVaryingLengthDatText8K         2000        579485 ns/op       34270 B/op         17 allocs/op
+BenchmarkVaryingLengthSqlText8K         3000        452165 ns/op       17412 B/op         28 allocs/op
+
+BenchmarkVaryingLengthDatText64K         500       2701895 ns/op      295449 B/op         18 allocs/op
+BenchmarkVaryingLengthSqlText64K        1000       1739295 ns/op      140053 B/op         28 allocs/op
+```
+
+Interpolation always use more bytes (roughly double) per operation. At about
+4K+ length, interpolation starts to become slower. The good news is
+interpolation does less allocation in each benchmark, which means less
+fragmented heap space.
+
+### Interpolation and Binary Data
+
+This benchmarks compares the performance of interpolation against database/sql
+with binary data of varying length.
+
+128, 512, 4K, 8K, 64K are number of bytes
+
+```
+BenchmarkVaryingLengthDatBinary128      5000        299503 ns/op        1898 B/op         36 allocs/op
+BenchmarkVaryingLengthSqlBinary128      5000        299713 ns/op        1882 B/op         35 allocs/op
+
+BenchmarkVaryingLengthDatBinary512      5000        323067 ns/op        7687 B/op         42 allocs/op
+BenchmarkVaryingLengthSqlBinary512      5000        326551 ns/op        7671 B/op         41 allocs/op
+
+BenchmarkVaryingLengthDatBinary4K       3000        530677 ns/op       70330 B/op         50 allocs/op
+BenchmarkVaryingLengthSqlBinary4K       3000        536849 ns/op       70314 B/op         49 allocs/op
+
+BenchmarkVaryingLengthDatBinary8K       2000        816444 ns/op      131836 B/op         53 allocs/op
+BenchmarkVaryingLengthSqlBinary8K       2000        789884 ns/op      131820 B/op         52 allocs/op
+```
+
+Interpolation performs roughly the same across the board with `[]byte`. This is as expected,
+`dat` passes through any SQL with `[]byte` arguments to the driver as-is. The extra allocation is
+for the interpolated identity result.
 
 ### Use With Other Libraries
 
@@ -697,7 +752,7 @@ fmt.Println(args)   // [1]
 rows, err := db.Query(sql, args...)
 
 // Alternatively build the interpolated sql statement
-sql, args := builder.MustInterpolate()
+sql, args, err := builder.Interpolate()
 if len(args) {
     rows, err = db.Query(sql)
 } else {

@@ -2,9 +2,16 @@ package dat
 
 // Builder interface is used to tie SQL generators to executors.
 type Builder interface {
+	// ToSQL builds the SQL and arguments from builder.
 	ToSQL() (string, []interface{})
+
+	// Interpolate builds the interpolation SQL and arguments from builder.
+	// If interpolation flag is disabled then this is just a passthrough to ToSQL.
 	Interpolate() (string, []interface{}, error)
-	MustInterpolate() (string, []interface{})
+
+	// IsInterpolated determines if this builder will interpolate when
+	// Interpolate() is called.
+	IsInterpolated() bool
 }
 
 // DeleteFrom creates a new DeleteBuilder for the given table.
