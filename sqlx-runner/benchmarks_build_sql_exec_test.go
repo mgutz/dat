@@ -33,6 +33,14 @@ func BenchmarkBuildExecSQLSql8(b *testing.B) {
 	benchmarkBuildInsertSqlN(b, 2, 4)
 }
 
+func BenchmarkBuildExecSQLDat64(b *testing.B) {
+	benchmarkBuildInsertDatN(b, 16, 4)
+}
+
+func BenchmarkBuildExecSQLSql64(b *testing.B) {
+	benchmarkBuildInsertSqlN(b, 16, 4)
+}
+
 func benchmarkBuildInsertDatN(b *testing.B, rows int, argc int) {
 	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)

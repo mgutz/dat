@@ -35,6 +35,14 @@ func BenchmarkTransactedSql8(b *testing.B) {
 	benchmarkTransactedSqlN(b, 2, 4)
 }
 
+func BenchmarkTransactedDat64(b *testing.B) {
+	benchmarkTransactedDatN(b, 16, 4)
+}
+
+func BenchmarkTransactedSql64(b *testing.B) {
+	benchmarkTransactedSqlN(b, 16, 4)
+}
+
 func benchmarkTransactedDatN(b *testing.B, rows int, argc int) {
 	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)

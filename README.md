@@ -617,6 +617,9 @@ BenchmarkBuildExecSQLSql4       5000    305038 ns/op         977 B/op         35
 
 BenchmarkBuildExecSQLDat8       5000    251322 ns/op         904 B/op         27 allocs/op
 BenchmarkBuildExecSQLSql8       5000    344899 ns/op        1194 B/op         44 allocs/op
+
+BenchmarkBuildExecSQLDat64      2000    568307 ns/op        2962 B/op        113 allocs/op
+BenchmarkBuildExecSQLSql64      2000    606077 ns/op        5285 B/op        171 allocs/op
 ```
 
 The logic is something like this
@@ -633,15 +636,8 @@ for i := 0; i < b.N; i++ {
 }
 ```
 
-The results suggests that local interpolation is both faster and does less
-allocations. Interpolation comes with a cost of more bytes used as it has to
-inspect the args and splice them into the statement.
-
-database/sql when presented with arguments prepares a statement on the
-connection by sending it to the database then using the prepared statement on
-the same connection to execute the query.  Keep in mind, these benchmarks are
-local so network latency is not a factor which would favor interpolation even
-more.
+The results suggests that local interpolation is faster, uses less bytes and does less
+allocation with primitive values and small strings.
 
 #### Interpolation and Transactions
 
@@ -650,7 +646,7 @@ on "level playing field" with database/sql. As mentioned in a previous section,
 prepared statements MUST be prepared and executed on the same connection to
 utilize them.
 
-2, 4, 8 are number of arguments
+2, 4, 8, 64 are number of arguments
 
 ```
 BenchmarkTransactedDat2    10000        112358 ns/op         624 B/op         18 allocs/op
@@ -661,6 +657,9 @@ BenchmarkTransactedSql4    10000        183447 ns/op         977 B/op         35
 
 BenchmarkTransactedDat8    10000        146121 ns/op         904 B/op         27 allocs/op
 BenchmarkTransactedSql8     5000        220571 ns/op        1194 B/op         44 allocs/op
+
+BenchmarkTransactedDat64    3000        382357 ns/op        2962 B/op        113 allocs/op
+BenchmarkTransactedSql64    3000        453861 ns/op        5285 B/op        171 allocs/op
 ```
 
 The logic is something like this
@@ -681,8 +680,7 @@ for i := 0; i < b.N; i++ {
 }
 ```
 
-Again, interpolation seems faster with less allocations. The underlying driver
-still has to process and send the arguments with the prepared statement name.
+Again, interpolation comes out ahead.
 
 #### Interpolation and Text
 
@@ -708,10 +706,13 @@ BenchmarkVaryingLengthDatText64K         500       2701895 ns/op      295449 B/o
 BenchmarkVaryingLengthSqlText64K        1000       1739295 ns/op      140053 B/op         28 allocs/op
 ```
 
-Interpolation always use more bytes (roughly double) per operation. At about
-4K+ length, interpolation starts to become slower. The good news is
+Interpolation always use more bytes per operation. At about 4K, interpolation
+starts to become slower and uses 2X as many bytes.  The positive news is
 interpolation does less allocation in each benchmark, which means less
 fragmented heap space.
+
+Choose what is acceptable. I'm OK with anything up to text up to 8K based on
+this benchmark. For queries in which larger text is processed, opt for `sqlx`.
 
 ### Interpolation and Binary Data
 
@@ -734,7 +735,7 @@ BenchmarkVaryingLengthDatBinary8K       2000        816444 ns/op      131836 B/o
 BenchmarkVaryingLengthSqlBinary8K       2000        789884 ns/op      131820 B/op         52 allocs/op
 ```
 
-Interpolation performs roughly the same across the board with `[]byte`. This is as expected,
+Interpolation performs roughly the same across the board with `[]byte`. This is expected,
 `dat` passes through any SQL with `[]byte` arguments to the driver as-is. The extra allocation is
 for the interpolated identity result.
 
