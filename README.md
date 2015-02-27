@@ -468,8 +468,6 @@ if err != nil {
 
 ### Local Interpolation
 
-TL;DR: Interpolation avoids prepared statements and argument processing.
-
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
@@ -483,9 +481,13 @@ db.Exec(
 )
 ```
 
-The driver first asks the database to create a prepared statement for the
-INSERT statement, then it will send the arguments with the prepared
-statement to the database
+When the statement agove gets executed:
+
+1. The driver checks if this SQL has been prepared previously on the current connection, using the SQL as the key
+1. If not, the driver sends the SQL statement to the database to prepare the statement
+2. The prepared statement is assigned to the connection
+3. The prepared satement is executed along with arguments
+4. Received data is sent back to the caller
 
 In contrast, `dat` can interpolate the statement locally resulting in
 a SQL statement with often no arguments. The code above results in
@@ -495,35 +497,28 @@ this interpolated SQL
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-Some of the reasons you might want to use interpolation:
+When the statement agove gets executed:
 
-*   Performance improvement
-*   Debugging is simpler with interpolated SQL
-*   Use SQL constants like `NOW` and `DEFAULT`
-*   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
-
-`[]byte`,  `[]*byte` and any unhandled values are passed through to the
-driver when interpolating.
+1. The statement is treated as simple exec and sent with args to database, since len(args) == 0
+2. Received data is sent back to the caller
 
 #### Interpolation Safety
 
-Postgres 9.1+ does not allow any escape sequences by default. See
+As of Postgres 9.1, the database does not process escape sequence by default. See
 [String Constants with C-style Escapes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
-In short, all backslashes are treated literally not as escape sequences.
+In short, all backslashes are treated literally.
 
-It's rare to need backslashes to represent special characters in user input. Do
-you trust users to enter C-like expressions? `dat` escapes apostrophes on
-small strings, otherwise Postgres' [dollar
+`dat` escapes single quotes (apostrophes) on
+small strings, otherwise it uses Postgres' [dollar
 quotes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING)
-are used to escape the string. The dollar quote tag is randomized at init. If a string contains the
+to escape strings. The dollar quote tag is randomized at init. If a string contains the
 dollar quote tag, the tag is randomized again and if the string still contains the tag, then
 single quote escaping is used.
 
 As an added safety measure, `dat` checks the Postgres database
 `standard_conforming_strings` setting value on a new connection when
-`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` you
-should either set it to `"on"` or disable interpolation. `dat` will panic if
-you try to use interpolation with an unsafe setting.
+`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` then set set it to `"on"` 
+or disable interpolation. `dat` will panic if it the setting is incompatible.
 
 #### Why is Interpolation Faster?
 
@@ -546,12 +541,18 @@ That snippet bypasses the prepare/exec roundtrip to the database.
 Keep in mind that prepared statements are only valid for the current session
 and unless the same query is be executed *MANY* times in the same session there
 is little benefit in using prepared statements other than protecting against
-SQL injections. See Interpolation Safety below.
+SQL injections. See Interpolation Safety section above.
 
-Interpolation also offloads dabatabase workload to your application servers.
-The database does less work and less network chatter when interpolation is
-performed locally. It's usually much more cost effective to add application
-servers than to vertically scale a database server.
+
+#### More Reasons to Use Interpolation
+
+*   Performance improvement
+*   Debugging is simpler with interpolated SQL
+*   Use SQL constants like `NOW` and `DEFAULT`
+*   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
+
+`[]byte`,  `[]*byte` and any unhandled values are passed through to the
+driver when interpolating.
 
 #### Benchmarks
 
