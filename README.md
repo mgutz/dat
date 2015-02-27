@@ -3,7 +3,7 @@
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
-library for Go. `dat` likes SQL.
+library for Go. `dat` adores SQL.
 
 Highlights
 
@@ -20,14 +20,12 @@ Highlights
         Select("id, user_name").
         From("users").
         Where("id = $1", id).
-
         QueryStruct(&user)
     ```
 
 *   Performant
 
-    -   ordinal placeholder logic has been optimized to be nearly as fast as `?`
-        placeholders
+    -   ordinal placeholder logic is optimized to be nearly as fast as using `?`
     -   `dat` can interpolate queries locally before sending to server
 
 ## Getting Started
@@ -115,11 +113,11 @@ transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason this
 library exists is my dissatisfaction with other SQL builders introducing
-another domain language or AST-like expressions.
+another domain language or AST-like expressions. What's wrong with SQL
+anyways?
 
 Query builders shine when dealing with data transfer objects,
 records (input structs).
-
 
 ### Fetch Data Simply
 
@@ -340,7 +338,7 @@ err := conn.SQL(...).QueryStruct(&post)
 
 For multiple operations, create a session. Note that session
 is really a transaction due to `database/sql` connection pooling.
-__`Session.AutoCommit() or Session.AutoRollback()` MUST be called__
+__`defer Session.AutoCommit()` or `defer Session.AutoRollback()` SHOULD be called__
 
 ```go
 
@@ -367,6 +365,7 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
     sess.Commit()
 }
 ```
+
 
 ### Constants
 
@@ -685,8 +684,8 @@ Again, interpolation comes out ahead.
 
 #### Interpolation and Text
 
-This benchmarks compares the performance of interpolation against database/sql
-when text of varying length.
+This benchmarks compares the performance of interpolation against `database/sql`
+with text having varying length.
 
 128, 512, 4K, 8K, 64K are number of bytes
 
@@ -708,7 +707,7 @@ BenchmarkVaryingLengthSqlText64K        1000       1739295 ns/op      140053 B/o
 ```
 
 Interpolation always use more bytes per operation. At about 4K, interpolation
-starts to become slower and uses 2X as many bytes.  The positive news is
+starts to become slower and uses 2X as many bytes. The positive news is
 interpolation does less allocation in each benchmark, which means less
 fragmented heap space.
 
@@ -717,8 +716,8 @@ this benchmark. For queries in which larger text is processed, opt for `sqlx`.
 
 ### Interpolation and Binary Data
 
-This benchmarks compares the performance of interpolation against database/sql
-with binary data of varying length.
+This benchmarks compares the performance of interpolation against `database/sql`
+with binary data having varying length.
 
 128, 512, 4K, 8K, 64K are number of bytes
 
@@ -757,7 +756,7 @@ rows, err := db.Query(sql, args...)
 
 // Alternatively build the interpolated sql statement
 sql, args, err := builder.Interpolate()
-if len(args) {
+if len(args) == 0 {
     rows, err = db.Query(sql)
 } else {
     rows, err = db.Query(sql, args...)
