@@ -16,25 +16,35 @@ type Builder interface {
 
 // DeleteFrom creates a new DeleteBuilder for the given table.
 func DeleteFrom(table string) *DeleteBuilder {
-	return NewDeleteBuilder(table)
+	b := NewDeleteBuilder(table)
+	b.Execer = &panicExecer{}
+	return b
 }
 
 // InsertInto creates a new InsertBuilder for the given table.
 func InsertInto(table string) *InsertBuilder {
-	return NewInsertBuilder(table)
+	b := NewInsertBuilder(table)
+	b.Execer = &panicExecer{}
+	return b
 }
 
 // Select creates a new SelectBuilder for the given columns.
 func Select(columns ...string) *SelectBuilder {
-	return NewSelectBuilder(columns...)
+	b := NewSelectBuilder(columns...)
+	b.Execer = &panicExecer{}
+	return b
 }
 
 // SQL creates a new raw SQL builder.
 func SQL(sql string, args ...interface{}) *RawBuilder {
-	return NewRawBuilder(sql, args...)
+	b := NewRawBuilder(sql, args...)
+	b.Execer = &panicExecer{}
+	return b
 }
 
 // Update creates a new UpdateBuilder for the given table.
 func Update(table string) *UpdateBuilder {
-	return NewUpdateBuilder(table)
+	b := NewUpdateBuilder(table)
+	b.Execer = &panicExecer{}
+	return b
 }

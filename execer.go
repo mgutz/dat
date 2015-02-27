@@ -15,3 +15,34 @@ type Execer interface {
 	QueryStruct(dest interface{}) error
 	QueryStructs(dest interface{}) error
 }
+
+const panicExecerMsg = "dat builders are disconnected, use a runner package"
+
+// panicExecer is the execer for instances of dat builders from
+// data package.
+type panicExecer struct{}
+
+// Exec panics when Exec is called.
+func (nop *panicExecer) Exec() (*Result, error) {
+	panic(panicExecerMsg)
+}
+
+// QueryScalar panics when QueryScalar is called.
+func (nop *panicExecer) QueryScalar(destinations ...interface{}) error {
+	panic(panicExecerMsg)
+}
+
+// QuerySlice panics when QuerySlice is called.
+func (nop *panicExecer) QuerySlice(dest interface{}) error {
+	panic(panicExecerMsg)
+}
+
+// QueryStruct panics when QueryStruct is called.
+func (nop *panicExecer) QueryStruct(dest interface{}) error {
+	panic(panicExecerMsg)
+}
+
+// QueryStructs panics when QueryStructs is called.
+func (nop *panicExecer) QueryStructs(dest interface{}) error {
+	panic(panicExecerMsg)
+}
