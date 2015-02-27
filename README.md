@@ -642,7 +642,7 @@ allocation with primitive values and small strings.
 #### Interpolation and Transactions
 
 This benchmark compares the performance of interpolation within a transaction
-on "level playing field" with database/sql. As mentioned in a previous section,
+on a level playing field with `database/sql`. As mentioned in a previous section,
 prepared statements MUST be prepared and executed on the same connection to
 utilize them.
 
@@ -680,7 +680,7 @@ for i := 0; i < b.N; i++ {
 }
 ```
 
-Again, interpolation comes out ahead.
+Interpolation comes out ahead.
 
 #### Interpolation and Text
 
@@ -711,8 +711,8 @@ starts to become slower and uses 2X as many bytes. The positive news is
 interpolation does less allocation in each benchmark, which means less
 fragmented heap space.
 
-Choose what is acceptable. I'm OK with anything up to text up to 8K based on
-this benchmark. For queries in which larger text is processed, opt for `sqlx`.
+Choose what is acceptable. I'm OK with anything up 8K of text based on
+this benchmark. For queries with larger text, opt for `sqlx`.
 
 ### Interpolation and Binary Data
 
