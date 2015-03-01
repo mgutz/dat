@@ -24,15 +24,11 @@ type Tx struct {
 	state int
 }
 
-// Begin creates a transaction for the given session
-func (conn *Connection) Begin() (*Tx, error) {
-	tx, err := conn.DB.Beginx()
-	if err != nil {
-		return nil, dat.Events.EventErr("begin.error", err)
-	}
+// WrapSqlxTx creates a Tx from a sqlx.Tx
+func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 	dat.Events.Event("begin")
 
-	newtx, err := &Tx{Tx: tx, Queryable: &Queryable{tx}}, nil
+	newtx := &Tx{Tx: tx, Queryable: &Queryable{tx}}
 	if dat.Strict {
 		time.AfterFunc(1*time.Minute, func() {
 			if newtx.state == txPending {
@@ -40,7 +36,16 @@ func (conn *Connection) Begin() (*Tx, error) {
 			}
 		})
 	}
-	return newtx, err
+	return newtx
+}
+
+// Begin creates a transaction for the given session
+func (conn *Connection) Begin() (*Tx, error) {
+	tx, err := conn.DB.Beginx()
+	if err != nil {
+		return nil, dat.Events.EventErr("begin.error", err)
+	}
+	return WrapSqlxTx(tx), nil
 }
 
 // Commit finishes the transaction

@@ -42,6 +42,13 @@ func pgMustNotAllowEscapeSequence(conn *Connection) {
 	}
 }
 
+// WrapSqlxDB instantiates a Connection for a given sqlx.DB
+func WrapSqlxDB(dbx *sqlx.DB) *Connection {
+	conn := &Connection{dbx, &Queryable{dbx}}
+	pgMustNotAllowEscapeSequence(conn)
+	return conn
+}
+
 // NewConnection instantiates a Connection for a given database/sql connection
 func NewConnection(db *sql.DB, driverName string) *Connection {
 	DB := sqlx.NewDb(db, driverName)
