@@ -16,6 +16,11 @@ const (
 	txRollbacked
 )
 
+func logError(msg string, err error) error {
+	logger.Error(msg, "err", err)
+	return err
+}
+
 // Tx is a transaction for the given Session
 type Tx struct {
 	sync.Mutex
@@ -28,9 +33,9 @@ type Tx struct {
 func (conn *Connection) Begin() (*Tx, error) {
 	tx, err := conn.DB.Beginx()
 	if err != nil {
-		return nil, dat.Events.EventErr("begin.error", err)
+		return nil, logError("begin.error", err)
 	}
-	dat.Events.Event("begin")
+	logger.Info("begin")
 
 	newtx, err := &Tx{Tx: tx, Queryable: &Queryable{tx}}, nil
 	if dat.Strict {
@@ -53,9 +58,9 @@ func (tx *Tx) Commit() error {
 	}
 	err := tx.Tx.Commit()
 	if err != nil {
-		return dat.Events.EventErr("commit.error", err)
+		return logError("commit.error", err)
 	}
-	dat.Events.Event("commit")
+	logger.Info("commit")
 	return nil
 }
 
@@ -65,17 +70,17 @@ func (tx *Tx) Rollback() error {
 	defer tx.Unlock()
 
 	if tx.state == txCommitted {
-		return dat.Events.EventErr("rollback", fmt.Errorf("Cannot rollback, transaction has already been commited"))
+		return logError("rollback", fmt.Errorf("Cannot rollback, transaction has already been commited"))
 	}
 	if tx.state == txRollbacked {
-		return dat.Events.EventErr("rollback", fmt.Errorf("Cannot rollback, transaction has already been rollbacked"))
+		return logError("rollback", fmt.Errorf("Cannot rollback, transaction has already been rollbacked"))
 	}
 	err := tx.Tx.Rollback()
 	if err != nil {
-		return dat.Events.EventErr("rollback", err)
+		return logError("rollback", err)
 	}
 	tx.state = txRollbacked
-	dat.Events.Event("rollback")
+	logger.Info("rollback")
 	return nil
 }
 
@@ -92,9 +97,9 @@ func (tx *Tx) AutoCommit() error {
 		if dat.Strict {
 			log.Fatalf("Could not close session: %s\n", err.Error())
 		}
-		return dat.Events.EventErr("transaction.AutoCommit.commit_error", err)
+		return logError("transaction.AutoCommit.commit_error", err)
 	}
-	dat.Events.Event("autocommit")
+	logger.Info("autocommit")
 	return err
 }
 
@@ -111,9 +116,9 @@ func (tx *Tx) AutoRollback() error {
 		if dat.Strict {
 			log.Fatalf("Could not rollback session: %s\n", err.Error())
 		}
-		return dat.Events.EventErr("transaction.AutoRollback.rollback_error", err)
+		return logError("transaction.AutoRollback.rollback_error", err)
 	}
-	dat.Events.Event("autorollback")
+	logger.Info("autorollback")
 	return err
 }
 
