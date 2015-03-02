@@ -2,7 +2,6 @@ package dat
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/mgutz/logxi/v1"
@@ -51,5 +50,5 @@ func init() {
 		itoaTab[i] = strconv.Itoa(i)
 	}
 
-	logger = log.New(os.Stdout, "dat")
+	logger = log.New("dat")
 }

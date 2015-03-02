@@ -51,8 +51,6 @@ func init() {
 
     // set this to enable interpolation
     dat.EnableInterpolation = true
-    // set to log SQL, etc
-    dat.SetVerbose(false)
     // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
@@ -194,7 +192,6 @@ This is why the runner is in its own package.
 set environment variable
 
     LOGXI=dat* yourapp
-    LOGXI=dat* go test
 
 ## CRUD
 
