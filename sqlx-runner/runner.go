@@ -35,11 +35,13 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 		return nil, err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() {
-		logger.Info("exec", "elapsed", time.Since(startTime).Nanoseconds(), "sql", fullSQL)
-	}()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("exec", "elapsed", time.Since(startTime).Nanoseconds(), "sql", fullSQL)
+		}()
+	}
 
 	var result sql.Result
 	if args == nil {
@@ -78,14 +80,16 @@ func queryScalar(runner runner, builder dat.Builder, destinations ...interface{}
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() {
-		logger.Info("QueryScalar",
-			"elapsed", time.Since(startTime).Nanoseconds(),
-			"sql", fullSQL,
-		)
-	}()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryScalar",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	// Run the query:
 	var rows *sqlx.Rows
@@ -159,14 +163,16 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() {
-		logger.Info("querySlice",
-			"elapsed", time.Since(startTime).Nanoseconds(),
-			"sql", fullSQL,
-		)
-	}()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("querySlice",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	// Run the query:
 	var rows *sqlx.Rows
@@ -224,14 +230,16 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() {
-		logger.Info("QueryStruct",
-			"elapsed", time.Since(startTime).Nanoseconds(),
-			"sql", fullSQL,
-		)
-	}()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryStruct",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	// Run the query:
 
@@ -253,14 +261,16 @@ func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() {
-		logger.Info("QueryStructs",
-			"elapsed", time.Since(startTime).Nanoseconds(),
-			"sql", fullSQL,
-		)
-	}()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryStructs",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	if args == nil {
 		return runner.Select(dest, fullSQL)

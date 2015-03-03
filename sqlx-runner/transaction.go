@@ -35,7 +35,7 @@ func (conn *Connection) Begin() (*Tx, error) {
 	if err != nil {
 		return nil, logError("begin.error", err)
 	}
-	logger.Info("begin")
+	logger.Debug("begin")
 
 	newtx, err := &Tx{Tx: tx, Queryable: &Queryable{tx}}, nil
 	if dat.Strict {
@@ -60,7 +60,7 @@ func (tx *Tx) Commit() error {
 	if err != nil {
 		return logError("commit.error", err)
 	}
-	logger.Info("commit")
+	logger.Debug("commit")
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (tx *Tx) Rollback() error {
 		return logError("rollback", err)
 	}
 	tx.state = txRollbacked
-	logger.Info("rollback")
+	logger.Debug("rollback")
 	return nil
 }
 
@@ -99,7 +99,7 @@ func (tx *Tx) AutoCommit() error {
 		}
 		return logError("transaction.AutoCommit.commit_error", err)
 	}
-	logger.Info("autocommit")
+	logger.Debug("autocommit")
 	return err
 }
 
@@ -118,7 +118,7 @@ func (tx *Tx) AutoRollback() error {
 		}
 		return logError("transaction.AutoRollback.rollback_error", err)
 	}
-	logger.Info("autorollback")
+	logger.Debug("autorollback")
 	return err
 }
 
