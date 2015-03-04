@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/mgutz/dat"
@@ -16,7 +15,6 @@ var db *sql.DB
 func init() {
 	db = realDb()
 	conn = NewConnection(db, "postgres")
-	dat.SetVerbose(false)
 	dat.Strict = false
 }
 
@@ -53,17 +51,17 @@ func quoteSQL(sqlFmt string, cols ...string) string {
 func realDb() *sql.DB {
 	driver := os.Getenv("DAT_DRIVER")
 	if driver == "" {
-		log.Fatalln("env DAT_DRIVER is not set")
+		logger.Fatal("env DAT_DRIVER is not set")
 	}
 
 	dsn := os.Getenv("DAT_DSN")
 	if dsn == "" {
-		log.Fatalln("env DAT_DSN is not set")
+		logger.Fatal("env DAT_DSN is not set")
 	}
 
 	db, err := sql.Open(driver, dsn)
 	if err != nil {
-		log.Fatalln("Database error ", err)
+		logger.Fatal("Database error ", "err", err)
 	}
 
 	return db
@@ -107,7 +105,7 @@ func installFixtures() {
 	for _, v := range sqlToRun {
 		_, err := db.Exec(v)
 		if err != nil {
-			log.Fatalln("Failed to execute statement: ", v, " Got error: ", err)
+			logger.Fatal("Failed to execute statement", "sql", v, "err", err)
 		}
 	}
 }

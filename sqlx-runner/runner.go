@@ -31,12 +31,17 @@ type M map[string]string
 func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
-		return nil, dat.Events.EventErrKv("exec.interpolate", err, M{"sql": fullSQL})
+		logger.Error("exec.interpolate", "err", err, "sql", fullSQL)
+		return nil, err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { dat.Events.TimingKv("exec", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("exec", "elapsed", time.Since(startTime).Nanoseconds(), "sql", fullSQL)
+		}()
+	}
 
 	var result sql.Result
 	if args == nil {
@@ -45,7 +50,8 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 		result, err = runner.Exec(fullSQL, args...)
 	}
 	if err != nil {
-		return nil, dat.Events.EventErrKv("exec.exec", err, M{"sql": fullSQL})
+		logger.Error("exec.exec", "err", err, "sql", fullSQL)
+		return nil, err
 	}
 
 	return result, nil
@@ -74,9 +80,16 @@ func queryScalar(runner runner, builder dat.Builder, destinations ...interface{}
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { dat.Events.TimingKv("QueryScalar", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryScalar",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	// Run the query:
 	var rows *sqlx.Rows
@@ -86,18 +99,30 @@ func queryScalar(runner runner, builder dat.Builder, destinations ...interface{}
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		return dat.Events.EventErrKv("QueryScalar.load_value.query", err, M{"sql": fullSQL})
+		logger.Error("QueryScalar.load_value.query",
+			"err", err,
+			"sql", fullSQL,
+		)
+		return err
 	}
 	defer rows.Close()
 	if rows.Next() {
 		err = rows.Scan(destinations...)
 		if err != nil {
-			return dat.Events.EventErrKv("QueryScalar.load_value.scan", err, M{"sql": fullSQL})
+			logger.Error("QueryScalar.load_value.scan",
+				"err", err,
+				"sql", fullSQL,
+			)
+			return err
 		}
 		return nil
 	}
 	if err := rows.Err(); err != nil {
-		return dat.Events.EventErrKv("QueryScalar.load_value.rows_err", err, M{"sql": fullSQL})
+		logger.Error("QueryScalar.load_value.rows_err",
+			"err", err,
+			"sql", fullSQL,
+		)
+		return err
 	}
 
 	return dat.ErrNotFound
@@ -138,9 +163,16 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { dat.Events.TimingKv("querySlice", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("querySlice",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	// Run the query:
 	var rows *sqlx.Rows
@@ -150,7 +182,11 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		return dat.Events.EventErrKv("querySlice.load_all_values.query", err, M{"sql": fullSQL})
+		logger.Error("querySlice.load_all_values.query",
+			"err", err,
+			"sql", fullSQL,
+		)
+		return err
 	}
 	defer rows.Close()
 
@@ -163,7 +199,11 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 
 		err = rows.Scan(pointerToNewValue.Interface())
 		if err != nil {
-			return dat.Events.EventErrKv("querySlice.load_all_values.scan", err, M{"sql": fullSQL})
+			logger.Error("querySlice.load_all_values.scan",
+				"err", err,
+				"sql", fullSQL,
+			)
+			return err
 		}
 
 		// Append our new value to the slice:
@@ -172,7 +212,9 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 	valueOfDest.Set(sliceValue)
 
 	if err := rows.Err(); err != nil {
-		return dat.Events.EventErrKv("querySlice.load_all_values.rows_err", err, M{"sql": fullSQL})
+		logger.Error("querySlice.load_all_values.rows_err",
+			"err", err, "sql", fullSQL)
+		return err
 	}
 
 	return nil
@@ -188,9 +230,16 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { dat.Events.TimingKv("QueryStruct", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryStruct",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	// Run the query:
 
@@ -208,12 +257,20 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
 	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
-		return dat.Events.EventErr("QueryStructs.interpolate", err)
+		logger.Error("QueryStructs.interpolate", "err", err)
+		return err
 	}
 
-	// Start the timer:
-	startTime := time.Now()
-	defer func() { dat.Events.TimingKv("QueryStructs", time.Since(startTime).Nanoseconds(), M{"sql": fullSQL}) }()
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryStructs",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
 
 	if args == nil {
 		return runner.Select(dest, fullSQL)

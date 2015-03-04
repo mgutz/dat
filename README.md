@@ -51,8 +51,6 @@ func init() {
 
     // set this to enable interpolation
     dat.EnableInterpolation = true
-    // set to log SQL, etc
-    dat.SetVerbose(false)
     // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
@@ -186,6 +184,14 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 This is why the runner is in its own package.
 
 *   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
+
+
+### Tracing SQL
+
+`dat` uses [logxi](https://github.com/mgutz/logxi) for logging. To trace SQL
+set environment variable
+
+    LOGXI=dat* yourapp
 
 ## CRUD
 
@@ -516,7 +522,7 @@ single quote escaping is used.
 
 As an added safety measure, `dat` checks the Postgres database
 `standard_conforming_strings` setting value on a new connection when
-`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` then set set it to `"on"` 
+`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` then set set it to `"on"`
 or disable interpolation. `dat` will panic if it the setting is incompatible.
 
 #### Why is Interpolation Faster?
@@ -786,8 +792,8 @@ Then run any task
 # (re)create database
 godo createdb
 
-# run tests
-godo test
+# run tests with traced SQL (optional)
+LOGXI=dat* godo test
 
 # run benchmarks
 godo bench

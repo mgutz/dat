@@ -1,7 +1,5 @@
 package runner
 
-import "github.com/mgutz/dat"
-
 // Session represents a business unit of execution for some connection
 type Session struct {
 	*Tx
@@ -20,7 +18,7 @@ func (cxn *Connection) NewSession() (*Session, error) {
 func (sess *Session) Close() error {
 	err := sess.Tx.AutoCommit()
 	if err != nil {
-		dat.Events.EventErr("session.close", err)
+		logger.Error("session.close", "err", err)
 	}
 	return err
 }

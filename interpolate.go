@@ -273,7 +273,7 @@ func interpolate(builder Builder) (string, []interface{}, error) {
 func mustInterpolate(builder Builder) (string, []interface{}) {
 	sql, args, err := interpolate(builder)
 	if err != nil {
-		panic(Events.EventErrKv("mustInterpolate", err, kvs{"sql": sql}))
+		logger.Error("mustInterpolate", "err", err, "sql", sql)
 	}
 	return sql, args
 }

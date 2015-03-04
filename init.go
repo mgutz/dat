@@ -3,25 +3,17 @@ package dat
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/mgutz/logxi/v1"
 )
 
-// Events is the event receiver.
-var Events EventReceiver
+var logger log.Logger
 
 // Strict tells dat to raise errors
 var Strict = false
 
 // Whether to enable interpolation
 var EnableInterpolation = false
-
-// SetVerbose sets the verbosity of logging which defaults to none
-func SetVerbose(verbose bool) {
-	if verbose {
-		Events = NewLogEventReceiver("[dat] ")
-	} else {
-		Events = &NullEventReceiver{}
-	}
-}
 
 // maxLookup is the max lookup index for predefined lookup tables
 const maxLookup = 100
@@ -42,8 +34,6 @@ var equalsPlaceholderTab = make([]string, maxLookup)
 var inPlaceholderTab = make([]string, maxLookup)
 
 func init() {
-	SetVerbose(false)
-
 	// There are performance costs with using ordinal placeholders.
 	// '?' placeholders are much more efficient but not eye friendly
 	// when coding non-trivial queries.
@@ -59,4 +49,6 @@ func init() {
 		atoiTab[strconv.Itoa(i)] = i
 		itoaTab[i] = strconv.Itoa(i)
 	}
+
+	logger = log.New("dat")
 }
