@@ -30,6 +30,14 @@ Highlights
 
 ## Getting Started
 
+Get it
+
+```sh
+go get -u github.com/mgutz/dat/sqlx-runner
+```
+
+Use it
+
 ```go
 import (
     "database/sql"
