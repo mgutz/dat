@@ -2,13 +2,26 @@ package runner
 
 import (
 	"database/sql"
+	"fmt"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/mgutz/dat"
 )
 
 // Queryable is an object that can be queried.
 type Queryable struct {
 	runner runner
+}
+
+// WrapSqlxExt converts a sqlx.Ext to a *Queryable
+func WrapSqlxExt(e sqlx.Ext) *Queryable {
+	switch e := e.(type) {
+	default:
+		panic(fmt.Sprintf("unexpected type %T", e))
+	case runner:
+		return &Queryable{e}
+	}
+
 }
 
 // DeleteFrom creates a new DeleteBuilder for the given table.
