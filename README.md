@@ -364,7 +364,7 @@ publishedByUser := dat.NewScope(`
 )
 ```
 
-Note that a scope defines default values for fields `"name"` and `"state"`.
+Note that a scope defines default values for fields `"user"` and `"state"`.
 The special field `:TABLE` is the table name of the builder to which a
 scope is applied.
 
