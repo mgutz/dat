@@ -136,4 +136,35 @@ func TestScalar(t *testing.T) {
 	assert.Equal(t, count, 2)
 }
 
+func TestSelectExpr(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.Close()
+
+	var name string
+	scope := dat.Expr("email = $1", "jonathan@acme.com")
+	err := s.Select("name").From("people").Where(scope).QueryScalar(&name)
+	assert.NoError(t, err)
+	assert.Equal(t, name, "Jonathan")
+
+	var count int64
+	err = s.Select("COUNT(*)").From("people").QueryScalar(&count)
+	assert.NoError(t, err)
+	assert.Equal(t, count, 2)
+}
+
+func TestSelectScope(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.Close()
+
+	var name string
+	scope := dat.NewScope("WHERE email = :name", dat.M{"name": "foo"})
+	err := s.
+		Select("name").
+		From("people").
+		Scope(scope, dat.M{"name": "jonathan@acme.com"}).
+		QueryScalar(&name)
+	assert.NoError(t, err)
+	assert.Equal(t, name, "Jonathan")
+}
+
 // Series of tests that test mapping struct fields to columns

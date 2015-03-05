@@ -9,6 +9,9 @@ import (
 	"github.com/mgutz/dat"
 )
 
+func timing() {
+}
+
 // Unvetted thots:
 // Given a query and given a structure (field list), there's 2 sets of fields.
 // Take the intersection. We can fill those in. great.
@@ -24,22 +27,21 @@ type runner interface {
 	Get(dest interface{}, query string, args ...interface{}) error
 }
 
-// M is generic string map.
-type M map[string]string
+// // M is generic string map.
+// type M map[string]string
 
 // Exec executes the query built by builder.
 func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
-		logger.Error("exec.interpolate", "err", err, "sql", fullSQL)
+		logger.Error("exec.10", "err", err, "sql", fullSQL)
 		return nil, err
 	}
 
 	if logger.IsInfo() {
-		// Start the timer:
 		startTime := time.Now()
 		defer func() {
-			logger.Info("exec", "elapsed", time.Since(startTime).Nanoseconds(), "sql", fullSQL)
+			logger.Info("exec.20", "elapsed", time.Since(startTime).Nanoseconds(), "sql", fullSQL)
 		}()
 	}
 
@@ -50,7 +52,7 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 		result, err = runner.Exec(fullSQL, args...)
 	}
 	if err != nil {
-		logger.Error("exec.exec", "err", err, "sql", fullSQL)
+		logger.Error("exec.30", "err", err, "sql", fullSQL)
 		return nil, err
 	}
 

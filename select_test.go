@@ -175,6 +175,13 @@ func TestSelectWhereEqSql(t *testing.T) {
 	}
 }
 
+func TestSelectWhereExprSql(t *testing.T) {
+	expr := Expr("id=$1", 100)
+	sql, args := Select("a").From("b").Where(expr).ToSQL()
+	assert.Equal(t, sql, "SELECT a FROM b WHERE (id=$1)")
+	assert.Exactly(t, args, []interface{}{100})
+}
+
 func TestRawSql(t *testing.T) {
 	sql, args := SQL("SELECT * FROM users WHERE x = 1").ToSQL()
 	assert.Equal(t, sql, "SELECT * FROM users WHERE x = 1")
@@ -194,4 +201,11 @@ func TestSelectVarieties(t *testing.T) {
 	sql, _ := Select("id, name, email").From("users").ToSQL()
 	sql2, _ := Select("id", "name", "email").From("users").ToSQL()
 	assert.Equal(t, sql, sql2)
+}
+
+func TestSelectScope(t *testing.T) {
+	scope := &Scope{"WHERE :TABLE.id = :id and name = :name", M{"id": 1, "name": "foo"}}
+	sql, args := Select("a").From("b").Scope(scope, M{"name": "mario"}).ToSQL()
+	assert.Equal(t, sql, `SELECT a FROM b WHERE "b".id = $1 and name = $2`)
+	assert.Exactly(t, args, []interface{}{1, "mario"})
 }

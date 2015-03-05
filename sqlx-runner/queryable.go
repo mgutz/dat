@@ -21,7 +21,6 @@ func WrapSqlxExt(e sqlx.Ext) *Queryable {
 	case runner:
 		return &Queryable{e}
 	}
-
 }
 
 // DeleteFrom creates a new DeleteBuilder for the given table.

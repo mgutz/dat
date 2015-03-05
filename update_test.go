@@ -90,3 +90,10 @@ func TestUpdateBlacklist(t *testing.T) {
 	assert.Equal(t, args, []interface{}{2, false})
 
 }
+
+func TestUpdateWhereExprSql(t *testing.T) {
+	expr := Expr("id=$1", 100)
+	sql, args := Update("a").Set("b", 10).Where(expr).ToSQL()
+	assert.Equal(t, sql, `UPDATE a SET "b" = $1 WHERE (id=$2)`)
+	assert.Exactly(t, args, []interface{}{10, 100})
+}

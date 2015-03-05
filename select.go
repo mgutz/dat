@@ -18,10 +18,15 @@ type SelectBuilder struct {
 	limitValid      bool
 	offsetCount     uint64
 	offsetValid     bool
+	scope           *Scope
 }
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
 func NewSelectBuilder(columns ...string) *SelectBuilder {
+	if len(columns) == 0 || columns[0] == "" {
+		logger.Error("Select requires 1 or more columns")
+		return nil
+	}
 	return &SelectBuilder{columns: columns, isInterpolated: EnableInterpolation}
 }
 
@@ -34,6 +39,12 @@ func (b *SelectBuilder) Distinct() *SelectBuilder {
 // From sets the table to SELECT FROM
 func (b *SelectBuilder) From(from string) *SelectBuilder {
 	b.table = from
+	return b
+}
+
+// Scope uses a predefined scope in place of WHERE.
+func (b *SelectBuilder) Scope(sc *Scope, override M) *SelectBuilder {
+	b.scope = sc.cloneMerge(override)
 	return b
 }
 
@@ -114,9 +125,14 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	buf.WriteString(b.table)
 
 	var placeholderStartPos int64 = 1
-	if len(b.whereFragments) > 0 {
-		buf.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(b.whereFragments, &buf, &args, &placeholderStartPos)
+	if b.scope == nil {
+		if len(b.whereFragments) > 0 {
+			buf.WriteString(" WHERE ")
+			writeWhereFragmentsToSql(b.whereFragments, &buf, &args, &placeholderStartPos)
+		}
+	} else {
+		whereFragment := newWhereFragment(b.scope.toSQL(b.table))
+		writeScopeCondition(whereFragment, &buf, &args, &placeholderStartPos)
 	}
 
 	if len(b.groupBys) > 0 {

@@ -32,3 +32,10 @@ func TestDeleteTenStaringFromTwentyToSql(t *testing.T) {
 
 	assert.Equal(t, sql, "DELETE FROM a ORDER BY id LIMIT 10 OFFSET 20")
 }
+
+func TestDeleteWhereExprSql(t *testing.T) {
+	expr := Expr("id=$1", 100)
+	sql, args := DeleteFrom("a").Where("foo = $1", "bar").Where(expr).ToSQL()
+	assert.Equal(t, sql, `DELETE FROM a WHERE (foo = $1) AND (id=$2)`)
+	assert.Exactly(t, args, []interface{}{"bar", 100})
+}

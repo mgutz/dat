@@ -224,7 +224,6 @@ are inserted.
 
 ```go
 post := Post{Title: "Go is awesome", State: "open"}
-
 err := conn.
     InsertInto("posts").
     Blacklist("id", "user_id", "created_at", "updated_at").
@@ -239,6 +238,7 @@ err := sess.
     Record(post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
+
 ```
 
 Insert Multiple Records
@@ -265,11 +265,24 @@ _, err := b.Exec()
 
 ```go
 var other Post
+
 err = conn.
     Select("id, title").
     From("posts").
     Where("id = $1", post.ID).
     QueryStruct(&other)
+
+published := dat.NewScope(
+    "WHERE user_id = :userID AND state = 'published'",
+    dat.M{"userID": 0},
+)
+
+var posts []*Post
+err = conn.
+    Select("id, title").
+    From("posts").
+    Scope(published, dat.M{"userID": 100})
+    QueryStructs(&posts)
 ```
 
 ### Update
@@ -335,7 +348,38 @@ result, err = conn.
     Exec()
 ```
 
-### Create a Session
+### Scopes
+
+Scopes predefine JOIN and WHERE conditions so they may be reused.
+For example, a "published" scoped might look something like this
+
+```go
+publishedByUser := dat.NewScope(`
+    INNER JOIN users U on (:TABLE.user_id = U.id)
+    WHERE
+        :TABLE.state = :state AND
+        :TABLE.deleted_at IS NULL AND
+        U.user_name = :user`,
+    dat.M{"user": "unknown", "state": "published"},
+)
+```
+
+Note that a scope defines default values for fields `"name"` and `"state"`.
+The special field `:TABLE` is the table name of the builder to which a
+scope is applied.
+
+```go
+err = conn.
+    Select("*").
+    From("posts").
+    Scope(publishedByUser, dat.M{"user": "mgutz"}).
+    QueryStructs(&posts)
+```
+
+Scopes may be used with `DeleteFrom`, `Select` and `Update`
+
+
+## Create a Session
 
 All queries are made in the context of a session which are acquired
 from the underlying SQL driver's pool

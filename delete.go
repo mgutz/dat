@@ -15,11 +15,22 @@ type DeleteBuilder struct {
 	offsetValid    bool
 	id             int
 	isInterpolated bool
+	scope          *Scope
 }
 
 // NewDeleteBuilder creates a new DeleteBuilder for the given table.
 func NewDeleteBuilder(table string) *DeleteBuilder {
+	if table == "" {
+		logger.Error("DeleteFrom requires a table name.")
+		return nil
+	}
 	return &DeleteBuilder{table: table, isInterpolated: EnableInterpolation}
+}
+
+// Scope uses a predefined scope in place of WHERE.
+func (b *DeleteBuilder) Scope(sc *Scope, override M) *DeleteBuilder {
+	b.scope = sc.cloneMerge(override)
+	return b
 }
 
 // Where appends a WHERE clause to the statement whereSqlOrMap can be a
@@ -65,9 +76,14 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 	var placeholderStartPos int64 = 1
 
 	// Write WHERE clause if we have any fragments
-	if len(b.whereFragments) > 0 {
-		sql.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
+	if b.scope == nil {
+		if len(b.whereFragments) > 0 {
+			sql.WriteString(" WHERE ")
+			writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
+		}
+	} else {
+		whereFragment := newWhereFragment(b.scope.toSQL(b.table))
+		writeScopeCondition(whereFragment, &sql, &args, &placeholderStartPos)
 	}
 
 	// Ordering and limiting

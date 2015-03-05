@@ -23,6 +23,7 @@ type UpdateBuilder struct {
 	offsetCount    uint64
 	offsetValid    bool
 	returnings     []string
+	scope          *Scope
 }
 
 type setClause struct {
@@ -32,6 +33,10 @@ type setClause struct {
 
 // NewUpdateBuilder creates a new UpdateBuilder for the given table
 func NewUpdateBuilder(table string) *UpdateBuilder {
+	if table == "" {
+		logger.Error("Update requires a table name")
+		return nil
+	}
 	return &UpdateBuilder{table: table, isInterpolated: EnableInterpolation}
 }
 
@@ -100,6 +105,12 @@ func (b *UpdateBuilder) SetWhitelist(rec interface{}, columns ...string) *Update
 	return b
 }
 
+// Scope uses a predefined scope in place of WHERE.
+func (b *UpdateBuilder) Scope(sc *Scope, override M) *UpdateBuilder {
+	b.scope = sc.cloneMerge(override)
+	return b
+}
+
 // Where appends a WHERE clause to the statement
 func (b *UpdateBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *UpdateBuilder {
 	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
@@ -162,8 +173,8 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			sql.WriteString(" = ")
 			// map relative $1, $2 placeholders to absolute
 			remapPlaceholders(&sql, e.Sql, start)
-			args = append(args, e.Values...)
-			placeholderStartPos += int64(len(e.Values))
+			args = append(args, e.Args...)
+			placeholderStartPos += int64(len(e.Args))
 		} else {
 			if i < maxLookup {
 				sql.WriteString(equalsPlaceholderTab[placeholderStartPos])
@@ -180,10 +191,14 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		}
 	}
 
-	// Write WHERE clause if we have any fragments
-	if len(b.whereFragments) > 0 {
-		sql.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
+	if b.scope == nil {
+		if len(b.whereFragments) > 0 {
+			sql.WriteString(" WHERE ")
+			writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
+		}
+	} else {
+		whereFragment := newWhereFragment(b.scope.toSQL(b.table))
+		writeScopeCondition(whereFragment, &sql, &args, &placeholderStartPos)
 	}
 
 	// Ordering and limiting

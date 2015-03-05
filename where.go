@@ -17,6 +17,10 @@ type whereFragment struct {
 
 func newWhereFragment(whereSqlOrMap interface{}, args []interface{}) *whereFragment {
 	switch pred := whereSqlOrMap.(type) {
+	case Expression:
+		return &whereFragment{Condition: pred.Sql, Values: pred.Args}
+	case *Expression:
+		return &whereFragment{Condition: pred.Sql, Values: pred.Args}
 	case string:
 		return &whereFragment{Condition: pred, Values: args}
 	case map[string]interface{}:
@@ -54,6 +58,19 @@ func remapPlaceholders(buf *bytes.Buffer, statement string, pos int64) int64 {
 		}
 	}
 	return replaced
+}
+
+// Invariant: for scope conditions only
+func writeScopeCondition(f *whereFragment, buf *bytes.Buffer, args *[]interface{}, pos *int64) {
+	buf.WriteRune(' ')
+	if len(f.Values) > 0 {
+		// map relative $1, $2 placeholders to absolute
+		replaced := remapPlaceholders(buf, f.Condition, *pos)
+		*pos += replaced
+		*args = append(*args, f.Values...)
+	} else {
+		buf.WriteString(f.Condition)
+	}
 }
 
 // Invariant: only called when len(fragments) > 0
