@@ -364,19 +364,21 @@ publishedByUser := dat.NewScope(`
 )
 ```
 
-Note that this scope defines default values for fields `"user"` and `"state"`.
-The special field `:TABLE` is the table name of the builder to which a
-scope is applied.
+The scope defines default values for fields `"user"` and `"state"`. When
+a scope is executed, the scope is first cloned then new values are merged. The reserved 
+field `:TABLE` is the table name of the builder to which a scope is applied.
 
 ```go
 err = conn.
-    Select("*").
+    Select("posts.*").
     From("posts").
     Scope(publishedByUser, dat.M{"user": "mgutz"}).
     QueryStructs(&posts)
 ```
 
-Scopes may be used with `DeleteFrom`, `Select` and `Update`.
+Note the qualified `"posts.*"` column spec to ensure returned rows are 
+compatible with `QueryStructs`. Scopes may be used with `DeleteFrom`, 
+`Select` and `Update`.
 
 
 ## Create a Session
