@@ -78,13 +78,21 @@ type Person struct {
 	Name      string          `db:"name"`
 	CreatedAt dat.NullTime    `db:"created_at"`
 }
+type Post struct {
+	ID        int          `db:"id"`
+	UserID    int          `db:"user_id"`
+	State     string       `db:"state"`
+	Title     string       `db:"title"`
+	DeletedAt dat.NullTime `db:"deleted_at"`
+	CreatedAt dat.NullTime `db:"created_at"`
+}
 
 func installFixtures() {
 	db := conn.DB
 	createTablePeople := `
 		CREATE TABLE people (
 			id SERIAL PRIMARY KEY,
-			amount money,
+			amount decimal,
 			doc hstore,
 			email text,
 			foo text default 'bar',
@@ -94,10 +102,22 @@ func installFixtures() {
 			created_at timestamptz default now()
 		)
 	`
+	createTablePosts := `
+		CREATE TABLE posts (
+			id SERIAL PRIMARY KEY,
+			user_id int references people(id),
+			state text,
+			title text,
+			deleted_at timestamptz,
+			created_at timestamptz default now()
+		)
+	`
 
 	sqlToRun := []string{
+		"DROP TABLE IF EXISTS posts",
 		"DROP TABLE IF EXISTS people",
 		createTablePeople,
+		createTablePosts,
 		"INSERT INTO people (name,email) VALUES ('Jonathan', 'jonathan@acme.com')",
 		"INSERT INTO people (name,email) VALUES ('Dmitri', 'zavorotni@jadius.com')",
 	}

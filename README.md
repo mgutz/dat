@@ -364,7 +364,7 @@ publishedByUser := dat.NewScope(`
 )
 ```
 
-Note that a scope defines default values for fields `"user"` and `"state"`.
+Note that this scope defines default values for fields `"user"` and `"state"`.
 The special field `:TABLE` is the table name of the builder to which a
 scope is applied.
 
@@ -376,7 +376,7 @@ err = conn.
     QueryStructs(&posts)
 ```
 
-Scopes may be used with `DeleteFrom`, `Select` and `Update`
+Scopes may be used with `DeleteFrom`, `Select` and `Update`.
 
 
 ## Create a Session

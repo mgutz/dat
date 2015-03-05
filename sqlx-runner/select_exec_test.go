@@ -156,15 +156,44 @@ func TestSelectScope(t *testing.T) {
 	s := createRealSessionWithFixtures()
 	defer s.Close()
 
-	var name string
-	scope := dat.NewScope("WHERE email = :name", dat.M{"name": "foo"})
+	var id int
 	err := s.
-		Select("name").
-		From("people").
-		Scope(scope, dat.M{"name": "jonathan@acme.com"}).
-		QueryScalar(&name)
+		InsertInto("people").
+		Columns("name").
+		Values("mgutz").
+		Returning("id").
+		QueryScalar(&id)
 	assert.NoError(t, err)
-	assert.Equal(t, name, "Jonathan")
+	assert.True(t, id > 0)
+
+	var postID int
+	err = s.
+		InsertInto("posts").
+		Columns("title", "state", "user_id").
+		Values("my post", "published", id).
+		Returning("id").
+		QueryScalar(&postID)
+	assert.NoError(t, err)
+	assert.True(t, postID > 0)
+
+	publishedByUser := dat.NewScope(
+		`
+		INNER JOIN people P on (P.id = :TABLE.user_id)
+		WHERE
+			P.name = :user AND
+			:TABLE.state = 'published' AND
+			:TABLE.deleted_at IS NULL
+		`,
+		dat.M{"user": ""},
+	)
+	var posts []*Post
+	err = s.
+		Select("posts.*").
+		From("posts").
+		Scope(publishedByUser, dat.M{"user": "mgutz"}).
+		QueryStructs(&posts)
+	assert.NoError(t, err)
+	assert.Equal(t, posts[0].Title, "my post")
 }
 
 // Series of tests that test mapping struct fields to columns
