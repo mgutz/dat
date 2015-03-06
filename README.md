@@ -26,7 +26,8 @@ Highlights
 *   Performant
 
     -   ordinal placeholder logic is optimized to be nearly as fast as using `?`
-    -   `dat` can interpolate queries locally before sending to server
+    -   `dat` can interpolate queries locally resulting in performance increase
+        over plain database/sql and sqlx. [Benchmarks](https://github.com/mgutz/dat/wiki/Benchmarks)
 
 ## Getting Started
 
@@ -514,15 +515,6 @@ err := conn.
     QueryStruct(&post)
 ```
 
-### JSON encoding of Null\* types
-
-```go
-// dat.Null* types serialize to JSON properly
-post := Post{ID: 1, Title: "Test Title"}
-jsonBytes, err := json.Marshal(&post)
-fmt.Println(string(jsonBytes)) // {"id":1,"title":"Test Title","created_at":null}
-```
-
 ### Transactions
 
 ```go
@@ -638,192 +630,6 @@ SQL injections. See Interpolation Safety section above.
 `[]byte`,  `[]*byte` and any unhandled values are passed through to the
 driver when interpolating.
 
-#### Benchmarks
-
-Benchmark legend
-
-```
-N         int           // The number of iterations.
-T         time.Duration // The total time taken (ns/op).
-Bytes     int64         // Bytes processed in one iteration. (B/op)
-MemAllocs uint64        // The total number of memory allocations. (allocs/op)
-```
-
-#### Interpolated v Non-Interpolated Queries
-
-This benchmark compares the time to execute an interpolated SQL
-statement with zero args against executing the same SQL statement with
-args.
-
-```
-# Dat is this package, Sql is database/sql
-# 2, 4 are number of arguments
-
-BenchmarkExecSQLDat2     5000      214717   ns/op   624     B/op    18  allocs/op
-BenchmarkExecSQLSql2     5000      299056   ns/op   881     B/op    30  allocs/op
-
-BenchmarkExecSQLDat4     5000      220359   ns/op   800     B/op    21  allocs/op
-BenchmarkExecSQLSql4     5000      306468   ns/op   978     B/op    35  allocs/op
-```
-
-The logic is something like this
-
-```go
-// already interpolated
-for i := 0; i < b.N; i++ {
-    conn.Exec("INSERT INTO t (a, b, c, d) VALUES (1, 2, 3 4)")
-}
-
-// not interpolated
-for i := 0; i < b.N; i++ {
-    db.Exec("INSERT INTO t (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
-}
-```
-
-To be fair, this benchmark is not meaningful. It does not take into account the
-time to perform the interpolation. It is only meant to show that interpolated
-queries avoid the overhead of arguments and skip the prepared statement logic
-in the underlying driver.
-
-#### Interpolating then Execing
-
-This benchmark compares the time to build and execute interpolated SQL
-statement resulting in zero args against executing the same SQL statement with
-args.
-
-```
-# 2, 4, 8 are number of arguments
-
-BenchmarkBuildExecSQLDat2       5000    215863 ns/op         624 B/op         18 allocs/op
-BenchmarkBuildExecSQLSql2       5000    298859 ns/op         881 B/op         30 allocs/op
-
-BenchmarkBuildExecSQLDat4       5000    221579 ns/op         800 B/op         21 allocs/op
-BenchmarkBuildExecSQLSql4       5000    305038 ns/op         977 B/op         35 allocs/op
-
-BenchmarkBuildExecSQLDat8       5000    251322 ns/op         904 B/op         27 allocs/op
-BenchmarkBuildExecSQLSql8       5000    344899 ns/op        1194 B/op         44 allocs/op
-
-BenchmarkBuildExecSQLDat64      2000    568307 ns/op        2962 B/op        113 allocs/op
-BenchmarkBuildExecSQLSql64      2000    606077 ns/op        5285 B/op        171 allocs/op
-```
-
-The logic is something like this
-
-```go
-// dat's SQL interpolates the statement then executes it
-for i := 0; i < b.N; i++ {
-    conn.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
-}
-
-// non interpolated
-for i := 0; i < b.N; i++ {
-    db.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
-}
-```
-
-The results suggests that local interpolation is faster, uses less bytes and does less
-allocation with primitive values and small strings.
-
-#### Interpolation and Transactions
-
-This benchmark compares the performance of interpolation within a transaction
-on a level playing field with `database/sql`. As mentioned in a previous section,
-prepared statements MUST be prepared and executed on the same connection to
-utilize them.
-
-2, 4, 8, 64 are number of arguments
-
-```
-BenchmarkTransactedDat2    10000        112358 ns/op         624 B/op         18 allocs/op
-BenchmarkTransactedSql2    10000        173155 ns/op         881 B/op         30 allocs/op
-
-BenchmarkTransactedDat4    10000        116873 ns/op         800 B/op         21 allocs/op
-BenchmarkTransactedSql4    10000        183447 ns/op         977 B/op         35 allocs/op
-
-BenchmarkTransactedDat8    10000        146121 ns/op         904 B/op         27 allocs/op
-BenchmarkTransactedSql8     5000        220571 ns/op        1194 B/op         44 allocs/op
-
-BenchmarkTransactedDat64    3000        382357 ns/op        2962 B/op        113 allocs/op
-BenchmarkTransactedSql64    3000        453861 ns/op        5285 B/op        171 allocs/op
-```
-
-The logic is something like this
-
-```go
-// dat interpolates the statement then execute it as part of transaction
-tx := conn.Begin()
-defer tx.Commit()
-for i := 0; i < b.N; i++ {
-    tx.SQL("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4).Exec()
-}
-
-// non-interpolated
-tx = db.Begin()
-defer tx.Commit()
-for i := 0; i < b.N; i++ {
-    tx.Exec("INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)", 1, 2, 3, 4)
-}
-```
-
-Interpolation comes out ahead.
-
-#### Interpolation and Text
-
-This benchmarks compares the performance of interpolation against `database/sql`
-with text having varying length.
-
-128, 512, 4K, 8K, 64K are number of bytes
-
-```
-BenchmarkVaryingLengthDatText128       10000        215654 ns/op        1088 B/op         16 allocs/op
-BenchmarkVaryingLengthSqlText128        5000        297229 ns/op         896 B/op         27 allocs/op
-
-BenchmarkVaryingLengthDatText512        5000        231806 ns/op        3282 B/op         17 allocs/op
-BenchmarkVaryingLengthSqlText512        5000        303941 ns/op        2304 B/op         28 allocs/op
-
-BenchmarkVaryingLengthDatText4K         3000        371230 ns/op       18904 B/op         17 allocs/op
-BenchmarkVaryingLengthSqlText4K         3000        371708 ns/op        9474 B/op         28 allocs/op
-
-BenchmarkVaryingLengthDatText8K         2000        579485 ns/op       34270 B/op         17 allocs/op
-BenchmarkVaryingLengthSqlText8K         3000        452165 ns/op       17412 B/op         28 allocs/op
-
-BenchmarkVaryingLengthDatText64K         500       2701895 ns/op      295449 B/op         18 allocs/op
-BenchmarkVaryingLengthSqlText64K        1000       1739295 ns/op      140053 B/op         28 allocs/op
-```
-
-Interpolation always use more bytes per operation. At about 4K, interpolation
-starts to become slower and uses 2X as many bytes. The positive news is
-interpolation does less allocation in each benchmark, which means less
-fragmented heap space.
-
-Choose what is acceptable. I'm OK with anything up 8K of text based on
-this benchmark. For queries with larger text, opt for `sqlx`.
-
-### Interpolation and Binary Data
-
-This benchmarks compares the performance of interpolation against `database/sql`
-with binary data having varying length.
-
-128, 512, 4K, 8K, 64K are number of bytes
-
-```
-BenchmarkVaryingLengthDatBinary128      5000        299503 ns/op        1898 B/op         36 allocs/op
-BenchmarkVaryingLengthSqlBinary128      5000        299713 ns/op        1882 B/op         35 allocs/op
-
-BenchmarkVaryingLengthDatBinary512      5000        323067 ns/op        7687 B/op         42 allocs/op
-BenchmarkVaryingLengthSqlBinary512      5000        326551 ns/op        7671 B/op         41 allocs/op
-
-BenchmarkVaryingLengthDatBinary4K       3000        530677 ns/op       70330 B/op         50 allocs/op
-BenchmarkVaryingLengthSqlBinary4K       3000        536849 ns/op       70314 B/op         49 allocs/op
-
-BenchmarkVaryingLengthDatBinary8K       2000        816444 ns/op      131836 B/op         53 allocs/op
-BenchmarkVaryingLengthSqlBinary8K       2000        789884 ns/op      131820 B/op         52 allocs/op
-```
-
-Interpolation performs roughly the same across the board with `[]byte`. This is expected,
-`dat` passes through any SQL with `[]byte` arguments to the driver as-is. The extra allocation is
-for the interpolated identity result.
-
 ### Use With Other Libraries
 
 ```go
@@ -883,12 +689,6 @@ godo
 
 When createdb prompts for superuser, enter superuser like 'postgres' to create
 the test database. On Mac + Postgress.app use your own user name and password.
-
-## TODO
-
-* more tests
-* hstore query suppport
-* stored procedure support
 
 ## Inspiration
 
