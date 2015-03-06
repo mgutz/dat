@@ -281,7 +281,7 @@ var posts []*Post
 err = conn.
     Select("id, title").
     From("posts").
-    Scope(published, dat.M{"userID": 100})
+    ScopeMap(published, dat.M{"userID": 100})
     QueryStructs(&posts)
 ```
 
@@ -351,9 +351,31 @@ result, err = conn.
 ### Scopes
 
 Scopes predefine JOIN and WHERE conditions so they may be reused.
+Scopes may be used with `DeleteFrom`, `Select` and `Update`.
+
 For example, a "published" scoped might look something like this
 
 ```go
+// :TABLE is the table name of the builder to which this scope is applied.
+publishedByUser := `
+    INNER JOIN users U on (:TABLE.user_id = U.id)
+    WHERE
+        :TABLE.state = 'published' AND
+        :TABLE.deleted_at IS NULL AND
+        U.user_name = $1
+`
+
+err = conn.
+    Select("*").
+    From("posts").
+    Scope(publishedByUser, "mgutz").
+    QueryStructs(&posts)
+```
+
+If you need to predefine values for parameters, then use a MapScope.
+
+```go
+// creates a MapScope
 publishedByUser := dat.NewScope(`
     INNER JOIN users U on (:TABLE.user_id = U.id)
     WHERE
@@ -365,19 +387,16 @@ publishedByUser := dat.NewScope(`
 ```
 
 Note that this scope defines default values for fields `"user"` and `"state"`.
-The special field `:TABLE` is the table name of the builder to which a
-scope is applied.
 
 ```go
 err = conn.
     Select("*").
     From("posts").
-    Scope(publishedByUser, dat.M{"user": "mgutz"}).
+    ScopeMap(publishedByUser, dat.M{"user": "mgutz"}).
     QueryStructs(&posts)
 ```
 
-Scopes may be used with `DeleteFrom`, `Select` and `Update`.
-
+`MapScope` provides flexibility but it copies maps making it inefficient.
 
 ## Create a Session
 

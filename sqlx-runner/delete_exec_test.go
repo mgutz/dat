@@ -52,7 +52,7 @@ func TestDeleteScope(t *testing.T) {
 	// Delete Barack
 	res, err := s.
 		DeleteFrom("people").
-		Scope(scope, dat.M{"id": id}).
+		ScopeMap(scope, dat.M{"id": id}).
 		Exec()
 	assert.NoError(t, err)
 

@@ -151,7 +151,40 @@ func TestUpdateScope(t *testing.T) {
 	_, err := s.
 		Update("people").
 		SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).
-		Scope(scope, dat.M{"id": id}).
+		ScopeMap(scope, dat.M{"id": id}).
+		Exec()
+
+	assert.NoError(t, err)
+
+	var person Person
+	err = s.Select("*").From("people").Where("id = $1", id).QueryStruct(&person)
+	assert.NoError(t, err)
+
+	assert.Equal(t, person.ID, id)
+	assert.Equal(t, person.Name, "Barack")
+	assert.Equal(t, person.Email.Valid, true)
+	assert.Equal(t, person.Email.String, "barack@whitehouse.gov")
+}
+
+func TestUpdateScopeFunc(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.Close()
+
+	var id int64
+	// Insert a George
+	s.InsertInto("people").
+		Columns("name", "email").
+		Values("Scope", "scope@foo.gov").
+		Returning("id").
+		QueryScalar(&id)
+
+	scope := `WHERE id = $1`
+
+	// Rename our George to Barack
+	_, err := s.
+		Update("people").
+		SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).
+		Scope(scope, id).
 		Exec()
 
 	assert.NoError(t, err)

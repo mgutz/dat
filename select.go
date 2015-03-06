@@ -18,7 +18,7 @@ type SelectBuilder struct {
 	limitValid      bool
 	offsetCount     uint64
 	offsetValid     bool
-	scope           *Scope
+	scope           Scope
 }
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
@@ -42,9 +42,17 @@ func (b *SelectBuilder) From(from string) *SelectBuilder {
 	return b
 }
 
+// ScopeMap uses a predefined scope in place of WHERE.
+func (b *SelectBuilder) ScopeMap(mapScope *MapScope, m M) *SelectBuilder {
+	b.scope = mapScope.mergeClone(m)
+	return b
+}
+
 // Scope uses a predefined scope in place of WHERE.
-func (b *SelectBuilder) Scope(sc *Scope, override M) *SelectBuilder {
-	b.scope = sc.cloneMerge(override)
+func (b *SelectBuilder) Scope(sql string, args ...interface{}) *SelectBuilder {
+	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
+		return escapeScopeTable(sql, table), args
+	})
 	return b
 }
 
@@ -131,7 +139,7 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 			writeWhereFragmentsToSql(b.whereFragments, &buf, &args, &placeholderStartPos)
 		}
 	} else {
-		whereFragment := newWhereFragment(b.scope.toSQL(b.table))
+		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
 		writeScopeCondition(whereFragment, &buf, &args, &placeholderStartPos)
 	}
 

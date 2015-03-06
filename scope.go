@@ -3,28 +3,40 @@ package dat
 import (
 	"bytes"
 	"regexp"
+	"strings"
 )
 
 // M is a generic map from string to interface{}
 type M map[string]interface{}
 
-// Scope defines scope for query.
-//
-//
-type Scope struct {
+var reField = regexp.MustCompile(`\B:[A-Za-z_]\w*`)
+
+// Scope predefines parameterized JOIN and WHERE conditions.
+type Scope interface {
+	ToSQL(table string) (string, []interface{})
+}
+
+// ScopeFunc is an ad-hoc scope function.
+type ScopeFunc func(table string) (string, []interface{})
+
+// ToSQL converts scoped func to sql.
+func (sf ScopeFunc) ToSQL(table string) (string, []interface{}) {
+	return sf(table)
+}
+
+// MapScope defines scope for using a fields map.
+type MapScope struct {
 	SQL    string
 	Fields M
 }
 
-var reField = regexp.MustCompile(`\B:[A-Za-z_]\w*`)
-
 // NewScope creates a new scope.
-func NewScope(sql string, fields M) *Scope {
-	return &Scope{SQL: sql, Fields: fields}
+func NewScope(sql string, fields M) *MapScope {
+	return &MapScope{SQL: sql, Fields: fields}
 }
 
-// CloneMerge creates a clone of scope and merges fields.
-func (scope *Scope) cloneMerge(fields M) *Scope {
+// Clone creates a clone of scope and merges fields.
+func (scope *MapScope) mergeClone(fields M) *MapScope {
 	newm := M{}
 	for key, val := range scope.Fields {
 		if fields != nil {
@@ -36,12 +48,12 @@ func (scope *Scope) cloneMerge(fields M) *Scope {
 		newm[key] = val
 	}
 
-	clone := &Scope{SQL: scope.SQL, Fields: newm}
+	clone := &MapScope{SQL: scope.SQL, Fields: newm}
 	return clone
 }
 
 // ToSQL converts this scope's SQL to SQL and args.
-func (scope *Scope) toSQL(table string) (string, []interface{}) {
+func (scope *MapScope) ToSQL(table string) (string, []interface{}) {
 	var buf bytes.Buffer
 	var n = 1
 	var args []interface{}
@@ -62,4 +74,16 @@ func (scope *Scope) toSQL(table string) (string, []interface{}) {
 	})
 
 	return sql, args
+}
+
+// escapeScopeTable escapes :TABLE in sql using Dialect.WriteIdentifer.
+func escapeScopeTable(sql string, table string) string {
+	if !strings.Contains(sql, ":TABLE") {
+		return sql
+	}
+
+	var buf bytes.Buffer
+	Dialect.WriteIdentifier(&buf, table)
+	quoted := buf.String()
+	return strings.Replace(sql, ":TABLE", quoted, -1)
 }

@@ -23,7 +23,7 @@ type UpdateBuilder struct {
 	offsetCount    uint64
 	offsetValid    bool
 	returnings     []string
-	scope          *Scope
+	scope          Scope
 }
 
 type setClause struct {
@@ -105,9 +105,17 @@ func (b *UpdateBuilder) SetWhitelist(rec interface{}, columns ...string) *Update
 	return b
 }
 
+// ScopeMap uses a predefined scope in place of WHERE.
+func (b *UpdateBuilder) ScopeMap(mapScope *MapScope, m M) *UpdateBuilder {
+	b.scope = mapScope.mergeClone(m)
+	return b
+}
+
 // Scope uses a predefined scope in place of WHERE.
-func (b *UpdateBuilder) Scope(sc *Scope, override M) *UpdateBuilder {
-	b.scope = sc.cloneMerge(override)
+func (b *UpdateBuilder) Scope(sql string, args ...interface{}) *UpdateBuilder {
+	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
+		return escapeScopeTable(sql, table), args
+	})
 	return b
 }
 
@@ -197,7 +205,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
 		}
 	} else {
-		whereFragment := newWhereFragment(b.scope.toSQL(b.table))
+		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
 		writeScopeCondition(whereFragment, &sql, &args, &placeholderStartPos)
 	}
 

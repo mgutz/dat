@@ -15,7 +15,7 @@ type DeleteBuilder struct {
 	offsetValid    bool
 	id             int
 	isInterpolated bool
-	scope          *Scope
+	scope          Scope
 }
 
 // NewDeleteBuilder creates a new DeleteBuilder for the given table.
@@ -27,9 +27,17 @@ func NewDeleteBuilder(table string) *DeleteBuilder {
 	return &DeleteBuilder{table: table, isInterpolated: EnableInterpolation}
 }
 
+// ScopeMap uses a predefined scope in place of WHERE.
+func (b *DeleteBuilder) ScopeMap(mapScope *MapScope, m M) *DeleteBuilder {
+	b.scope = mapScope.mergeClone(m)
+	return b
+}
+
 // Scope uses a predefined scope in place of WHERE.
-func (b *DeleteBuilder) Scope(sc *Scope, override M) *DeleteBuilder {
-	b.scope = sc.cloneMerge(override)
+func (b *DeleteBuilder) Scope(sql string, args ...interface{}) *DeleteBuilder {
+	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
+		return escapeScopeTable(sql, table), args
+	})
 	return b
 }
 
@@ -82,7 +90,7 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 			writeWhereFragmentsToSql(b.whereFragments, &sql, &args, &placeholderStartPos)
 		}
 	} else {
-		whereFragment := newWhereFragment(b.scope.toSQL(b.table))
+		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
 		writeScopeCondition(whereFragment, &sql, &args, &placeholderStartPos)
 	}
 

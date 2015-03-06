@@ -176,21 +176,60 @@ func TestSelectScope(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, postID > 0)
 
-	publishedByUser := dat.NewScope(
-		`
+	publishedByUser := `
 		INNER JOIN people P on (P.id = :TABLE.user_id)
 		WHERE
-			P.name = :user AND
+			P.name = $1 AND
 			:TABLE.state = 'published' AND
 			:TABLE.deleted_at IS NULL
-		`,
-		dat.M{"user": ""},
-	)
+		`
 	var posts []*Post
 	err = s.
 		Select("posts.*").
 		From("posts").
-		Scope(publishedByUser, dat.M{"user": "mgutz"}).
+		Scope(publishedByUser, "mgutz").
+		QueryStructs(&posts)
+	assert.NoError(t, err)
+	assert.Equal(t, posts[0].Title, "my post")
+}
+
+func TestSelectScoped(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.Close()
+
+	var id int
+	err := s.
+		InsertInto("people").
+		Columns("name").
+		Values("mgutz").
+		Returning("id").
+		QueryScalar(&id)
+	assert.NoError(t, err)
+	assert.True(t, id > 0)
+
+	var postID int
+	err = s.
+		InsertInto("posts").
+		Columns("title", "state", "user_id").
+		Values("my post", "published", id).
+		Returning("id").
+		QueryScalar(&postID)
+	assert.NoError(t, err)
+	assert.True(t, postID > 0)
+
+	publishedByUser := `
+		INNER JOIN people P on (P.id = :TABLE.user_id)
+		WHERE
+			P.name = $1 AND
+			:TABLE.state = 'published' AND
+			:TABLE.deleted_at IS NULL
+	`
+
+	var posts []*Post
+	err = s.
+		Select("posts.*").
+		From("posts").
+		Scope(publishedByUser, "mgutz").
 		QueryStructs(&posts)
 	assert.NoError(t, err)
 	assert.Equal(t, posts[0].Title, "my post")
