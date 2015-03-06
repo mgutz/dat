@@ -353,7 +353,9 @@ result, err = conn.
 Scopes predefine JOIN and WHERE conditions so they may be reused.
 Scopes may be used with `DeleteFrom`, `Select` and `Update`.
 
-For example, a "published" scoped might look something like this
+As an example, a "published" scoped might define published posts
+by user. The definition might look something like this with
+joins
 
 ```go
 // :TABLE is the table name of the builder to which this scope is applied.
@@ -366,7 +368,7 @@ publishedByUser := `
 `
 
 err = conn.
-    Select("*").
+    Select("posts.*").                  // must qualify columns
     From("posts").
     Scope(publishedByUser, "mgutz").
     QueryStructs(&posts)
@@ -386,17 +388,23 @@ publishedByUser := dat.NewScope(`
 )
 ```
 
-Note that this scope defines default values for fields `"user"` and `"state"`.
+First, it does not use ordinal placeholders. Instead it uses struct field
+names in the SQL. The example above defines default values for fields `"user"`
+and `"state"`. When the scope is applied, the scope is first cloned then
+new values replace default values.
 
 ```go
 err = conn.
-    Select("*").
+    Select("posts.*").
     From("posts").
     ScopeMap(publishedByUser, dat.M{"user": "mgutz"}).
     QueryStructs(&posts)
 ```
 
-`MapScope` provides flexibility but it copies maps making it inefficient.
+`MapScope` provides flexibility but it inefficient compared to the first
+approach.
+
+
 
 ## Create a Session
 
