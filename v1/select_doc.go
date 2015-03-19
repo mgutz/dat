@@ -8,17 +8,15 @@ type loadInfo struct {
 // SelectDocBuilder builds SQL that returns a JSON row.
 type SelectDocBuilder struct {
 	*SelectBuilder
-	loads    []*loadInfo
+	embeds   []*loadInfo
 	innerSQL *Expression
+	isChild  bool
 }
 
 // NewSelectDocBuilder creates an instance of SelectDocBuilder.
 func NewSelectDocBuilder(columns ...string) *SelectDocBuilder {
 	sb := NewSelectBuilder(columns...)
-	return &SelectDocBuilder{
-		SelectBuilder: sb,
-		loads:         []*loadInfo{},
-	}
+	return &SelectDocBuilder{SelectBuilder: sb}
 }
 
 // InnerSQL sets the SQL after the SELECT (columns...) statement
@@ -27,9 +25,17 @@ func (b *SelectDocBuilder) InnerSQL(sql string, a ...interface{}) *SelectDocBuil
 	return b
 }
 
-// Load loads a JSON a column.
-func (b *SelectDocBuilder) Load(column string, sql string, a ...interface{}) *SelectDocBuilder {
-	b.loads = append(b.loads, &loadInfo{Expr(sql, a...), column})
+// Embed loads a JSON a column.
+func (b *SelectDocBuilder) Embed(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	switch t := sqlOrBuilder.(type) {
+	default:
+		panic("sqlOrbuilder accepts only Builder or string type")
+	case Builder:
+		b.embeds = append(b.embeds, &loadInfo{Expr(t.ToSQL()), column})
+
+	case string:
+		b.embeds = append(b.embeds, &loadInfo{Expr(t, a...), column})
+	}
 	return b
 }
 
@@ -89,7 +95,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		) as posts
 	*/
 
-	for _, load := range b.loads {
+	for _, load := range b.embeds {
 		buf.WriteString(", (SELECT array_agg(dat__")
 		buf.WriteString(load.column)
 		buf.WriteString(".*) FROM (")

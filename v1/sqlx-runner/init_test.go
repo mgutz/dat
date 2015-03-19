@@ -114,12 +114,23 @@ func installFixtures() {
 			created_at timestamptz default now()
 		)
 	`
+	createTableComments := `
+		CREATE TABLE comments (
+			id SERIAL PRIMARY KEY,
+			user_id int references people(id),
+			post_id int references posts(id),
+			comment text not null,
+			created_at timestamptz default now()
+		)
+	`
 
 	sqlToRun := []string{
+		"DROP TABLE IF EXISTS comments",
 		"DROP TABLE IF EXISTS posts",
 		"DROP TABLE IF EXISTS people",
 		createTablePeople,
 		createTablePosts,
+		createTableComments,
 		`
 DO $$
 BEGIN
@@ -128,14 +139,19 @@ BEGIN
 		(1, 'Mario', 'mario@acme.com'),
 		(2, 'John', 'john@acme.com');
 
-	INSERT INTO posts (user_id, title, state) VALUES
-		(1, 'Day 1', 'published'),
-		(1, 'Day 2', 'draft'),
-		(2, 'Apple', 'published'),
-		(2, 'Orange', 'draft');
+	INSERT INTO posts (id, user_id, title, state) VALUES
+		(1, 1, 'Day 1', 'published'),
+		(2, 1, 'Day 2', 'draft'),
+		(3, 2, 'Apple', 'published'),
+		(4, 2, 'Orange', 'draft');
+
+	INSERT INTO comments (id, user_id, post_id, comment) VALUES
+		(1, 1, 1, 'A very good day'),
+		(2, 2, 3, 'Yum. Apple pie.');
 
 	alter sequence people_id_seq RESTART with 100;
 	alter sequence posts_id_seq RESTART with 100;
+	alter sequence comments_id_seq RESTART with 100;
 END $$
 `,
 	}

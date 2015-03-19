@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSelectDocSQLNoLoads(t *testing.T) {
+func TestSelectDocSQLNoEmbeds(t *testing.T) {
 	sql, args := SelectDoc("b", "c").From("a").Where("d=$1", 4).ToSQL()
 
 	expected := `
@@ -22,12 +22,12 @@ func TestSelectDocSQLNoLoads(t *testing.T) {
 	assert.Equal(t, []interface{}{4}, args)
 }
 
-func TestSelectDocSQLLoads(t *testing.T) {
+func TestSelectDocSQLEmbeds(t *testing.T) {
 	sql, args := SelectDoc("b", "c").
 		From("a").
 		Where("d=$1", 4).
-		Load("f", `SELECT g, h FROM f WHERE id= $1`, 4).
-		Load("x", `SELECT id, y, z FROM x`).
+		Embed("f", `SELECT g, h FROM f WHERE id= $1`, 4).
+		Embed("x", `SELECT id, y, z FROM x`).
 		ToSQL()
 
 	expected := `
@@ -52,8 +52,8 @@ func TestSelectDocSQLInnerSQL(t *testing.T) {
 			FROM a
 			WHERE d = $1
 		`, 4).
-		Load("f", `SELECT g, h FROM f WHERE id= $1`, 4).
-		Load("x", `SELECT id, y, z FROM x`).
+		Embed("f", `SELECT g, h FROM f WHERE id= $1`, 4).
+		Embed("x", `SELECT id, y, z FROM x`).
 		ToSQL()
 
 	expected := `
