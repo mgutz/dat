@@ -1,22 +1,22 @@
 package dat
 
-type loadInfo struct {
+type subInfo struct {
 	*Expression
-	column string
+	alias string
 }
 
 // SelectDocBuilder builds SQL that returns a JSON row.
 type SelectDocBuilder struct {
 	*SelectBuilder
-	embeds   []*loadInfo
-	innerSQL *Expression
-	isChild  bool
+	subQueries []*subInfo
+	innerSQL   *Expression
+	isParent   bool
 }
 
 // NewSelectDocBuilder creates an instance of SelectDocBuilder.
 func NewSelectDocBuilder(columns ...string) *SelectDocBuilder {
 	sb := NewSelectBuilder(columns...)
-	return &SelectDocBuilder{SelectBuilder: sb}
+	return &SelectDocBuilder{SelectBuilder: sb, isParent: true}
 }
 
 // InnerSQL sets the SQL after the SELECT (columns...) statement
@@ -25,16 +25,18 @@ func (b *SelectDocBuilder) InnerSQL(sql string, a ...interface{}) *SelectDocBuil
 	return b
 }
 
-// Embed loads a JSON a column.
-func (b *SelectDocBuilder) Embed(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+// As loads a sub query into an alias.
+func (b *SelectDocBuilder) As(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
-		panic("sqlOrbuilder accepts only Builder or string type")
+		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+	case *SelectDocBuilder:
+		t.isParent = false
+		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
 	case Builder:
-		b.embeds = append(b.embeds, &loadInfo{Expr(t.ToSQL()), column})
-
+		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
 	case string:
-		b.embeds = append(b.embeds, &loadInfo{Expr(t, a...), column})
+		b.subQueries = append(b.subQueries, &subInfo{Expr(t, a...), column})
 	}
 	return b
 }
@@ -73,7 +75,11 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		) as item
 	*/
 
-	buf.WriteString("SELECT convert_to(row_to_json(dat__item.*)::text, 'UTF8') FROM ( SELECT ")
+	if b.isParent {
+		buf.WriteString("SELECT convert_to(row_to_json(dat__item.*)::text, 'UTF8') FROM ( SELECT ")
+	} else {
+		buf.WriteString("SELECT ")
+	}
 
 	if b.isDistinct {
 		buf.WriteString("DISTINCT ")
@@ -95,15 +101,15 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		) as posts
 	*/
 
-	for _, load := range b.embeds {
+	for _, sub := range b.subQueries {
 		buf.WriteString(", (SELECT array_agg(dat__")
-		buf.WriteString(load.column)
+		buf.WriteString(sub.alias)
 		buf.WriteString(".*) FROM (")
-		load.WriteRelativeArgs(buf, &args, &placeholderStartPos)
+		sub.WriteRelativeArgs(buf, &args, &placeholderStartPos)
 		buf.WriteString(") AS dat__")
-		buf.WriteString(load.column)
+		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		buf.WriteString(load.column)
+		buf.WriteString(sub.alias)
 		// buf.WriteString(withName)
 		// buf.WriteString(" AS (")
 		// buf.WriteString("), ")
@@ -111,7 +117,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 
 		// buf.WriteString(withName)
 		// buf.WriteString(")")
-		// childMaps = append(childMaps, fmt.Sprintf(`(SELECT * FROM %s_json) AS %s`, withName, load.column))
+		// childMaps = append(childMaps, fmt.Sprintf(`(SELECT * FROM %s_json) AS %s`, withName, sub.column))
 	}
 
 	if b.innerSQL != nil {
@@ -166,7 +172,9 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		}
 	}
 
-	buf.WriteString(`) as dat__item`)
+	if b.isParent {
+		buf.WriteString(`) as dat__item`)
+	}
 
 	return buf.String(), args
 }

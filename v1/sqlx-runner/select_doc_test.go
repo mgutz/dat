@@ -2,7 +2,6 @@ package runner
 
 import (
 	"database/sql"
-	"fmt"
 	"testing"
 
 	"github.com/mgutz/dat/v1"
@@ -26,9 +25,9 @@ func TestSelectDocRow(t *testing.T) {
 	var person Person
 	err := conn.
 		SelectDoc("id", "name").
+		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id = $1", 1).
-		Embed("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		QueryStruct(&person)
 
 	assert.NoError(err)
@@ -46,27 +45,24 @@ func TestSelectDocNested(t *testing.T) {
 	var obj jo.Object
 
 	posts := dat.SelectDoc("id", "title").
+		As("comments", `SELECT * FROM comments WHERE comments.id = posts.id`).
 		From("posts").
-		Where("user_id = people.id").
-		Embed("comments", `SELECT * FROM comments WHERE comments.id = posts.id`)
+		Where("user_id = people.id")
 
 	err := conn.
 		SelectDoc("id", "name").
-		SetIsInterpolated(true).
+		As("posts", posts).
 		From("people").
 		Where("id = $1", 1).
-		Embed("posts", posts).
+		SetIsInterpolated(true).
 		QueryStruct(&obj)
 
 	assert.NoError(err)
 	assert.Equal("Mario", obj.AsString("name"))
 	assert.Equal(1, obj.AsInt64("id"))
 
-	fmt.Println("DBG: obj", obj.Stringify())
-
-	// assert.Equal(2, len(person.Posts))
-	// assert.Equal("Day 1", person.Posts[0].Title)
-	// assert.Equal("Day 2", person.Posts[1].Title)
+	assert.Equal("A very good day", obj.AsString("posts[0].comments[0].comment"))
+	assert.Equal("Yum. Apple pie.", obj.AsString("posts[1].comments[0].comment"))
 }
 
 func TestSelectDocNil(t *testing.T) {
@@ -85,9 +81,9 @@ func TestSelectDocNil(t *testing.T) {
 	var person Person
 	err := conn.
 		SelectDoc("id", "name").
+		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id = $1", 1000).
-		Embed("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		QueryStruct(&person)
 	assert.Equal(sql.ErrNoRows, err)
 }
@@ -108,10 +104,10 @@ func TestSelectDocRows(t *testing.T) {
 	var people []*Person
 	err := conn.
 		SelectDoc("id", "name").
-		SetIsInterpolated(true).
+		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id in $1", []int{1, 2}).
-		Embed("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
+		SetIsInterpolated(true).
 		QueryStructs(&people)
 
 	assert.NoError(err)
@@ -149,10 +145,10 @@ func TestSelectDocRowsNil(t *testing.T) {
 	var people []*Person
 	err := conn.
 		SelectDoc("id", "name").
-		SetIsInterpolated(true).
+		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id in $1", []int{2000, 2001}).
-		Embed("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
+		SetIsInterpolated(true).
 		QueryStructs(&people)
 	assert.Equal(sql.ErrNoRows, err)
 }
