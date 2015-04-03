@@ -1,7 +1,5 @@
 package dat
 
-import "github.com/mgutz/jo/v1"
-
 // Result serves the same purpose as sql.Result. Defining
 // it for the package avoids tight coupling with database/sql.
 type Result struct {
@@ -16,9 +14,11 @@ type Execer interface {
 	QuerySlice(dest interface{}) error
 	QueryStruct(dest interface{}) error
 	QueryStructs(dest interface{}) error
+	QueryObject(dest interface{}) error
+	QueryJSON() ([]byte, error)
 }
 
-const panicExecerMsg = "dat builders are disconnected, use a runner package"
+const panicExecerMsg = "dat builders are disconnected, use sqlx-runner package"
 
 // panicExecer is the execer for instances of dat builders from
 // data package.
@@ -49,7 +49,12 @@ func (nop *panicExecer) QueryStructs(dest interface{}) error {
 	panic(panicExecerMsg)
 }
 
-// QueryStructs panics when QueryStructs is called.
-func (nop *panicExecer) Object() (*jo.Object, error) {
+// QueryObject panics when QueryObject is called.
+func (nop *panicExecer) QueryObject(dest interface{}) error {
+	panic(panicExecerMsg)
+}
+
+// QueryJSON panics when QueryJSON is called.
+func (nop *panicExecer) QueryJSON() ([]byte, error) {
 	panic(panicExecerMsg)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -361,4 +362,50 @@ func queryJSONStructs(runner runner, builder dat.Builder, dest interface{}) erro
 	}
 	buf.WriteRune(']')
 	return json.Unmarshal(buf.Bytes(), dest)
+}
+
+// queryJSON executes the query in builder and loads the resulting JSON into
+// a bytes slice.
+//
+// Returns ErrNotFound if nothing was found
+func queryJSON(runner runner, builder dat.Builder) ([]byte, error) {
+	fullSQL, args, err := builder.Interpolate()
+	if err != nil {
+		return nil, err
+	}
+
+	fullSQL = fmt.Sprintf("SELECT TO_JSON(ARRAY_AGG(__datq.*)) FROM (%s) AS __datq", fullSQL)
+
+	if logger.IsInfo() {
+		// Start the timer:
+		startTime := time.Now()
+		defer func() {
+			logger.Info("QueryJSON",
+				"elapsed", time.Since(startTime).Nanoseconds(),
+				"sql", fullSQL,
+			)
+		}()
+	}
+
+	var blob []byte
+
+	// Run the query:
+	if args == nil {
+		err = runner.Get(&blob, fullSQL)
+	} else {
+		err = runner.Get(&blob, fullSQL, args...)
+	}
+	return blob, err
+}
+
+// queryObject executes the query in builder and loads the resulting data into
+// a simple object.
+//
+// Returns ErrNotFound if nothing was found
+func queryObject(runner runner, builder dat.Builder, dest interface{}) error {
+	blob, err := queryJSON(runner, builder)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(blob, dest)
 }

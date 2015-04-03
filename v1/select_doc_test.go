@@ -10,7 +10,7 @@ func TestSelectDocSQLNoDocs(t *testing.T) {
 	sql, args := SelectDoc("b", "c").From("a").Where("d=$1", 4).ToSQL()
 
 	expected := `
-		SELECT convert_to(row_to_json(dat__item.*)::text,'UTF8')
+		SELECT row_to_json(dat__item.*)
 		FROM (
 			SELECT b,c
 			FROM a
@@ -31,7 +31,7 @@ func TestSelectDocSQLDocs(t *testing.T) {
 		ToSQL()
 
 	expected := `
-	SELECT convert_to(row_to_json(dat__item.*)::text,'UTF8')
+	SELECT row_to_json(dat__item.*)
 	FROM (
 		SELECT
 			b,
@@ -57,7 +57,7 @@ func TestSelectDocSQLInnerSQL(t *testing.T) {
 		ToSQL()
 
 	expected := `
-	SELECT convert_to(row_to_json(dat__item.*)::text,'UTF8')
+	SELECT row_to_json(dat__item.*)
 	FROM (
 		SELECT
 			b,

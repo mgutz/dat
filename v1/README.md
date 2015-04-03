@@ -25,17 +25,31 @@ How it is different:
 
     ```go
 	con.SelectDoc("b", "c").
+		As("f", `SELECT g, h FROM f WHERE id= $1`, 4).
+		As("x", `SELECT id, y, z FROM x`).
 		From("a").
 		Where("d=$1", 4).
-		Load("f", `SELECT g, h FROM f WHERE id= $1`, 4).
-		Load("x", `SELECT id, y, z FROM x`).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
 
-    => {
+    // JSON => {
         "b": "",
         "c": "",
         "f": {"g": "", "h": ""},
         "x": {"id": 0, "y": "", "z"}
+    }
+    ```
+
+*   Simpler JSON unmarshalling
+
+    ```go
+    var user map[string]interface{}
+	con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1`, "mario").
+        QueryObject(&user)
+
+    // JSON => {
+        "id": 1,
+        "user_name": "mario",
+        "created_at": "2015-03-01T14:23"
     }
     ```
 

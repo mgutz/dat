@@ -76,7 +76,8 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 	*/
 
 	if b.isParent {
-		buf.WriteString("SELECT convert_to(row_to_json(dat__item.*)::text, 'UTF8') FROM ( SELECT ")
+		//buf.WriteString("SELECT convert_to(row_to_json(dat__item.*)::text, 'UTF8') FROM ( SELECT ")
+		buf.WriteString("SELECT row_to_json(dat__item.*) FROM ( SELECT ")
 	} else {
 		buf.WriteString("SELECT ")
 	}

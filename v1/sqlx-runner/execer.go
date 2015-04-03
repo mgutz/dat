@@ -74,6 +74,20 @@ func (ex *Execer) QueryStructs(dest interface{}) error {
 	return traceError("QueryStructs", err)
 }
 
+// QueryObject wraps the builder's query within a `to_json` then executes and unmarshals
+// the result into dest.
+func (ex *Execer) QueryObject(dest interface{}) error {
+	err := queryObject(ex.runner, ex.builder, dest)
+	return traceError("QueryObject", err)
+}
+
+// QueryJSON wraps the builder's query within a `to_json` then executes and returns
+// the JSON []byte representation.
+func (ex *Execer) QueryJSON() ([]byte, error) {
+	b, err := queryJSON(ex.runner, ex.builder)
+	return b, traceError("QueryObject", err)
+}
+
 func traceError(name string, err error) error {
 	if dat.Strict && err != nil && err != sql.ErrNoRows && err != dat.ErrNotFound {
 		logger.Error(name, "err", err)
