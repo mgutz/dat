@@ -38,8 +38,8 @@ How it is different:
         "id": 4,
         "user_name": "mario",
         "avatar": "https://imgur.com/a23x.jpg",
-        "recent_comments": [{"id": 1, "title": "..."}, ...]
-        "recent_posts": [{"id": 1, "title": "..."}, ...]
+        "recent_comments": [{"id": 1, "title": "..."}],
+        "recent_posts": [{"id": 1, "title": "..."}]
     }
     ```
 
