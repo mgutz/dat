@@ -135,7 +135,7 @@ func pgTasks(p *Project) {
 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
 	`
 
-	p.Task("file", func(c *Context) {
+	p.Task("file", nil, func(c *Context) {
 		filename := c.Args.Leftover()[0]
 		if !util.FileExists(filename) {
 			util.Error("ERR", "file not found %s", filename)
@@ -159,7 +159,7 @@ func pgTasks(p *Project) {
 		querySQL(sql, args)
 	}).Desc("Executes a SQL file with placeholders")
 
-	p.Task("query", func(c *Context) {
+	p.Task("query", nil, func(c *Context) {
 		if len(c.Args.Leftover()) != 1 {
 			fmt.Println(`usage: godo query -- "SELECT * ..." `)
 			return

@@ -3,7 +3,7 @@ package main
 import (
 	"io/ioutil"
 
-	g "github.com/mgutz/godo/v2"
+	do "github.com/mgutz/godo/v2"
 	"github.com/mgutz/godo/v2/util"
 )
 
@@ -32,21 +32,18 @@ package dat
 {{ end }}
 `
 
-func generateTasks(p *g.Project) {
-	p.Task("builder-boilerplate", func() error {
-		context := g.M{
+func generateTasks(p *do.Project) {
+	p.Task("builder-boilerplate", nil, func(c *do.Context) {
+		context := do.M{
 			"builders": []string{"DeleteBuilder", "InsectBuilder",
 				"InsertBuilder", "RawBuilder", "SelectBuilder", "SelectJSONBuilder",
 				"UpdateBuilder", "UpsertBuilder"},
 		}
 
 		s, err := util.StrTemplate(builderTemplate, context)
-		if err != nil {
-			return err
-		}
+		c.Check(err, "Unalbe ")
 
 		ioutil.WriteFile("v1/builders_generated.go", []byte(s), 0644)
-		g.Run("go fmt v1/builders_generated.go")
-		return nil
+		c.Run("go fmt v1/builders_generated.go")
 	}).Desc("Generates builder boilerplate code")
 }

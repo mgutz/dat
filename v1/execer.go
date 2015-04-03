@@ -1,5 +1,7 @@
 package dat
 
+import "github.com/mgutz/jo/v1"
+
 // Result serves the same purpose as sql.Result. Defining
 // it for the package avoids tight coupling with database/sql.
 type Result struct {
@@ -44,5 +46,10 @@ func (nop *panicExecer) QueryStruct(dest interface{}) error {
 
 // QueryStructs panics when QueryStructs is called.
 func (nop *panicExecer) QueryStructs(dest interface{}) error {
+	panic(panicExecerMsg)
+}
+
+// QueryStructs panics when QueryStructs is called.
+func (nop *panicExecer) Object() (*jo.Object, error) {
 	panic(panicExecerMsg)
 }
