@@ -5,13 +5,12 @@
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
 library for Go.
 
-coder: "How do I make this ORM generate this SQL?
-dat: "Why? You already know SQL."
-
 How it is different:
 
-*   Focused on Postgres. See `Insect`, `Upsert` and `SelectDoc`. How
-    many time have you switched out a database?
+*   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
+
+*   FASTER than any of the other generic SQL builders for Postgres since
+    it doesn't have to worry about building to the lowest common denominator.
 
 *   SQL and backtick friendly.
 
@@ -19,34 +18,43 @@ How it is different:
     con.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
-*   Light layer over SQLX.
+*   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
 
-*   Intuitive embedded fields retrieval (one trip to Database)
+*   Intuitive JSON Document retrieval (single trip to database!)
 
     ```go
-	con.SelectDoc("b", "c").
-		As("f", `SELECT g, h FROM f WHERE id= $1`, 4).
-		As("x", `SELECT id, y, z FROM x`).
-		From("a").
-		Where("d=$1", 4).
+    con.SelectDoc("id", "user_name", "avatar").
+        As("recent_comments", `SELECT id, title FROM comments WHERE id = users.user_id LIMIT 10`).
+        As("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.user_id LIMIT 10`).
+        From("users").
+        Where("user_id = $1", 4).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
+    ```
 
-    // JSON => {
-        "b": "",
-        "c": "",
-        "f": {"g": "", "h": ""},
-        "x": {"id": 0, "y": "", "z"}
+    results in
+
+    ```json
+    {
+        "id": 4,
+        "user_name": "mario",
+        "avatar": "https://imgur.com/a23x.jpg",
+        "recent_comments": [{"id": 1, "title": "..."}, ...]
+        "recent_posts": [{"id": 1, "title": "..."}, ...]
     }
     ```
 
-*   Simpler JSON unmarshalling
+*   Simpler JSON retrieval for rapid application development
 
     ```go
-    var user map[string]interface{}
-	con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1`, "mario").
-        QueryObject(&user)
+    var json []byte
+    json, _ = con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1`, "mario").
+        QueryJSON()
+    ```
 
-    // JSON => {
+    results in
+
+    ```json
+    {
         "id": 1,
         "user_name": "mario",
         "created_at": "2015-03-01T14:23"
