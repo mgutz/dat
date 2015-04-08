@@ -108,8 +108,8 @@ Use it
 import (
     "database/sql"
 
-    "github.com/mgutz/dat"
-    "github.com/mgutz/dat/sqlx-runner"
+    "github.com/mgutz/dat/v1"
+    "github.com/mgutz/dat/v1/sqlx-runner"
     _ "github.com/lib/pq"
 )
 
