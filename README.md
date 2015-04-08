@@ -26,7 +26,7 @@ How it is different:
     con.SelectDoc("id", "user_name", "avatar").
         HasMany("recent_comments", `SELECT id, title FROM comments WHERE id = users.user_id LIMIT 10`).
         HasMany("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.user_id LIMIT 10`).
-        HasOne("profile", `SELECT balance FROM accounts WHERE user_id = users.id`)
+        HasOne("account", `SELECT balance FROM accounts WHERE user_id = users.id`)
         From("users").
         Where("id = $1", 4).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
@@ -40,7 +40,10 @@ How it is different:
         "user_name": "mario",
         "avatar": "https://imgur.com/a23x.jpg",
         "recent_comments": [{"id": 1, "title": "..."}],
-        "recent_posts": [{"id": 1, "title": "..."}]
+        "recent_posts": [{"id": 1, "title": "..."}],
+        "account": {
+            "balance": 42.00
+        }
     }
     ```
 
