@@ -8,9 +8,10 @@ type subInfo struct {
 // SelectDocBuilder builds SQL that returns a JSON row.
 type SelectDocBuilder struct {
 	*SelectBuilder
-	subQueries []*subInfo
-	innerSQL   *Expression
-	isParent   bool
+	subQueries    []*subInfo
+	subQueriesOne []*subInfo
+	innerSQL      *Expression
+	isParent      bool
 }
 
 // NewSelectDocBuilder creates an instance of SelectDocBuilder.
@@ -25,8 +26,13 @@ func (b *SelectDocBuilder) InnerSQL(sql string, a ...interface{}) *SelectDocBuil
 	return b
 }
 
-// As loads a sub query into an alias.
+// As is an alias for HasMany
 func (b *SelectDocBuilder) As(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	return b.HasMany(column, sqlOrBuilder, a...)
+}
+
+// HasMany loads a sub query resulting in an array of rows as an alias.
+func (b *SelectDocBuilder) HasMany(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
@@ -37,6 +43,22 @@ func (b *SelectDocBuilder) As(column string, sqlOrBuilder interface{}, a ...inte
 		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
 	case string:
 		b.subQueries = append(b.subQueries, &subInfo{Expr(t, a...), column})
+	}
+	return b
+}
+
+// HasOne loads a query resulting in a single row as an alias.
+func (b *SelectDocBuilder) HasOne(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	switch t := sqlOrBuilder.(type) {
+	default:
+		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+	case *SelectDocBuilder:
+		t.isParent = false
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t.ToSQL()), column})
+	case Builder:
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t.ToSQL()), column})
+	case string:
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t, a...), column})
 	}
 	return b
 }
@@ -111,14 +133,17 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
 		buf.WriteString(sub.alias)
-		// buf.WriteString(withName)
-		// buf.WriteString(" AS (")
-		// buf.WriteString("), ")
-		// buf.WriteString(withName)
+	}
 
-		// buf.WriteString(withName)
-		// buf.WriteString(")")
-		// childMaps = append(childMaps, fmt.Sprintf(`(SELECT * FROM %s_json) AS %s`, withName, sub.column))
+	for _, sub := range b.subQueriesOne {
+		buf.WriteString(", (SELECT row_to_json(dat__")
+		buf.WriteString(sub.alias)
+		buf.WriteString(".*) FROM (")
+		sub.WriteRelativeArgs(buf, &args, &placeholderStartPos)
+		buf.WriteString(") AS dat__")
+		buf.WriteString(sub.alias)
+		buf.WriteString(") AS ")
+		buf.WriteString(sub.alias)
 	}
 
 	if b.innerSQL != nil {

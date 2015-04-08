@@ -7,6 +7,95 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSelectQueryEmbedded(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.AutoCommit()
+
+	type PostEmbedded struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User  struct {
+			ID int64 `db:"author_id"`
+		}
+	}
+
+	type User struct {
+		ID int64 `db:"user_id"`
+	}
+
+	type PostEmbedded2 struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User
+	}
+
+	var post2 PostEmbedded2
+
+	// THIS RESULTS IN ERROR
+	// var post PostEmbedded
+	// err := s.Select("id", "state", "42 as user_id").
+	// 	From("posts").
+	// 	Where("id = $1", 1).
+	// 	QueryStruct(&post)
+
+	// assert.Error(t, err)
+
+	err := s.Select("id", "state", "42 as user_id").
+		From("posts").
+		Where("id = $1", 1).
+		QueryStruct(&post2)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, post2.ID)
+	assert.Equal(t, 42, post2.User.ID)
+}
+
+func TestSelectQueryEmbeddedJSON(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.AutoCommit()
+
+	type PostEmbedded struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User  struct {
+			ID int64
+		}
+	}
+
+	type User struct {
+		ID int64
+	}
+
+	type PostEmbedded2 struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User  *User
+	}
+
+	var post PostEmbedded
+
+	err := s.SelectDoc("id", "state").
+		HasOne("user", `select 42 as id`).
+		From("posts").
+		Where("id = $1", 1).
+		QueryStruct(&post)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, post.ID)
+	assert.Equal(t, 42, post.User.ID)
+
+	var post2 PostEmbedded2
+	err = s.SelectDoc("id", "state").
+		HasOne("user", `select 42 as id`).
+		From("posts").
+		Where("id = $1", 1).
+		QueryStruct(&post2)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, post2.ID)
+	assert.Equal(t, 42, post2.User.ID)
+}
+
 func TestSelectQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
 	defer s.Close()

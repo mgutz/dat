@@ -24,10 +24,11 @@ How it is different:
 
     ```go
     con.SelectDoc("id", "user_name", "avatar").
-        As("recent_comments", `SELECT id, title FROM comments WHERE id = users.user_id LIMIT 10`).
-        As("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.user_id LIMIT 10`).
+        HasMany("recent_comments", `SELECT id, title FROM comments WHERE id = users.user_id LIMIT 10`).
+        HasMany("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.user_id LIMIT 10`).
+        HasOne("profile", `SELECT balance FROM accounts WHERE user_id = users.id`)
         From("users").
-        Where("user_id = $1", 4).
+        Where("id = $1", 4).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
     ```
 
@@ -47,8 +48,9 @@ How it is different:
 
     ```go
     var json []byte
-    json, _ = con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1`, "mario").
-        QueryJSON()
+    json, _ = con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
+        "mario",
+    ).QueryJSON()
     ```
 
     results in

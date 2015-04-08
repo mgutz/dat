@@ -184,3 +184,11 @@ func TestInterpolateErrors(t *testing.T) {
 	_, _, err = Interpolate("SELECT * FROM x WHERE a = $1", []interface{}{[]struct{}{{}, {}}})
 	assert.Equal(t, err, ErrInvalidSliceValue)
 }
+
+func TestInterpolateJSON(t *testing.T) {
+	j, _ := NewJSON([]int{1, 3, 10})
+	sql, args, err := Interpolate("SELECT $1", []interface{}{j})
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT '[1,3,10]'", sql)
+	assert.Equal(t, 0, len(args))
+}

@@ -115,9 +115,16 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		if val, ok := v.(UnsafeString); ok {
 			buf.WriteString(string(val))
 			return nil
-		}
-
-		if valuer, ok := v.(driver.Valuer); ok {
+		} else if _, ok := v.(JSON); ok {
+			passthroughArg()
+			return nil
+		} else if valuer, ok := v.(Interpolator); ok {
+			s, err := valuer.Interpolate()
+			if err == nil {
+				Dialect.WriteStringLiteral(buf, s)
+				return nil
+			}
+		} else if valuer, ok := v.(driver.Valuer); ok {
 			val, err := valuer.Value()
 			if err != nil {
 				return err

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -18,6 +19,32 @@ type runner interface {
 	QueryRowx(query string, args ...interface{}) *sqlx.Row
 	Select(dest interface{}, query string, args ...interface{}) error
 	Get(dest interface{}, query string, args ...interface{}) error
+}
+
+func toOutputStr(args []interface{}) string {
+	if args == nil {
+		return "nil"
+	}
+	var buf bytes.Buffer
+	for i, arg := range args {
+		buf.WriteString("$")
+		buf.WriteString(strconv.Itoa(i + 1))
+		buf.WriteString("=")
+		switch t := arg.(type) {
+		default:
+			buf.WriteString(fmt.Sprintf("%v", t))
+		case []byte:
+			buf.WriteString("<binary>")
+		}
+	}
+	return buf.String()
+}
+
+func logSQLError(err error, msg string, statement string, args []interface{}) error {
+	if err != nil && err != sql.ErrNoRows {
+		logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+	}
+	return err
 }
 
 // Exec executes the query built by builder.
@@ -42,8 +69,7 @@ func exec(runner runner, builder dat.Builder) (sql.Result, error) {
 		result, err = runner.Exec(fullSQL, args...)
 	}
 	if err != nil {
-		logger.Error("exec.30", "err", err, "sql", fullSQL)
-		return nil, err
+		return nil, logSQLError(err, "exec.30", fullSQL, args)
 	}
 
 	return result, nil
@@ -56,10 +82,17 @@ func query(runner runner, builder dat.Builder) (*sqlx.Rows, error) {
 		return nil, err
 	}
 
+	var rows *sqlx.Rows
 	if args == nil {
-		return runner.Queryx(fullSQL)
+		rows, err = runner.Queryx(fullSQL)
+	} else {
+		rows, err = runner.Queryx(fullSQL, args...)
 	}
-	return runner.Queryx(fullSQL, args...)
+	if err != nil {
+		return nil, logSQLError(err, "query", fullSQL, args)
+	}
+
+	return rows, nil
 }
 
 // QueryScan executes the query in builder and loads the resulting data into
@@ -91,30 +124,18 @@ func queryScalar(runner runner, builder dat.Builder, destinations ...interface{}
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		logger.Error("QueryScalar.load_value.query",
-			"err", err,
-			"sql", fullSQL,
-		)
-		return err
+		return logSQLError(err, "QueryScalar.load_value.query", fullSQL, args)
 	}
 	defer rows.Close()
 	if rows.Next() {
 		err = rows.Scan(destinations...)
 		if err != nil {
-			logger.Error("QueryScalar.load_value.scan",
-				"err", err,
-				"sql", fullSQL,
-			)
-			return err
+			return logSQLError(err, "QueryScalar.load_value.scan", fullSQL, args)
 		}
 		return nil
 	}
 	if err := rows.Err(); err != nil {
-		logger.Error("QueryScalar.load_value.rows_err",
-			"err", err,
-			"sql", fullSQL,
-		)
-		return err
+		return logSQLError(err, "QueryScalar.load_value.rows_err", fullSQL, args)
 	}
 
 	return dat.ErrNotFound
@@ -174,11 +195,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		logger.Error("querySlice.load_all_values.query",
-			"err", err,
-			"sql", fullSQL,
-		)
-		return err
+		return logSQLError(err, "querySlice.load_all_values.query", fullSQL, args)
 	}
 	defer rows.Close()
 
@@ -191,11 +208,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 
 		err = rows.Scan(pointerToNewValue.Interface())
 		if err != nil {
-			logger.Error("querySlice.load_all_values.scan",
-				"err", err,
-				"sql", fullSQL,
-			)
-			return err
+			return logSQLError(err, "querySlice.load_all_values.scan", fullSQL, args)
 		}
 
 		// Append our new value to the slice:
@@ -204,9 +217,7 @@ func querySlice(runner runner, builder dat.Builder, dest interface{}) error {
 	valueOfDest.Set(sliceValue)
 
 	if err := rows.Err(); err != nil {
-		logger.Error("querySlice.load_all_values.rows_err",
-			"err", err, "sql", fullSQL)
-		return err
+		return logSQLError(err, "querySlice.load_all_values.rows_err", fullSQL, args)
 	}
 
 	return nil
@@ -236,9 +247,14 @@ func queryStruct(runner runner, builder dat.Builder, dest interface{}) error {
 	// Run the query:
 
 	if args == nil {
-		return runner.Get(dest, fullSQL)
+		err = runner.Get(dest, fullSQL)
+	} else {
+		err = runner.Get(dest, fullSQL, args...)
 	}
-	return runner.Get(dest, fullSQL, args...)
+	if err != nil {
+		logSQLError(err, "queryStruct", fullSQL, args)
+	}
+	return err
 }
 
 // QueryStructs executes the query in builderand loads the resulting data into
@@ -265,9 +281,14 @@ func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
 	}
 
 	if args == nil {
-		return runner.Select(dest, fullSQL)
+		err = runner.Select(dest, fullSQL)
+	} else {
+		err = runner.Select(dest, fullSQL, args...)
 	}
-	return runner.Select(dest, fullSQL, args...)
+	if err != nil {
+		logSQLError(err, "queryStructs", fullSQL, args)
+	}
+	return err
 }
 
 // queryJSONStrut executes the query in builder and loads the resulting data into
@@ -300,7 +321,7 @@ func queryJSONStruct(runner runner, builder dat.Builder, dest interface{}) error
 		err = runner.Get(&blob, fullSQL, args...)
 	}
 	if err != nil {
-		return err
+		return logSQLError(err, "queryJSONStruct", fullSQL, args)
 	}
 
 	return json.Unmarshal(blob, dest)
@@ -335,7 +356,7 @@ func queryJSONStructs(runner runner, builder dat.Builder, dest interface{}) erro
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		return err
+		return logSQLError(err, "queryJSONStructs", fullSQL, args)
 	}
 
 	// TODO optimize this later, may be better to
@@ -394,6 +415,10 @@ func queryJSON(runner runner, builder dat.Builder) ([]byte, error) {
 		err = runner.Get(&blob, fullSQL)
 	} else {
 		err = runner.Get(&blob, fullSQL, args...)
+	}
+
+	if err != nil {
+		logSQLError(err, "queryJSON", fullSQL, args)
 	}
 	return blob, err
 }

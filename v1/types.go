@@ -13,6 +13,11 @@ import (
 // only be used to create constants.
 type UnsafeString string
 
+// Interpolator is the interface for types which interpolate.
+type Interpolator interface {
+	Interpolate() (string, error)
+}
+
 // Value implements a valuer for compatibility
 func (u UnsafeString) Value() (driver.Value, error) {
 	panic("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")
@@ -98,30 +103,45 @@ func (n *NullBool) MarshalJSON() ([]byte, error) {
 	return nullString, nil
 }
 
-// JSONText is a json.RawMessage, which is a []byte underneath.
+// JSON is a json.RawMessage, which is a []byte underneath.
 // Value() validates the json format in the source, and returns an error if
-// the json is not valid.  Scan does no validation.  JSONText additionally
+// the json is not valid.  Scan does no validation.  JSON additionally
 // implements `Unmarshal`, which unmarshals the json within to an interface{}
-type JSONText json.RawMessage
+type JSON json.RawMessage
+
+// NewJSON creates a JSON value.
+func NewJSON(any interface{}) (*JSON, error) {
+	var j JSON
+	var err error
+	j, err = json.Marshal(any)
+	if err != nil {
+		return nil, err
+	}
+	return &j, nil
+}
 
 // MarshalJSON returns the *j as the JSON encoding of j.
-func (j *JSONText) MarshalJSON() ([]byte, error) {
+func (j *JSON) MarshalJSON() ([]byte, error) {
 	return *j, nil
 }
 
 // UnmarshalJSON sets *j to a copy of data
-func (j *JSONText) UnmarshalJSON(data []byte) error {
+func (j *JSON) UnmarshalJSON(data []byte) error {
 	if j == nil {
-		return errors.New("JSONText: UnmarshalJSON on nil pointer")
+		return errors.New("JSON: UnmarshalJSON on nil pointer")
 	}
 	*j = append((*j)[0:0], data...)
 	return nil
+}
 
+// Interpolate interpolates the value into a string.
+func (j JSON) Interpolate() (string, error) {
+	return string(j), nil
 }
 
 // Value returns j as a value.  This does a validating unmarshal into another
 // RawMessage.  If j is invalid json, it returns an error.
-func (j JSONText) Value() (driver.Value, error) {
+func (j JSON) Value() (driver.Value, error) {
 	var m json.RawMessage
 	var err = j.Unmarshal(&m)
 	if err != nil {
@@ -131,7 +151,7 @@ func (j JSONText) Value() (driver.Value, error) {
 }
 
 // Scan stores the src in *j.  No validation is done.
-func (j *JSONText) Scan(src interface{}) error {
+func (j *JSON) Scan(src interface{}) error {
 	var source []byte
 	switch src.(type) {
 	case string:
@@ -139,13 +159,13 @@ func (j *JSONText) Scan(src interface{}) error {
 	case []byte:
 		source = src.([]byte)
 	default:
-		return errors.New("Incompatible type for JSONText")
+		return errors.New("Incompatible type for JSON")
 	}
-	*j = JSONText(append((*j)[0:0], source...))
+	*j = JSON(append((*j)[0:0], source...))
 	return nil
 }
 
 // Unmarshal unmarshal's the json in j to v, as in json.Unmarshal.
-func (j *JSONText) Unmarshal(v interface{}) error {
+func (j *JSON) Unmarshal(v interface{}) error {
 	return json.Unmarshal([]byte(*j), v)
 }

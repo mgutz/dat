@@ -169,13 +169,3 @@ func pgTasks(p *Project) {
 
 	}).Desc("Executes a query against the database")
 }
-
-/*
-
-WITH
-
-----
-
-["asdf", "asdfadsf", 1]
-
-*/
