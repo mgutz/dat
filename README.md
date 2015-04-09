@@ -24,8 +24,8 @@ How it is different:
 
     ```go
     con.SelectDoc("id", "user_name", "avatar").
-        HasMany("recent_comments", `SELECT id, title FROM comments WHERE id = users.user_id LIMIT 10`).
-        HasMany("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.user_id LIMIT 10`).
+        HasMany("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
+        HasMany("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
         HasOne("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
         From("users").
         Where("id = $1", 4).
@@ -114,7 +114,7 @@ import (
 )
 
 // global connection (pooling provided by SQL driver)
-var connection *runner.Connection
+var conn *runner.Connection
 
 func init() {
     // create a normal database connection through database/sql
