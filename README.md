@@ -54,7 +54,7 @@ How it is different:
     json, _ = con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
         "mario",
     ).QueryJSON()
-    
+
     // straight into map
     var obj map[string]interface{}
     con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
@@ -775,7 +775,7 @@ To setup the task runner and create database
 
 ```sh
 # install godo task runner
-go get -u gopkg.in/godo.v1/cmd/godo
+go get -u gopkg.in/godo.v2/cmd/godo
 
 # install dependencies
 cd tasks

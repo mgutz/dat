@@ -174,3 +174,75 @@ func TestSelectDoc(t *testing.T) {
 	assert.Equal("Mario", person.Name)
 	assert.Equal(1, person.ID)
 }
+
+func TestSelectQueryEmbeddedJSON(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.AutoCommit()
+
+	type PostEmbedded struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User  struct {
+			ID int64
+		}
+	}
+
+	type User struct {
+		ID int64
+	}
+
+	type PostEmbedded2 struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User  *User
+	}
+
+	var post PostEmbedded
+
+	err := s.SelectDoc("id", "state").
+		HasOne("user", `select 42 as id`).
+		From("posts").
+		Where("id = $1", 1).
+		QueryStruct(&post)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, post.ID)
+	assert.Equal(t, 42, post.User.ID)
+
+	var post2 PostEmbedded2
+	err = s.SelectDoc("id", "state").
+		HasOne("user", `select 42 as id`).
+		From("posts").
+		Where("id = $1", 1).
+		QueryStruct(&post2)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, post2.ID)
+	assert.Equal(t, 42, post2.User.ID)
+}
+
+func TestSelectDocHasOneNoRows(t *testing.T) {
+	s := createRealSessionWithFixtures()
+	defer s.AutoCommit()
+
+	type User struct {
+		ID int64
+	}
+
+	type PostEmbedded struct {
+		ID    int    `db:"id"`
+		State string `db:"state"`
+		User  *User
+	}
+
+	var post PostEmbedded
+	err := s.SelectDoc("id", "state").
+		HasOne("user", `select * from people where id = 1232345`).
+		From("posts").
+		Where("id = $1", 1).
+		QueryStruct(&post)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, post.ID)
+	assert.Nil(t, post.User)
+}

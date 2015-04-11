@@ -19,7 +19,7 @@ func TestQueryObject(t *testing.T) {
 		QueryObject(&people)
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(people.AsSlice(".")), 2)
+	assert.Equal(t, len(people.AsSlice(".")), 6)
 
 	// Make sure that the Ids are set. It's possible (maybe?) that different DBs set ids differently so
 	// don't assume they're 1 and 2.

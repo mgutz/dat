@@ -3,8 +3,8 @@ package main
 import (
 	"io/ioutil"
 
-	do "github.com/mgutz/godo/v2"
-	"github.com/mgutz/godo/v2/util"
+	do "gopkg.in/godo.v2"
+	"gopkg.in/godo.v2/util"
 )
 
 var builderTemplate = `
@@ -36,7 +36,7 @@ func generateTasks(p *do.Project) {
 	p.Task("builder-boilerplate", nil, func(c *do.Context) {
 		context := do.M{
 			"builders": []string{"DeleteBuilder", "InsectBuilder",
-				"InsertBuilder", "RawBuilder", "SelectBuilder", "SelectJSONBuilder",
+				"InsertBuilder", "RawBuilder", "SelectBuilder", "SelectDocBuilder",
 				"UpdateBuilder", "UpsertBuilder"},
 		}
 

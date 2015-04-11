@@ -50,52 +50,6 @@ func TestSelectQueryEmbedded(t *testing.T) {
 	assert.Equal(t, 42, post2.User.ID)
 }
 
-func TestSelectQueryEmbeddedJSON(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.AutoCommit()
-
-	type PostEmbedded struct {
-		ID    int    `db:"id"`
-		State string `db:"state"`
-		User  struct {
-			ID int64
-		}
-	}
-
-	type User struct {
-		ID int64
-	}
-
-	type PostEmbedded2 struct {
-		ID    int    `db:"id"`
-		State string `db:"state"`
-		User  *User
-	}
-
-	var post PostEmbedded
-
-	err := s.SelectDoc("id", "state").
-		HasOne("user", `select 42 as id`).
-		From("posts").
-		Where("id = $1", 1).
-		QueryStruct(&post)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 1, post.ID)
-	assert.Equal(t, 42, post.User.ID)
-
-	var post2 PostEmbedded2
-	err = s.SelectDoc("id", "state").
-		HasOne("user", `select 42 as id`).
-		From("posts").
-		Where("id = $1", 1).
-		QueryStruct(&post2)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 1, post2.ID)
-	assert.Equal(t, 42, post2.User.ID)
-}
-
 func TestSelectQueryStructs(t *testing.T) {
 	s := createRealSessionWithFixtures()
 	defer s.Close()
@@ -108,7 +62,7 @@ func TestSelectQueryStructs(t *testing.T) {
 		QueryStructs(&people)
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(people), 2)
+	assert.Equal(t, len(people), 6)
 
 	// Make sure that the Ids are set. It's possible (maybe?) that different DBs set ids differently so
 	// don't assume they're 1 and 2.
@@ -199,8 +153,8 @@ func TestSelectQuerySlice(t *testing.T) {
 	err := s.Select("name").From("people").QuerySlice(&names)
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(names), 2)
-	assert.Equal(t, names, []string{"Mario", "John"})
+	assert.Equal(t, len(names), 6)
+	assert.Equal(t, names, []string{"Mario", "John", "Grant", "Tony", "Ester", "Reggie"})
 
 	var ids []int64
 	err = s.Select("id").From("people").Limit(1).QuerySlice(&ids)
@@ -222,7 +176,7 @@ func TestScalar(t *testing.T) {
 	var count int64
 	err = s.Select("COUNT(*)").From("people").QueryScalar(&count)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 2)
+	assert.Equal(t, count, 6)
 }
 
 func TestSelectExpr(t *testing.T) {
@@ -238,7 +192,7 @@ func TestSelectExpr(t *testing.T) {
 	var count int64
 	err = s.Select("COUNT(*)").From("people").QueryScalar(&count)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 2)
+	assert.Equal(t, count, 6)
 }
 
 func TestSelectScope(t *testing.T) {
