@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/mgutz/dat/v1"
+	"gopkg.in/mgutz/dat.v1/v1"
 )
 
 type runner interface {

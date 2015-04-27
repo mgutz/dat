@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mgutz/dat/v1"
-	"github.com/mgutz/dat/v1/postgres"
+	"gopkg.in/mgutz/dat.v1/v1"
+	"gopkg.in/mgutz/dat.v1/v1/postgres"
 )
 
 var conn *Connection

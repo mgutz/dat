@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/mgutz/dat/v1/postgres"
+	"gopkg.in/mgutz/dat.v1/v1/postgres"
 )
 
 func init() {

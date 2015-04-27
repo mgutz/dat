@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mgutz/dat/v1/common"
+	"gopkg.in/mgutz/dat.v1/v1/common"
 )
 
 // pgDollarTag is the double dollar tag for escaping strings.

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mgutz/dat/v1/common"
+	"gopkg.in/mgutz/dat.v1/v1/common"
 )
 
 // Eq is a map column -> value pairs which must be matched in a query

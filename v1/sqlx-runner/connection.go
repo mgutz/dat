@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/mgutz/dat/v1"
+	"gopkg.in/mgutz/dat.v1/v1"
 )
 
 // Connection represents a connection to the database.

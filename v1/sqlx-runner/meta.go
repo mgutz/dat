@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"github.com/mgutz/dat/v1"
+	"gopkg.in/mgutz/dat.v1/v1"
 )
 
 // MustCreateMetaTable creates the dat__meta table or panics.
