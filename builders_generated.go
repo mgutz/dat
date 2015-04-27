@@ -3,6 +3,23 @@ package dat
 //// DO NOT EDIT, auto-generated: godo builder-boilerplate
 
 // Interpolate interpolates this builders sql.
+func (b *CallBuilder) Interpolate() (string, []interface{}, error) {
+	return interpolate(b)
+}
+
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *CallBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *CallBuilder) SetIsInterpolated(enable bool) *CallBuilder {
+	b.isInterpolated = enable
+	return b
+}
+
+// Interpolate interpolates this builders sql.
 func (b *DeleteBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
 }

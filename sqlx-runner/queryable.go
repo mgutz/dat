@@ -23,6 +23,13 @@ func WrapSqlxExt(e sqlx.Ext) *Queryable {
 	}
 }
 
+// Call creates a new CallBulider for the given sproc and args.
+func (q *Queryable) Call(sproc string, args ...interface{}) *dat.CallBuilder {
+	b := dat.NewCallBuilder(sproc, args...)
+	b.Execer = NewExecer(q.runner, b)
+	return b
+}
+
 // DeleteFrom creates a new DeleteBuilder for the given table.
 func (q *Queryable) DeleteFrom(table string) *dat.DeleteBuilder {
 	b := dat.NewDeleteBuilder(table)

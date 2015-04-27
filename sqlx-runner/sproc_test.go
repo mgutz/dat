@@ -69,3 +69,57 @@ $$ LANGUAGE plpgsql;
 // 	assert.Equal(t, sum, 3)
 // 	assert.Equal(t, prod, 2)
 // }
+
+func TestCallRows(t *testing.T) {
+	// returns multiple rows
+	sql := `
+CREATE OR REPLACE FUNCTION rows_table(x int, y int)
+RETURNS TABLE(sum int, prod int) AS $$
+BEGIN
+	return query
+	select x + y as sum, x * y as prod;
+END;
+$$ LANGUAGE plpgsql;
+`
+	conn.DB.MustExec(sql)
+
+	var sum int
+	var prod int
+	conn.Call("rows_table", 1, 2).QueryScalar(&sum, &prod)
+	assert.Equal(t, sum, 3)
+	assert.Equal(t, prod, 2)
+}
+
+func TestCallNoArgs(t *testing.T) {
+	// returns multiple rows
+	sql := `
+CREATE OR REPLACE FUNCTION hello(OUT s text) AS $$
+BEGIN
+	s = 'Hello world!';
+END;
+$$ LANGUAGE plpgsql;
+`
+	conn.DB.MustExec(sql)
+
+	var s string
+	err := conn.Call("hello").QueryScalar(&s)
+	assert.NoError(t, err)
+	assert.Equal(t, "Hello world!", s)
+}
+
+func TestCallNoArgsReturns(t *testing.T) {
+	// returns multiple rows
+	sql := `
+CREATE OR REPLACE FUNCTION hello2() RETURNS text AS $$
+BEGIN
+	return 'Hello world!';
+END;
+$$ LANGUAGE plpgsql;
+`
+	conn.DB.MustExec(sql)
+
+	var s string
+	err := conn.Call("hello2").QueryScalar(&s)
+	assert.NoError(t, err)
+	assert.Equal(t, "Hello world!", s)
+}

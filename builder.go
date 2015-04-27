@@ -14,6 +14,13 @@ type Builder interface {
 	IsInterpolated() bool
 }
 
+// Call creates a new CallBuilder for the given sproc and args.
+func Call(sproc string, args ...interface{}) *CallBuilder {
+	b := NewCallBuilder(sproc, args...)
+	b.Execer = &panicExecer{}
+	return b
+}
+
 // DeleteFrom creates a new DeleteBuilder for the given table.
 func DeleteFrom(table string) *DeleteBuilder {
 	b := NewDeleteBuilder(table)
