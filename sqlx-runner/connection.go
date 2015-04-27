@@ -2,8 +2,8 @@ package runner
 
 import "gopkg.in/mgutz/dat.v1"
 
-// Conn is a queryable connection and represents a DB or Tx.
-type Conn interface {
+// Connection is a queryable connection and represents a DB or Tx.
+type Connection interface {
 	DeleteFrom(table string) *dat.DeleteBuilder
 	Exec(cmd string, args ...interface{}) (*dat.Result, error)
 	ExecBuilder(b dat.Builder) error
