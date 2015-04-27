@@ -8,7 +8,7 @@ import (
 	"github.com/mgutz/dat/v1"
 )
 
-// Connection is a connection to the database with an EventReceiver
+// Connection represents a connection to the database.
 type Connection struct {
 	DB *sqlx.DB
 	*Queryable
@@ -18,7 +18,7 @@ var standardConformingStrings string
 
 // pgMustNotAllowEscapeSequence checks if Postgres treats backlashes
 // literally in strings when dat.EnableInterpolation == true. If escape
-// sequences are allowed, then it is unsafe to use interpoaltion and
+// sequences are allowed, then it is unsafe to use interpolation and
 // this function panics.
 func pgMustNotAllowEscapeSequence(conn *Connection) {
 	if !dat.EnableInterpolation {

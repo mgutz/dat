@@ -9,8 +9,9 @@ How it is different:
 
 *   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
 
-*   FASTER than any of the other generic SQL builders for Postgres since
-    it doesn't have to worry about building to the lowest common denominator.
+*   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
+
+*   FASTER than any of the other generic Postgres SQL builders.
 
 *   SQL and backtick friendly.
 
@@ -18,15 +19,13 @@ How it is different:
     con.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
-*   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
-
 *   Intuitive JSON Document retrieval (single trip to database!)
 
     ```go
     con.SelectDoc("id", "user_name", "avatar").
-        HasMany("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
-        HasMany("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
-        HasOne("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
+        Many("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
+        Many("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
+        One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
         From("users").
         Where("id = $1", 4).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()

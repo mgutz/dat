@@ -24,8 +24,8 @@ func TestSelectDocSQLNoDocs(t *testing.T) {
 
 func TestSelectDocSQLDocs(t *testing.T) {
 	sql, args := SelectDoc("b", "c").
-		As("f", `SELECT g, h FROM f WHERE id= $1`, 4).
-		As("x", `SELECT id, y, z FROM x`).
+		Many("f", `SELECT g, h FROM f WHERE id= $1`, 4).
+		Many("x", `SELECT id, y, z FROM x`).
 		From("a").
 		Where("d=$1", 4).
 		ToSQL()
@@ -48,8 +48,8 @@ func TestSelectDocSQLDocs(t *testing.T) {
 
 func TestSelectDocSQLInnerSQL(t *testing.T) {
 	sql, args := SelectDoc("b", "c").
-		As("f", `SELECT g, h FROM f WHERE id= $1`, 4).
-		As("x", `SELECT id, y, z FROM x`).
+		Many("f", `SELECT g, h FROM f WHERE id= $1`, 4).
+		Many("x", `SELECT id, y, z FROM x`).
 		InnerSQL(`
 			FROM a
 			WHERE d = $1

@@ -26,13 +26,23 @@ func (b *SelectDocBuilder) InnerSQL(sql string, a ...interface{}) *SelectDocBuil
 	return b
 }
 
-// As is an alias for HasMany
+// As is an alias for Many
 func (b *SelectDocBuilder) As(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
-	return b.HasMany(column, sqlOrBuilder, a...)
+	return b.Many(column, sqlOrBuilder, a...)
 }
 
-// HasMany loads a sub query resulting in an array of rows as an alias.
+// HasMany is an alias for Many
 func (b *SelectDocBuilder) HasMany(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	return b.Many(column, sqlOrBuilder, a...)
+}
+
+// HasOne is an alias for One
+func (b *SelectDocBuilder) HasOne(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	return b.One(column, sqlOrBuilder, a...)
+}
+
+// Many loads a sub query resulting in an array of rows as an alias.
+func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
@@ -47,8 +57,8 @@ func (b *SelectDocBuilder) HasMany(column string, sqlOrBuilder interface{}, a ..
 	return b
 }
 
-// HasOne loads a query resulting in a single row as an alias.
-func (b *SelectDocBuilder) HasOne(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+// One loads a query resulting in a single row as an alias.
+func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")

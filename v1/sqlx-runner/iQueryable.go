@@ -2,8 +2,9 @@ package runner
 
 import "github.com/mgutz/dat/v1"
 
-// IQueryable is an object that can be queried.
-type IQueryable interface {
+// Qonnection is a queryable connection and represents a concrete Connection
+// or Tx.
+type Qonnection interface {
 	DeleteFrom(table string) *dat.DeleteBuilder
 	Exec(cmd string, args ...interface{}) (*dat.Result, error)
 	ExecBuilder(b dat.Builder) error

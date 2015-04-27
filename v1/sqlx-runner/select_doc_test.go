@@ -25,7 +25,7 @@ func TestSelectDocRow(t *testing.T) {
 	var person Person
 	err := conn.
 		SelectDoc("id", "name").
-		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
+		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id = $1", 1).
 		QueryStruct(&person)
@@ -45,13 +45,13 @@ func TestSelectDocNested(t *testing.T) {
 	var obj jo.Object
 
 	posts := dat.SelectDoc("id", "title").
-		As("comments", `SELECT * FROM comments WHERE comments.id = posts.id`).
+		Many("comments", `SELECT * FROM comments WHERE comments.id = posts.id`).
 		From("posts").
 		Where("user_id = people.id")
 
 	err := conn.
 		SelectDoc("id", "name").
-		As("posts", posts).
+		Many("posts", posts).
 		From("people").
 		Where("id = $1", 1).
 		SetIsInterpolated(true).
@@ -81,7 +81,7 @@ func TestSelectDocNil(t *testing.T) {
 	var person Person
 	err := conn.
 		SelectDoc("id", "name").
-		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
+		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id = $1", 1000).
 		QueryStruct(&person)
@@ -104,7 +104,7 @@ func TestSelectDocRows(t *testing.T) {
 	var people []*Person
 	err := conn.
 		SelectDoc("id", "name").
-		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
+		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id in $1", []int{1, 2}).
 		SetIsInterpolated(true).
@@ -145,7 +145,7 @@ func TestSelectDocRowsNil(t *testing.T) {
 	var people []*Person
 	err := conn.
 		SelectDoc("id", "name").
-		As("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
+		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
 		Where("id in $1", []int{2000, 2001}).
 		SetIsInterpolated(true).
@@ -200,7 +200,7 @@ func TestSelectQueryEmbeddedJSON(t *testing.T) {
 	var post PostEmbedded
 
 	err := s.SelectDoc("id", "state").
-		HasOne("user", `select 42 as id`).
+		One("user", `select 42 as id`).
 		From("posts").
 		Where("id = $1", 1).
 		QueryStruct(&post)
@@ -211,7 +211,7 @@ func TestSelectQueryEmbeddedJSON(t *testing.T) {
 
 	var post2 PostEmbedded2
 	err = s.SelectDoc("id", "state").
-		HasOne("user", `select 42 as id`).
+		One("user", `select 42 as id`).
 		From("posts").
 		Where("id = $1", 1).
 		QueryStruct(&post2)
@@ -221,7 +221,7 @@ func TestSelectQueryEmbeddedJSON(t *testing.T) {
 	assert.Equal(t, 42, post2.User.ID)
 }
 
-func TestSelectDocHasOneNoRows(t *testing.T) {
+func TestSelectDocOneNoRows(t *testing.T) {
 	s := createRealSessionWithFixtures()
 	defer s.AutoCommit()
 
@@ -237,7 +237,7 @@ func TestSelectDocHasOneNoRows(t *testing.T) {
 
 	var post PostEmbedded
 	err := s.SelectDoc("id", "state").
-		HasOne("user", `select * from people where id = 1232345`).
+		One("user", `select * from people where id = 1232345`).
 		From("posts").
 		Where("id = $1", 1).
 		QueryStruct(&post)
@@ -245,4 +245,7 @@ func TestSelectDocHasOneNoRows(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, post.ID)
 	assert.Nil(t, post.User)
+}
+
+func TestSelectDocDate(t *testing.T) {
 }

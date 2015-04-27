@@ -1,10 +1,12 @@
 package dat
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -101,6 +103,60 @@ func (n *NullBool) MarshalJSON() ([]byte, error) {
 		return j, e
 	}
 	return nullString, nil
+}
+
+// UnmarshalJSON correctly deserializes a NullString from JSON
+func (n *NullString) UnmarshalJSON(b []byte) error {
+	var s interface{}
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	return n.Scan(s)
+}
+
+// UnmarshalJSON correctly deserializes a NullInt64 from JSON
+func (n *NullInt64) UnmarshalJSON(b []byte) error {
+	var s interface{}
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	return n.Scan(s)
+}
+
+// UnmarshalJSON correctly deserializes a NullFloat64 from JSON
+func (n *NullFloat64) UnmarshalJSON(b []byte) error {
+	var s interface{}
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	return n.Scan(s)
+}
+
+// UnmarshalJSON correctly deserializes a NullTime from JSON
+func (n *NullTime) UnmarshalJSON(b []byte) error {
+	// scan for null
+	if bytes.Equal(b, nullString) {
+		return n.Scan(nil)
+	}
+	// scan for JSON timestamp
+
+	format := "2006-01-02 15:04:05.999999999-07"
+	s := string(b)
+	s = s[1 : len(s)-1]
+	t, err := time.Parse(format, s)
+	if err != nil {
+		return err
+	}
+	return n.Scan(t)
+}
+
+// UnmarshalJSON correctly deserializes a NullBool from JSON
+func (n *NullBool) UnmarshalJSON(b []byte) error {
+	var s interface{}
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	return n.Scan(s)
 }
 
 // JSON is a json.RawMessage, which is a []byte underneath.

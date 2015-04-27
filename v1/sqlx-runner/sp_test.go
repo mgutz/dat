@@ -25,6 +25,7 @@ $$ LANGUAGE plpgsql;
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }
+
 func TestSprocRowOut(t *testing.T) {
 	// returns a single row
 	sql := `

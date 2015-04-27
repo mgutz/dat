@@ -59,6 +59,9 @@ func tasks(p *do.Project) {
 	})
 
 	p.Task("default", do.S{"builder-boilerplate"}, nil)
+
+	p.Task("example", nil, func(c *do.Context) {
+	})
 }
 
 func main() {
