@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/mgutz/ansi"
-	"gopkg.in/mgutz/dat.v1/v1"
-	"gopkg.in/mgutz/dat.v1/v1/sqlx-runner"
+	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/mgutz/dat.v1/sqlx-runner"
 	"github.com/mgutz/str"
 	. "gopkg.in/godo.v2"
 	"gopkg.in/godo.v2/util"
