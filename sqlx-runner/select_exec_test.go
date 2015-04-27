@@ -3,13 +3,13 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgutz/dat.v1"
 )
 
 func TestSelectQueryEmbedded(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.AutoCommit()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	type PostEmbedded struct {
 		ID    int    `db:"id"`
@@ -51,8 +51,8 @@ func TestSelectQueryEmbedded(t *testing.T) {
 }
 
 func TestSelectQueryStructs(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var people []Person
 	err := s.
@@ -80,8 +80,8 @@ func TestSelectQueryStructs(t *testing.T) {
 }
 
 func TestSelectQueryStruct(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	// Found:
 	var person Person
@@ -106,8 +106,8 @@ func TestSelectQueryStruct(t *testing.T) {
 }
 
 func TestSelectBySqlQueryStructs(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var people []*Person
 	dat.EnableInterpolation = true
@@ -125,8 +125,8 @@ func TestSelectBySqlQueryStructs(t *testing.T) {
 }
 
 func TestSelectQueryScalar(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var name string
 	err := s.
@@ -146,8 +146,8 @@ func TestSelectQueryScalar(t *testing.T) {
 }
 
 func TestSelectQuerySlice(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var names []string
 	err := s.Select("name").From("people").QuerySlice(&names)
@@ -165,8 +165,8 @@ func TestSelectQuerySlice(t *testing.T) {
 }
 
 func TestScalar(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var name string
 	err := s.Select("name").From("people").Where("email = 'john@acme.com'").QueryScalar(&name)
@@ -180,8 +180,8 @@ func TestScalar(t *testing.T) {
 }
 
 func TestSelectExpr(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var name string
 	scope := dat.Expr("email = $1", "john@acme.com")
@@ -196,8 +196,8 @@ func TestSelectExpr(t *testing.T) {
 }
 
 func TestSelectScope(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var id int
 	err := s.
@@ -237,8 +237,8 @@ func TestSelectScope(t *testing.T) {
 }
 
 func TestSelectScoped(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var id int
 	err := s.

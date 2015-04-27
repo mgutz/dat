@@ -3,14 +3,15 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgutz/dat.v1"
 )
 
 func TestInsect(t *testing.T) {
 	// Insert by specifying values
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
 	var id int64
 	err := s.Insect("people").
 		Columns("name", "email").
@@ -38,8 +39,9 @@ func TestInsect(t *testing.T) {
 
 // Insect should select existing record.
 func TestInsectSelect(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
 	var id int64
 	err := s.Insect("people").
 		Columns("name", "email").
@@ -52,8 +54,9 @@ func TestInsectSelect(t *testing.T) {
 
 // Insect should select existing record without updating it (see Upsert)
 func TestInsectSelectWhere(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
 	var p Person
 	err := s.Insect("people").
 		Columns("name", "email").

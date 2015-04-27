@@ -9,7 +9,7 @@ import (
 )
 
 // MustCreateMetaTable creates the dat__meta table or panics.
-func (con *Connection) MustCreateMetaTable() {
+func (con *DB) MustCreateMetaTable() {
 	// pg function to delete a function without having to worry about
 	// the arguments changing.
 	delfunc := `
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 )
 	`
 
-	sess, err := con.NewSession()
+	sess, err := con.Begin()
 	if err != nil {
 		logger.Fatal("Could not create session")
 	}
@@ -64,8 +64,8 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 // MustRegisterFunction registers a user defined function but will not recreate it
 // unles the hash has changed with version. This is useful for keeping user defined
 // functions defined in source code.
-func (con *Connection) MustRegisterFunction(name string, version string, body string) {
-	sess, err := con.NewSession()
+func (con *DB) MustRegisterFunction(name string, version string, body string) {
+	sess, err := con.Begin()
 	if err != nil {
 		logger.Fatal("Could not register function", "err", err, "name", name)
 	}

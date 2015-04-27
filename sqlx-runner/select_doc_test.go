@@ -176,8 +176,8 @@ func TestSelectDoc(t *testing.T) {
 }
 
 func TestSelectQueryEmbeddedJSON(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.AutoCommit()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	type PostEmbedded struct {
 		ID    int    `db:"id"`
@@ -222,8 +222,8 @@ func TestSelectQueryEmbeddedJSON(t *testing.T) {
 }
 
 func TestSelectDocOneNoRows(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.AutoCommit()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	type User struct {
 		ID int64

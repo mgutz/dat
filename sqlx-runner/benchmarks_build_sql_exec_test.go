@@ -79,7 +79,7 @@ func benchmarkBuildInsertSqlN(b *testing.B, rows int, argc int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := db.Exec(sql, args...)
+		_, err := conn.Exec(sql, args...)
 		if err != nil {
 			b.Error(err.Error())
 		}

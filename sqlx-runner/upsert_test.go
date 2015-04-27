@@ -3,14 +3,15 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgutz/dat.v1"
 )
 
 func TestUpsertReal(t *testing.T) {
 	// Insert by specifying values
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
 	var id int64
 	err := s.Upsert("people").
 		Columns("name", "email").

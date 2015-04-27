@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/mgutz/ansi"
-	"gopkg.in/mgutz/dat.v1"
-	"gopkg.in/mgutz/dat.v1/sqlx-runner"
 	"github.com/mgutz/str"
 	. "gopkg.in/godo.v2"
 	"gopkg.in/godo.v2/util"
+	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/mgutz/dat.v1/sqlx-runner"
 )
 
 func mapBytesToString(m map[string]interface{}) {
@@ -118,15 +118,15 @@ func createdb(c *Context) {
 	fmt.Println("OK")
 }
 
-var conn *runner.Connection
+var db *runner.DB
 
-func getConnection() *runner.Connection {
+func getConnection() *runner.DB {
 
-	if conn == nil {
+	if db == nil {
 		connectionString := Getenv("DAT_DSN")
-		conn = runner.NewConnectionFromString("postgres", connectionString)
+		db = runner.NewDBFromString("postgres", connectionString)
 	}
-	return conn
+	return db
 }
 
 func pgTasks(p *Project) {

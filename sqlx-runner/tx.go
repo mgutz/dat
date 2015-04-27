@@ -43,7 +43,7 @@ func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 }
 
 // Begin creates a transaction for the given session
-func (conn *Connection) Begin() (*Tx, error) {
+func (conn *DB) Begin() (*Tx, error) {
 	tx, err := conn.DB.Beginx()
 	if err != nil {
 		return nil, logError("begin.error", err)

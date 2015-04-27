@@ -8,8 +8,8 @@ import (
 )
 
 func TestQueryObject(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var people jo.Object
 	err := s.

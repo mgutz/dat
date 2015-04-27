@@ -3,13 +3,13 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgutz/dat.v1"
 )
 
 func TestUpdateKeywordColumnName(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	// Insert a user with a key
 	res, err := s.
@@ -35,8 +35,8 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 }
 
 func TestUpdateReal(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var id int64
 	// Insert a George
@@ -134,8 +134,8 @@ func TestUpdateBlacklist(t *testing.T) {
 }
 
 func TestUpdateScope(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var id int64
 	// Insert a George
@@ -167,8 +167,8 @@ func TestUpdateScope(t *testing.T) {
 }
 
 func TestUpdateScopeFunc(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var id int64
 	// Insert a George

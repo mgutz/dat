@@ -80,7 +80,7 @@ func benchmarkTransactedSqlN(b *testing.B, rows int, argc int) {
 
 	sql, args := builder.ToSQL()
 
-	tx, err := db.Begin()
+	tx, err := conn.Begin()
 	if err != nil {
 		panic(err)
 	}

@@ -5,16 +5,16 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/common"
 	"gopkg.in/mgutz/dat.v1/postgres"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestInsertKeywordColumnName(t *testing.T) {
 	// Insert a column whose name is reserved
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	res, err := s.
 		InsertInto("people").
@@ -27,8 +27,8 @@ func TestInsertKeywordColumnName(t *testing.T) {
 }
 
 func TestInsertDoubleDollarQuote(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	expected := common.RandomString(16)
 	var str string
@@ -60,8 +60,8 @@ func TestInsertDoubleDollarQuote(t *testing.T) {
 }
 
 func TestInsertDefault(t *testing.T) {
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
 
 	var str string
 	err := s.
@@ -85,8 +85,9 @@ func TestInsertDefault(t *testing.T) {
 
 func TestInsertReal(t *testing.T) {
 	// Insert by specifying values
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
 	var id int64
 	err := s.InsertInto("people").
 		Columns("name", "email").
@@ -128,8 +129,9 @@ func TestInsertReal(t *testing.T) {
 func TestInsertMultipleRecords(t *testing.T) {
 	assert := assert.New(t)
 
-	s := createRealSessionWithFixtures()
-	defer s.Close()
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
 	res, err := s.
 		InsertInto("people").
 		Columns("name", "email").

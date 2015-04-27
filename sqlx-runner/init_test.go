@@ -10,28 +10,23 @@ import (
 	"gopkg.in/mgutz/dat.v1/postgres"
 )
 
-var conn *Connection
-var db *sql.DB
+var conn *DB
+var sqlDB *sql.DB
 
 func init() {
 	dat.Dialect = postgres.New()
-	db = realDb()
-	conn = NewConnection(db, "postgres")
+	sqlDB = realDb()
+	conn = NewDB(sqlDB, "postgres")
 	dat.Strict = false
 }
 
-func createRealSession() *Session {
-	sess, err := conn.NewSession()
+func beginTxWithFixtures() *Tx {
+	installFixtures()
+	c, err := conn.Begin()
 	if err != nil {
 		panic(err)
 	}
-	return sess
-}
-
-func createRealSessionWithFixtures() *Session {
-	installFixtures()
-	sess := createRealSession()
-	return sess
+	return c
 }
 
 func quoteColumn(column string) string {
