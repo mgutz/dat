@@ -27,6 +27,9 @@ func toOutputStr(args []interface{}) string {
 	}
 	var buf bytes.Buffer
 	for i, arg := range args {
+		if i > 0 {
+			buf.WriteString(" ")
+		}
 		buf.WriteString("$")
 		buf.WriteString(strconv.Itoa(i + 1))
 		buf.WriteString("=")

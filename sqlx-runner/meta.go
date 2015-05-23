@@ -9,7 +9,7 @@ import (
 )
 
 // MustCreateMetaTable creates the dat__meta table or panics.
-func (con *DB) MustCreateMetaTable() {
+func (db *DB) MustCreateMetaTable() {
 	// pg function to delete a function without having to worry about
 	// the arguments changing.
 	delfunc := `
@@ -44,13 +44,13 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 )
 	`
 
-	sess, err := con.Begin()
+	tx, err := db.Begin()
 	if err != nil {
 		logger.Fatal("Could not create session")
 	}
-	defer sess.AutoRollback()
+	defer tx.AutoRollback()
 
-	_, err = sess.ExecMulti(
+	_, err = tx.ExecMulti(
 		dat.Expr(delfunc),
 		dat.Expr(createMeta),
 	)
@@ -58,18 +58,21 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 		logger.Fatal("Could not execute Multi SQL")
 		panic(err)
 	}
-	sess.Commit()
+	tx.Commit()
 }
 
 // MustRegisterFunction registers a user defined function but will not recreate it
 // unles the hash has changed with version. This is useful for keeping user defined
 // functions defined in source code.
-func (con *DB) MustRegisterFunction(name string, version string, body string) {
-	sess, err := con.Begin()
+func (db *DB) MustRegisterFunction(name string, version string, body string) {
+	tx, err := db.Begin()
 	if err != nil {
 		logger.Fatal("Could not register function", "err", err, "name", name)
 	}
-	defer sess.AutoRollback()
+	defer tx.AutoRollback()
+
+	if version == "" {
+	}
 
 	h := fnv.New64a()
 	h.Write([]byte(body))
@@ -77,7 +80,7 @@ func (con *DB) MustRegisterFunction(name string, version string, body string) {
 
 	// check if the function already exists
 	var metaID int
-	err = con.
+	err = tx.
 		SQL(`SELECT id FROM dat__meta WHERE kind = 'function' AND version = $1 AND name = $2`, crc, name).
 		QueryScalar(&metaID)
 	if err != nil && err != sql.ErrNoRows && err != dat.ErrNotFound {
@@ -92,8 +95,8 @@ func (con *DB) MustRegisterFunction(name string, version string, body string) {
 				VALUES ('function', $1, $2)
 			`, crc, name),
 
-			// have to use a special delete function since Postgres will
-			// not delete a function if arguments change
+			// have to use a special delete function since Postgres will not
+			// delete a function if arguments change
 			dat.Expr(`
 				SELECT dat__delfunc($1)
 			`, name),
@@ -101,10 +104,42 @@ func (con *DB) MustRegisterFunction(name string, version string, body string) {
 			dat.Expr(body),
 		}
 
-		_, err := sess.ExecMulti(commands...)
+		_, err := tx.ExecMulti(commands...)
 		if err != nil {
 			logger.Fatal("Could not insert function", "err", err)
 		}
 	}
-	sess.Commit()
+	tx.Commit()
 }
+
+// MustRegisterFunctionsInDir registers user defined functions in the given
+// dir. version should be unique for each deployment to properly upgrade the
+// function.
+// func (db *DB) MustRegisterFunctionsInDir(dir string, version string) {
+// 	keys := map[string]string{}
+// 	sprocs := map[string]string{}
+// 	walkFn := func(path string, fi os.FileInfo, err error) error {
+// 		if fi.IsDir() {
+// 			return nil
+// 		}
+// 		logger.Debug("MustRegisterFunctionsInDir", "dir", dir, "path", path)
+
+// 		if filepath.Ext(path) == ".sql" {
+// 			f, err := os.Open(path)
+// 			if err != nil {
+// 				logger.Fatal("Could not open SQL file.", "file", path)
+// 			}
+// 			err = dat.ParseFromReader(f, keys, sprocs)
+// 			if err != nil {
+// 				logger.Fatal("Could not parse SQL file.", "err", err)
+// 			}
+// 		}
+// 		return nil
+// 	}
+
+// 	filepath.Walk(dir, walkFn)
+
+// 	for name, body := range sprocs {
+// 		db.MustRegisterFunction(name, version, body)
+// 	}
+// }

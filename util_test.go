@@ -43,3 +43,35 @@ FROM bar;`
 	assert.Equal(t, "\nSELECT *\nFROM foo;\n", sli[0])
 	assert.Equal(t, "\nSELECT *\nFROM bar;", sli[1])
 }
+
+func TestParseReader(t *testing.T) {
+	s := `
+--@key=foo
+SELECT *
+FROM foo;
+
+--@key=bar
+SELECT *
+FROM bar;
+
+--@sproc
+create function f_foo() as $$
+begin
+end; $$ language plpgsql;
+`
+	r := bytes.NewBufferString(s)
+	a, err := PartitionKV(r, "--@", "=")
+	assert.NoError(t, err)
+
+	assert.Equal(t, "key", a[0]["_kind"])
+	assert.Equal(t, "SELECT *\nFROM foo;\n\n", a[0]["_body"])
+	assert.Equal(t, "foo", a[0]["key"])
+
+	assert.Equal(t, "key", a[1]["_kind"])
+	assert.Equal(t, "SELECT *\nFROM bar;\n\n", a[1]["_body"])
+	assert.Equal(t, "bar", a[1]["key"])
+
+	assert.Equal(t, "sproc", a[2]["_kind"])
+	assert.Equal(t, "create function f_foo() as $$\nbegin\nend; $$ language plpgsql;\n", a[2]["_body"])
+	assert.Equal(t, "", a[2]["sproc"])
+}

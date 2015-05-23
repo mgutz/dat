@@ -140,13 +140,19 @@ func (n *NullTime) UnmarshalJSON(b []byte) error {
 	}
 	// scan for JSON timestamp
 
+	// try postgres format
 	format := "2006-01-02 15:04:05.999999999-07"
 	s := string(b)
 	s = s[1 : len(s)-1]
 	t, err := time.Parse(format, s)
 	if err != nil {
-		return err
+		// try UTC format
+		t, err = time.Parse(time.RFC3339, s)
+		if err != nil {
+			return err
+		}
 	}
+
 	return n.Scan(t)
 }
 

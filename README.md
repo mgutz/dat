@@ -16,13 +16,13 @@ How it is different:
 *   SQL and backtick friendly.
 
     ```go
-    con.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
+    DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
 *   Intuitive JSON Document retrieval (single trip to database!)
 
     ```go
-    con.SelectDoc("id", "user_name", "avatar").
+    DB.SelectDoc("id", "user_name", "avatar").
         Many("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
         Many("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
         One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
@@ -50,13 +50,13 @@ How it is different:
 
     ```go
     var json []byte
-    json, _ = con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
+    json, _ = DB.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
         "mario",
     ).QueryJSON()
 
     // straight into map
     var obj map[string]interface{}
-    con.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
+    DB.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
         "mario",
     ).QueryObject(&obj)
     ```
@@ -74,13 +74,13 @@ How it is different:
 *   Ordinal placeholders - friendlier than `?`
 
     ```go
-    con.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
+    DB.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
     ```
 
 *   Minimal API Surface. No AST-like language to learn.
 
     ```go
-    err := con.
+    err := DB.
         Select("id, user_name").
         From("users").
         Where("id = $1", id).
@@ -112,8 +112,8 @@ import (
     _ "github.com/lib/pq"
 )
 
-// global connection (pooling provided by SQL driver)
-var conn *runner.Connection
+// global databse (pooling provided by SQL driver)
+var DB *runner.DB
 
 func init() {
     // create a normal database connection through database/sql
@@ -127,7 +127,7 @@ func init() {
     // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
-    conn = runner.NewConnection(db, "postgres")
+    DB = runner.NewDB(db, "postgres")
 }
 
 type Post struct {
@@ -142,7 +142,7 @@ type Post struct {
 
 func main() {
     var post Post
-    err := conn.
+    err := DB.
         Select("id, title").
         From("posts").
         Where("id = $1", 13).
@@ -159,7 +159,7 @@ Query Builder
 
 ```go
 var posts []*Post
-err := conn.
+err := DB.
     Select("title", "body").
     From("posts").
     Where("created_at > $1", someTime).
@@ -171,7 +171,7 @@ err := conn.
 Plain SQL
 
 ```go
-conn.SQL(`
+DB.SQL(`
     SELECT title, body
     FROM posts WHERE created_at > $1
     ORDER BY id ASC LIMIT 10`,
@@ -196,14 +196,14 @@ Query then scan result to struct(s)
 
 ```go
 var post Post
-err := sess.
+err := DB.
     Select("id, title, body").
     From("posts").
     Where("id = $1", id).
     QueryStruct(&post)
 
 var posts []*Post
-err = sess.
+err = DB.
     Select("id, title, body").
     From("posts").
     Where("id > $1", 100).
@@ -214,10 +214,10 @@ Query scalar values or a slice of values
 
 ```go
 var n int64
-conn.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
+DB.SQL("SELECT count(*) FROM posts WHERE title=$1", title).QueryScalar(&n)
 
 var ids []int64
-conn.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
+DB.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
 ### Blacklist and Whitelist
@@ -226,14 +226,14 @@ Control which columns get inserted or updated when processing external data
 
 ```go
 // userData came in from http.Handler, prevent them from setting protected fields
-conn.InsertInto("payments").
+DB.InsertInto("payments").
     Blacklist("id", "updated_at", "created_at").
     Record(userData).
     Returning("id").
     QueryScalar(&userData.ID)
 
 // ensure session user can only update his information
-conn.Update("users").
+DB.Update("users").
     SetWhitelist(user, "user_name", "avatar", "quote").
     Where("id = $1", session.UserID).
     Exec()
@@ -247,7 +247,7 @@ Simpler IN queries which expand correctly
 
 ```go
 ids := []int64{10,20,30,40,50}
-b := conn.SQL("SELECT * FROM posts WHERE id IN $1", ids)
+b := DB.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
@@ -276,7 +276,7 @@ trip
 ```go
 post := Post{Title: "Swith to Postgres", State: "open"}
 
-err := conn.
+err := DB.
     InsertInto("posts").
     Columns("title", "state").
     Values("My Post", "draft").
@@ -289,7 +289,7 @@ are inserted.
 
 ```go
 post := Post{Title: "Go is awesome", State: "open"}
-err := conn.
+err := DB.
     InsertInto("posts").
     Blacklist("id", "user_id", "created_at", "updated_at").
     Record(post).
@@ -297,7 +297,7 @@ err := conn.
     QueryStruct(&post)
 
 // use wildcard to include all columns
-err := sess.
+err := DB.
     InsertInto("posts").
     Whitelist("*").
     Record(post).
@@ -310,7 +310,7 @@ Insert Multiple Records
 
 ```go
 // create builder
-b := conn.InsertInto("posts").Columns("title")
+b := DB.InsertInto("posts").Columns("title")
 
 // add some new posts
 for i := 0; i < 3; i++ {
@@ -354,7 +354,7 @@ SELECT * FROM ins UNION ALL SELECT * FROM sel
 ```go
 var other Post
 
-err = conn.
+err = DB.
     Select("id, title").
     From("posts").
     Where("id = $1", post.ID).
@@ -366,7 +366,7 @@ published := dat.NewScope(
 )
 
 var posts []*Post
-err = conn.
+err = DB.
     Select("id, title").
     From("posts").
     ScopeMap(published, dat.M{"userID": 100})
@@ -379,7 +379,7 @@ Use `Returning` to fetch columns updated by triggers. For example,
 an update trigger on "updated\_at" column
 
 ```go
-err = conn.
+err = DB.
     Update("posts").
     Set("title", "My New Title").
     Set("body", "markdown text here").
@@ -421,7 +421,7 @@ To reset columns to their default DDL value, use `DEFAULT`. For example,
 to reset `payment\_type`
 
 ```go
-res, err := conn.
+res, err := DB.
     Update("payments").
     Set("payment_type", dat.DEFAULT).
     Where("id = $1", 1).
@@ -435,7 +435,7 @@ Use `SetBlacklist` and `SetWhitelist` to control which fields are updated.
 blacklist := []string{"id", "created_at"}
 p := paymentStructFromHandler
 
-err := conn.
+err := DB.
     Update("payments").
     SetBlacklist(p, blacklist...)
     Where("id = $1", p.ID).
@@ -446,7 +446,7 @@ Use a map of attributes
 
 ``` go
 attrsMap := map[string]interface{}{"name": "Gopher", "language": "Go"}
-result, err := conn.
+result, err := DB.
     Update("developers").
     SetMap(attrsMap).
     Where("language = $1", "Ruby").
@@ -456,7 +456,7 @@ result, err := conn.
 ### Delete
 
 ``` go
-result, err = conn.
+result, err = DB.
     DeleteFrom("posts").
     Where("id = $1", otherPost.ID).
     Limit(1).
@@ -482,7 +482,7 @@ publishedByUser := `
         U.user_name = $1
 `
 
-err = conn.
+err = DB.
     Select("posts.*").                  // must qualify columns
     From("posts").
     Scope(publishedByUser, "mgutz").
@@ -509,7 +509,7 @@ and `"state"`. When the scope is applied, the scope is first cloned then
 new values replace default values.
 
 ```go
-err = conn.
+err = DB.
     Select("posts.*").
     From("posts").
     ScopeMap(publishedByUser, dat.M{"user": "mgutz"}).
@@ -521,34 +521,32 @@ approach.
 
 
 
-## Create a Session
+## Creating Connections
 
-All queries are made in the context of a session which are acquired
+All queries are made in the context of a connection which are acquired
 from the underlying SQL driver's pool
 
-For one-off operations, use a `Connection` directly
+For one-off operations, use a `DB` directly
 
 ```go
 // a global connection usually created in `init`
-var conn *dat.Connection
-conn = runner.NewConnection(db, "postgres")
+DB := runner.NewDB(db, "postgres")
 
-err := conn.SQL(...).QueryStruct(&post)
+err := DB.SQL(...).QueryStruct(&post)
 ```
 
-For multiple operations, create a session. Note that session
-is really a transaction due to `database/sql` connection pooling.
-__`defer Session.AutoCommit()` or `defer Session.AutoRollback()` SHOULD be called__
+For multiple operations, create a `Tx` transaction.
+__`defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` MUST be called__
 
 ```go
 
 func PostsIndex(rw http.ResponseWriter, r *http.Request) {
-    sess := conn.NewSession()
-    defer sess.AutoRollback()
+    tx := DB.Begin()
+    defer tx.AutoRollback()
 
     // Do queries with the session
     var post Post
-    err := sess.Select("id, title").
+    err := tx.Select("id, title").
         From("posts").
         Where("id = $1", post.ID).
         QueryStruct(&post)
@@ -559,10 +557,10 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // do more queries with session ...
+    // do more queries with transaction ...
 
     // MUST commit or AutoRollback() will rollback
-    sess.Commit()
+    tx.Commit()
 }
 ```
 
@@ -584,7 +582,7 @@ To define SQL constants, use `UnsafeString`
 
 ```go
 const CURRENT_TIMESTAMP = dat.UnsafeString("NOW()")
-conn.SQL("UPDATE table SET updated_at = $1", CURRENT_TIMESTAMP)
+DB.SQL("UPDATE table SET updated_at = $1", CURRENT_TIMESTAMP)
 ```
 
 `UnsafeString` is exactly that, **UNSAFE**. If you must use it, create a
@@ -592,7 +590,7 @@ constant and **NEVER** use `UnsafeString` directly as an argument. This
 is asking for a SQL injection attack
 
 ```go
-conn.SQL("UPDATE table SET updated_at = $1", dat.UnsafeString(someVar))
+DB.SQL("UPDATE table SET updated_at = $1", dat.UnsafeString(someVar))
 ```
 
 ### Primitive Values
@@ -602,11 +600,11 @@ Load scalar and slice values.
 ```go
 var id int64
 var userID string
-err := conn.
+err := DB.
     Select("id", "user_id").From("posts").Limit(1).QueryScalar(&id, &userID)
 
 var ids []int64
-err = conn.Select("id").From("posts").QuerySlice(&ids)
+err = DB.Select("id").From("posts").QuerySlice(&ids)
 ```
 
 ### Embedded structs
@@ -622,7 +620,7 @@ type Post struct {
 }
 
 var post Post
-err := conn.
+err := DB.
     Select("id, title, user_id").
     From("posts").
     Limit(1).
@@ -633,7 +631,7 @@ err := conn.
 
 ```go
 // Start transaction
-tx, err := conn.Begin()
+tx, err := DB.Begin()
 if err != nil {
     return err
 }
@@ -780,9 +778,8 @@ go get -u gopkg.in/godo.v2/cmd/godo
 cd tasks
 go get -a
 
-# back to root and run
+# back to project
 cd ..
-
 ```
 
 Then run any task
@@ -794,6 +791,9 @@ godo createdb
 # run tests with traced SQL (optional)
 LOGXI=dat* godo test
 
+# run tests without logs
+godo test
+
 # run benchmarks
 godo bench
 
@@ -804,9 +804,3 @@ godo
 When createdb prompts for superuser, enter superuser like 'postgres' to create
 the test database. On Mac + Postgress.app use your own user name and password.
 
-## Inspiration
-
-*   [mapper](https://github.com/mgutz/mapper)
-
-    My SQL builder for node.js which has builder, interpolation and exec
-    functionality.

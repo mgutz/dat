@@ -9,8 +9,7 @@ type CallBuilder struct {
 	sproc          string
 }
 
-// NewCallBuilder creates a new CallBuilder for the given
-// sproc name and args.
+// NewCallBuilder creates a new CallBuilder for the given sproc name and args.
 func NewCallBuilder(sproc string, args ...interface{}) *CallBuilder {
 	if sproc == "" {
 		logger.Error("Invalid sproc name", "name", sproc)

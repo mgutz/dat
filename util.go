@@ -7,9 +7,12 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/mgutz/str"
 
 	"gopkg.in/mgutz/dat.v1/common"
 )
@@ -156,6 +159,84 @@ func SQLMapFromReader(r io.Reader) (map[string]string, error) {
 	return nil, nil
 }
 
+var reSprocName = regexp.MustCompile(`(?mis)^\s*create function\s(\w+(\.(\w+))?)`)
+
+// ParseSprocName parses the functiname from given string.
+//
+// Example
+// ParseSprocName("create function foo_bar()")  => "foo_bar"
+func ParseSprocName(s string) string {
+	matches := reSprocName.FindAllStringSubmatch(s, 1)
+	if len(matches) > 0 && len(matches[0]) > 1 {
+		return matches[0][1]
+	}
+	return ""
+}
+
+// PartitionKV parses a reader for sections reder for lines containing a prefix and assingment.
+func PartitionKV(r io.Reader, prefix string, assignment string) ([]map[string]string, error) {
+	scanner := bufio.NewScanner(r)
+	var buf bytes.Buffer
+	var kv string
+	var text string
+	var result []map[string]string
+	collect := false
+
+	parseKV := func(kv string) {
+		argv := str.ToArgv(kv)
+		body := buf.String()
+		for i, arg := range argv {
+			m := map[string]string{}
+			var key string
+			var value string
+			if strings.Contains(arg, assignment) {
+				parts := strings.Split(arg, assignment)
+				key = parts[0]
+				value = parts[1]
+			} else {
+				key = arg
+				value = ""
+			}
+			m[key] = value
+			m["_body"] = body
+			if i == 0 {
+				m["_kind"] = key
+			}
+			result = append(result, m)
+		}
+	}
+
+	for scanner.Scan() {
+		text = scanner.Text()
+		if strings.HasPrefix(text, prefix) {
+			if kv != "" {
+				parseKV(kv)
+			}
+			kv = text[len(prefix):]
+			collect = true
+			buf.Reset()
+			continue
+		}
+		if collect {
+			buf.WriteString(text)
+			buf.WriteRune('\n')
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if kv != "" && buf.Len() > 0 {
+		parseKV(kv)
+	}
+
+	if collect {
+		return result, nil
+	}
+
+	return nil, nil
+}
+
 // SQLMapFromFile loads a file containing special markers and loads
 // the SQL statements into a map.
 func SQLMapFromFile(filename string) (map[string]string, error) {
@@ -211,4 +292,25 @@ func getIdentifier(i *int) string {
 		return identifierTab[idx]
 	}
 	return fmt.Sprintf("dat%d", idx)
+}
+
+var reSprocLanguage = regexp.MustCompile(`language\s+\w+\s*;`)
+
+// ParseDir reads files in a directory "sproc_name"=>"sproc_body"
+func ParseDir(dir string, version string) {
+	walkFn := func(path string, fi os.FileInfo, err error) error {
+		if fi.IsDir() {
+			return nil
+		}
+		logger.Debug("MustRegisterFunctionsInDir", "dir", dir, "path", path)
+
+		// bytes, err := ioutil.ReadFile(path) // path is the path to the file.
+		// if err != nil {
+		// 	fmt.Println("Fail")
+		// }
+		// reSprocName.FindAllSubmatchIndex
+		return nil
+	}
+
+	filepath.Walk(dir, walkFn)
 }
