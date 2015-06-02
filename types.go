@@ -31,7 +31,7 @@ const DEFAULT = UnsafeString("DEFAULT")
 // NOW SQL value
 const NOW = UnsafeString("NOW()")
 
-var timeFormat = "2006-01-02 15:04:05"
+var timeFormat = "2006-01-02 15:04:05Z"
 
 // NullString is a type that can be null or a string
 type NullString struct {
@@ -146,8 +146,9 @@ func (n *NullTime) UnmarshalJSON(b []byte) error {
 	s = s[1 : len(s)-1]
 	t, err := time.Parse(format, s)
 	if err != nil {
+		format = "2006-01-02T15:04:05.000Z"
 		// try UTC format
-		t, err = time.Parse(time.RFC3339, s)
+		t, err = time.Parse(format, s)
 		if err != nil {
 			return err
 		}

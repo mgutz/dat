@@ -81,7 +81,7 @@ func writeInt64(buf common.BufferWriter, n int64) {
 }
 
 func writeUint64(buf common.BufferWriter, n uint64) {
-	if n <= maxLookup {
+	if n < maxLookup {
 		buf.WriteString(itoaTab[int(n)])
 	} else {
 		buf.WriteString(strconv.FormatUint(n, 10))
