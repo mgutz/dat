@@ -14,8 +14,6 @@ How it is different than other toolkits:
 
 *   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
 
-*   Faster
-
 *   SQL and backtick friendly.
 
     ```go
@@ -101,7 +99,7 @@ How it is different than other toolkits:
 Get it
 
 ```sh
-go get -u github.com/mgutz/dat/v1/sqlx-runner
+go get -u gopkg.in/mgutz/dat.v1
 ```
 
 Use it
