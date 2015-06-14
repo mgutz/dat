@@ -172,7 +172,7 @@ err := DB.
 Plain SQL
 
 ```go
-DB.SQL(`
+err = DB.SQL(`
     SELECT title, body
     FROM posts WHERE created_at > $1
     ORDER BY id ASC LIMIT 10`,
@@ -328,7 +328,8 @@ _, err := b.Exec()
 Inserts if not exists or select in one-trip to database
 
 ```go
-sql, args := Insect("tab").
+sql, args := DB.
+    Insect("tab").
     Columns("b", "c").
     Values(1, 2).
     Where("d = $1", 3).
@@ -390,7 +391,8 @@ err = DB.
 Upsert - Update or Insert
 
 ```go
-sql, args := Upsert("tab").
+sql, args := DB.
+    Upsert("tab").
     Columns("b", "c").
     Values(1, 2).
     Where("d=$1", 4).
@@ -563,7 +565,7 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
-To pass either a DB or Tx, use `runner.Connection`
+`DB` and `Tx` implement `runner.Connection` interface
 
 ```
 func getUsers(conn runner.Connection) ([]*dto.Users, error) {
