@@ -108,12 +108,12 @@ Use it
 import (
     "database/sql"
 
-    "github.com/mgutz/dat/v1"
-    "github.com/mgutz/dat/v1/sqlx-runner"
     _ "github.com/lib/pq"
+    "gopkg.in/mgutz/data.v1"
+    "gopkg.in/mgutz/data.v1/sqlx-runner"
 )
 
-// global databse (pooling provided by SQL driver)
+// global database (pooling provided by SQL driver)
 var DB *runner.DB
 
 func init() {
@@ -687,8 +687,8 @@ Simple nested transaction support works as follows:
     transaction is rollbacked. `Tx.IsRollbacked` is set to true.
 
 *   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
-    for each corresponding `Begin`. The internal state of transaction is popped
-    in those two functions.
+    for each corresponding `Begin`. The internal state of nested transaction is
+    cleaned up in these two methods.
 
 ```go
 func nested(conn runner.Connection) error {

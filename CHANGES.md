@@ -17,6 +17,7 @@
     in `tx.IsRollbacked()` state.
 
 ``` go
+
     func nested(conn runner.Connection) error {
         tx, err := conn.Begin()
         if err != nil {
@@ -49,6 +50,7 @@
         // if Rollback was called, Commit returns an error
         return tx.Commit()
     }
+
 ```
 
 *   `SelectDoc.HasMany` and `SelectDoc.HasOne` renamed to `Many` and `One` for
@@ -56,6 +58,7 @@
     in `Many` and `One` to build N-deep hierarchies.
 
 ```go
+
     DB.SelectDoc("id", "user_name", "avatar").
         Many("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
         Many("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
@@ -63,6 +66,7 @@
         From("users").
         Where("id = $1", 4).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
+
 ```
 
 *   Session obsoleted. Go's db library does not support transaction-less
