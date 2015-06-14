@@ -5,13 +5,13 @@
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
 library for Go.
 
-How it is different:
+How it is different than other toolkits:
 
 *   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
 
 *   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
 
-*   FASTER than any of the other generic Postgres SQL builders.
+*   Faster
 
 *   SQL and backtick friendly.
 
@@ -46,7 +46,7 @@ How it is different:
     }
     ```
 
-*   Simpler JSON retrieval for rapid application development
+*   Simpler JSON retrieval from database (requires Postgres 9.3+)
 
     ```go
     var json []byte
@@ -179,16 +179,14 @@ DB.SQL(`
 ).QueryStructs(&posts)
 ```
 
-Note: `dat` does not clean the SQL string, thus any extra whitespace is
+Note: `dat` does not trim the SQL string, thus any extra whitespace is
 transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason this
 library exists is my dissatisfaction with other SQL builders introducing
-another domain language or AST-like expressions. What's wrong with SQL
-anyways?
+another domain language or AST-like expressions.
 
-Query builders shine when dealing with data transfer objects,
-records (input structs).
+Query builders shine when dealing with data transfer objects, structs.
 
 ### Fetch Data Simply
 
@@ -526,7 +524,7 @@ approach.
 All queries are made in the context of a connection which are acquired
 from the underlying SQL driver's pool
 
-For one-off operations, use a `DB` directly
+For one-off operations, use `DB` directly
 
 ```go
 // a global connection usually created in `init`
@@ -541,7 +539,7 @@ __`defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` MUST be called__
 ```go
 
 func PostsIndex(rw http.ResponseWriter, r *http.Request) {
-    tx := DB.Begin()
+    tx, _ := DB.Begin()
     defer tx.AutoRollback()
 
     // Do queries with the session
@@ -564,6 +562,27 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
+To pass either a DB or Tx, use `runner.Connection`
+
+```
+func getUsers(conn runner.Connection) ([]*dto.Users, error) {
+    sql := `
+        SELECT *
+        FROM users
+    `
+    var users dto.Users
+    err := conn.SQL(sql).QueryStructs(&users)
+    if err != nil {
+        return err
+    }
+    return users
+}
+```
+
+### Dates
+
+Dates are a pain in go. Use `dat.NullTime` type to properly
+handle nullable dates from JSON and Postgres.
 
 ### Constants
 
@@ -651,6 +670,53 @@ res, err := tx.
 if err != nil {
     tx.Rollback()
     return err
+}
+```
+
+#### Nested Transactions
+
+Simple nested transaction support works as follows:
+
+*   If `Commit` is called in a nested transaction, the operation results in a NOOP.
+    Only the top level `Commit` commits a transaction to the database.
+
+*   If `Rollback` is called in a nested transaction, then the entire
+    transaction is rollbacked. `Tx.IsRollbacked` is set to true.
+
+*   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
+    for each corresponding `Begin`. The internal state of transaction is popped
+    in those two functions.
+
+```go
+func nested(conn runner.Connection) error {
+    tx, err := conn.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.AutoRollback()
+
+    _, err := tx.SQL(`INSERT INTO users (email) values $1`, 'me@home.com').Exec()
+    if err != nil {
+        return err
+    }
+    // prevents AutoRollback
+    tx.Commit()
+}
+
+func top() {
+    tx, err := DB.Begin()
+    if err != nil {
+        logger.Fatal("Could not create transaction")
+    }
+    defer tx.AutoRollback()
+
+    err := nested(tx)
+    if err != nil {
+        return
+    }
+
+    // top level commits the transaction
+    tx.Commit()
 }
 ```
 

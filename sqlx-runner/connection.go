@@ -4,6 +4,7 @@ import "gopkg.in/mgutz/dat.v1"
 
 // Connection is a queryable connection and represents a DB or Tx.
 type Connection interface {
+	Begin() (*Tx, error)
 	Call(sproc string, args ...interface{}) *dat.CallBuilder
 	DeleteFrom(table string) *dat.DeleteBuilder
 	Exec(cmd string, args ...interface{}) (*dat.Result, error)
