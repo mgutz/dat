@@ -1,3 +1,6 @@
+** The [legacy](https://github.com/mgutz/dat/tree/legacy) branch contains
+the original dat **
+
 # dat
 
 [GoDoc](https://godoc.org/github.com/mgutz/dat)

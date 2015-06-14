@@ -49,7 +49,7 @@ func (db *DB) Begin() (*Tx, error) {
 	if err != nil {
 		return nil, logger.Error("begin.error", err)
 	}
-	logger.Debug("begin")
+	logger.Debug("begin tx")
 	return WrapSqlxTx(tx), nil
 }
 
@@ -57,8 +57,12 @@ func (db *DB) Begin() (*Tx, error) {
 func (tx *Tx) Begin() (*Tx, error) {
 	tx.Lock()
 	defer tx.Unlock()
-	tx.pushState()
+	if tx.IsRollbacked {
+		return nil, ErrTxRollbacked
+	}
 
+	logger.Debug("begin nested tx")
+	tx.pushState()
 	return tx, nil
 }
 

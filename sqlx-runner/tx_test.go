@@ -253,3 +253,16 @@ func TestCommitWithNestedNestedRollback(t *testing.T) {
 		QueryStruct(&person)
 	assert.Exactly(t, sql.ErrNoRows, err)
 }
+
+func TestErrorInBeginIfRollbacked(t *testing.T) {
+	// log.Suppress(true)
+	// defer log.Suppress(false)
+	installFixtures()
+	tx, err := conn.Begin()
+	assert.NoError(t, err)
+	err = tx.Rollback()
+	assert.NoError(t, err)
+
+	_, err = tx.Begin()
+	assert.Exactly(t, ErrTxRollbacked, err)
+}
