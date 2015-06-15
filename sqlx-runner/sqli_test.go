@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
@@ -146,13 +145,15 @@ func init() {
 	fuzzList += "Hello\tworld"
 }
 
-func TestSQLInjection(t *testing.T) {
-	for _, fuzz := range strings.Split(fuzzList, "\n") {
+func TestSQLInjectionBuilder(t *testing.T) {
+	for i, fuzz := range strings.Split(fuzzList, "\n") {
+		if i == 3 {
+			return
+		}
 		if fuzz == "" {
 			continue
 		}
 		fuzz = strings.Trim(fuzz, " \t")
-		fmt.Println(fuzz)
 
 		var id int64
 		var comment string
@@ -162,6 +163,38 @@ func TestSQLInjection(t *testing.T) {
 			Values(fuzz).
 			SetIsInterpolated(true).
 			Returning("id", "comment").
+			QueryScalar(&id, &comment)
+
+		assert.True(t, id > 0)
+		assert.Equal(t, fuzz, comment)
+
+		var result int
+		err = conn.SQL(`
+			SELECT 42
+			FROM comments
+			WHERE id = $1 AND comment = $2
+		`, id, comment).QueryScalar(&result)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 42, result)
+	}
+}
+
+func TestSQLInjectionSQL(t *testing.T) {
+	for _, fuzz := range strings.Split(fuzzList, "\n") {
+		if fuzz == "" {
+			continue
+		}
+		fuzz = strings.Trim(fuzz, " \t")
+
+		var id int64
+		var comment string
+		err := conn.
+			SQL(`
+				INSERT INTO comments (comment)
+				VALUES ($1)
+				RETURNING id, comment
+			`, fuzz).
 			QueryScalar(&id, &comment)
 
 		assert.True(t, id > 0)
