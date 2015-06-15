@@ -195,6 +195,7 @@ func TestSQLInjectionSQL(t *testing.T) {
 				VALUES ($1)
 				RETURNING id, comment
 			`, fuzz).
+			SetIsInterpolated(true).
 			QueryScalar(&id, &comment)
 
 		assert.True(t, id > 0)
