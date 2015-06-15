@@ -146,10 +146,7 @@ func init() {
 }
 
 func TestSQLInjectionBuilder(t *testing.T) {
-	for i, fuzz := range strings.Split(fuzzList, "\n") {
-		if i == 3 {
-			return
-		}
+	for _, fuzz := range strings.Split(fuzzList, "\n") {
 		if fuzz == "" {
 			continue
 		}
