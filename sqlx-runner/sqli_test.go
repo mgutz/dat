@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -136,12 +137,22 @@ x' or 1=1 or 'x'='y
 */*
 `
 
+func init() {
+	fuzzList += "\b"
+	fuzzList += "\n"
+	fuzzList += "\n"
+	fuzzList += "\r"
+	fuzzList += "\t"
+	fuzzList += "Hello\tworld"
+}
+
 func TestSQLInjection(t *testing.T) {
 	for _, fuzz := range strings.Split(fuzzList, "\n") {
 		if fuzz == "" {
 			continue
 		}
 		fuzz = strings.Trim(fuzz, " \t")
+		fmt.Println(fuzz)
 
 		var id int64
 		var comment string
