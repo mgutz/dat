@@ -464,63 +464,52 @@ result, err = DB.
     Exec()
 ```
 
-### Scopes
+### Joins
 
-Scopes predefine JOIN and WHERE conditions so they may be reused.
+Define JOINs as arguments to `From`
+
+``` go
+err = DB.
+    Select("u.*, p.*").
+    From(`
+        users u
+        INNER JOIN posts p on (p.author_id = u.id)
+    `).
+    WHERE("p.state = 'published'").
+    QueryStructs(&liveAuthors)
+```
+
+#### Scopes
+
+Scopes predefine JOIN and WHERE conditions.
 Scopes may be used with `DeleteFrom`, `Select` and `Update`.
 
 As an example, a "published" scoped might define published posts
-by user. The definition might look something like this with
-joins
+by user.
 
 ```go
-// :TABLE is the table name of the builder to which this scope is applied.
-publishedByUser := `
-    INNER JOIN users U on (:TABLE.user_id = U.id)
+publishedPosts := `
+    INNER JOIN users u on (p.author_id = u.id)
     WHERE
-        :TABLE.state = 'published' AND
-        :TABLE.deleted_at IS NULL AND
-        U.user_name = $1
+        p.state == 'published' AND
+        p.deleted_at IS NULL AND
+        u.user_name = $1
+`
+
+unpublishedPosts := `
+    INNER JOIN users u on (p.author_id = u.id)
+    WHERE
+        p.state != 'published' AND
+        p.deleted_at IS NULL AND
+        u.user_name = $1
 `
 
 err = DB.
-    Select("posts.*").                  // must qualify columns
-    From("posts").
-    Scope(publishedByUser, "mgutz").
+    Select("p.*").                      // must qualify columns
+    From("posts p").
+    Scope(publishedPosts, "mgutz").
     QueryStructs(&posts)
 ```
-
-If you need to predefine values for parameters, then use a MapScope.
-
-```go
-// creates a MapScope
-publishedByUser := dat.NewScope(`
-    INNER JOIN users U on (:TABLE.user_id = U.id)
-    WHERE
-        :TABLE.state = :state AND
-        :TABLE.deleted_at IS NULL AND
-        U.user_name = :user`,
-    dat.M{"user": "unknown", "state": "published"},
-)
-```
-
-First, it does not use ordinal placeholders. Instead it uses struct field
-names in the SQL. The example above defines default values for fields `"user"`
-and `"state"`. When the scope is applied, the scope is first cloned then
-new values replace default values.
-
-```go
-err = DB.
-    Select("posts.*").
-    From("posts").
-    ScopeMap(publishedByUser, dat.M{"user": "mgutz"}).
-    QueryStructs(&posts)
-```
-
-`MapScope` provides flexibility but it inefficient compared to the first
-approach.
-
-
 
 ## Creating Connections
 

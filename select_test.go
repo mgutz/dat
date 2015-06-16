@@ -3,6 +3,7 @@ package dat
 import (
 	"testing"
 
+	"github.com/mgutz/str"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -208,4 +209,17 @@ func TestSelectScope(t *testing.T) {
 	sql, args := Select("a").From("b").ScopeMap(scope, M{"name": "mario"}).ToSQL()
 	assert.Equal(t, sql, `SELECT a FROM b WHERE "b".id = $1 and name = $2`)
 	assert.Exactly(t, args, []interface{}{1, "mario"})
+}
+
+func TestInnerJoin(t *testing.T) {
+	sql, args := Select("u.*, p.*").
+		From(`
+			users u
+			INNER JOIN posts p on (p.author_id = u.id)
+		`).
+		Where(`u.id = $1`, 1).
+		ToSQL()
+	sql = str.Clean(sql)
+	assert.Equal(t, sql, "SELECT u.*, p.* FROM users u INNER JOIN posts p on (p.author_id = u.id) WHERE (u.id = $1)")
+	assert.Exactly(t, args, []interface{}{1})
 }
