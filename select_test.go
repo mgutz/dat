@@ -240,3 +240,18 @@ func TestScopeWhere(t *testing.T) {
 	assert.Equal(t, "SELECT u.*, p.* FROM users u INNER JOIN posts p on (p.author_id = u.id) WHERE (u.id = $1) AND ( p.state = $2 )", sql)
 	assert.Exactly(t, args, []interface{}{1, "published"})
 }
+
+func TestScopeJoinOnly(t *testing.T) {
+	published := `
+		INNER JOIN posts p on (p.author_id = u.id)
+	`
+
+	sql, args := Select("u.*, p.*").
+		From(`users u`).
+		Scope(published).
+		Where(`u.id = $1`, 1).
+		ToSQL()
+	sql = str.Clean(sql)
+	assert.Equal(t, "SELECT u.*, p.* FROM users u INNER JOIN posts p on (p.author_id = u.id) WHERE (u.id = $1)", sql)
+	assert.Exactly(t, args, []interface{}{1})
+}

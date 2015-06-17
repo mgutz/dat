@@ -137,8 +137,10 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 		sql, args := b.scope.ToSQL(b.table)
 		sql, where = splitWhere(sql)
 		buf.WriteString(sql)
-		fragment := newWhereFragment(where, args)
-		b.whereFragments = append(b.whereFragments, fragment)
+		if where != "" {
+			fragment := newWhereFragment(where, args)
+			b.whereFragments = append(b.whereFragments, fragment)
+		}
 	}
 
 	if len(b.whereFragments) > 0 {
