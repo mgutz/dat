@@ -207,7 +207,7 @@ func TestSelectVarieties(t *testing.T) {
 func TestSelectScope(t *testing.T) {
 	scope := NewScope("WHERE :TABLE.id = :id and name = :name", M{"id": 1, "name": "foo"})
 	sql, args := Select("a").From("b").ScopeMap(scope, M{"name": "mario"}).ToSQL()
-	assert.Equal(t, sql, `SELECT a FROM b WHERE "b".id = $1 and name = $2`)
+	assert.Equal(t, `SELECT a FROM b WHERE ( "b".id = $1 and name = $2)`, sql)
 	assert.Exactly(t, args, []interface{}{1, "mario"})
 }
 
@@ -222,4 +222,21 @@ func TestInnerJoin(t *testing.T) {
 	sql = str.Clean(sql)
 	assert.Equal(t, sql, "SELECT u.*, p.* FROM users u INNER JOIN posts p on (p.author_id = u.id) WHERE (u.id = $1)")
 	assert.Exactly(t, args, []interface{}{1})
+}
+
+func TestScopeWhere(t *testing.T) {
+	published := `
+		INNER JOIN posts p on (p.author_id = u.id)
+		WHERE
+			p.state = $1
+	`
+
+	sql, args := Select("u.*, p.*").
+		From(`users u`).
+		Scope(published, "published").
+		Where(`u.id = $1`, 1).
+		ToSQL()
+	sql = str.Clean(sql)
+	assert.Equal(t, "SELECT u.*, p.* FROM users u INNER JOIN posts p on (p.author_id = u.id) WHERE (u.id = $1) AND ( p.state = $2 )", sql)
+	assert.Exactly(t, args, []interface{}{1, "published"})
 }

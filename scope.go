@@ -89,3 +89,26 @@ func escapeScopeTable(sql string, table string) string {
 	quoted := buf.String()
 	return strings.Replace(sql, ":TABLE", quoted, -1)
 }
+
+var reWhereClause = regexp.MustCompile(`\s*(WHERE|where)\b`)
+
+// splitWhere splits a query on the word WHERE
+func splitWhere(query string) (sql string, where string) {
+	indices := reWhereClause.FindStringIndex(query)
+	// grab only the first location
+	if len(indices) == 0 {
+		return query, ""
+	}
+
+	// may have leading spaces
+	where = query[indices[0]:]
+	idx := strings.Index(where, "WHERE")
+	if idx == -1 {
+		idx = strings.Index(where, "where")
+	}
+	// 5 == len("WHERE")
+	where = where[idx+5:]
+
+	sql = query[0:indices[0]]
+	return sql, where
+}

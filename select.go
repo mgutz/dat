@@ -34,7 +34,7 @@ func (b *SelectBuilder) Distinct() *SelectBuilder {
 	return b
 }
 
-// From sets the table to SELECT FROM
+// From sets the table to SELECT FROM. JOINs may also be defined here.
 func (b *SelectBuilder) From(from string) *SelectBuilder {
 	b.table = from
 	return b
@@ -49,7 +49,7 @@ func (b *SelectBuilder) ScopeMap(mapScope *MapScope, m M) *SelectBuilder {
 // Scope uses a predefined scope in place of WHERE.
 func (b *SelectBuilder) Scope(sql string, args ...interface{}) *SelectBuilder {
 	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
-		return escapeScopeTable(sql, table), args
+		return sql, args
 	})
 	return b
 }
@@ -132,14 +132,18 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	buf.WriteString(b.table)
 
 	var placeholderStartPos int64 = 1
-	if b.scope == nil {
-		if len(b.whereFragments) > 0 {
-			buf.WriteString(" WHERE ")
-			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
-		}
-	} else {
-		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
-		writeScopeCondition(buf, whereFragment, &args, &placeholderStartPos)
+	if b.scope != nil {
+		var where string
+		sql, args := b.scope.ToSQL(b.table)
+		sql, where = splitWhere(sql)
+		buf.WriteString(sql)
+		fragment := newWhereFragment(where, args)
+		b.whereFragments = append(b.whereFragments, fragment)
+	}
+
+	if len(b.whereFragments) > 0 {
+		buf.WriteString(" WHERE ")
+		writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
 	}
 
 	if len(b.groupBys) > 0 {

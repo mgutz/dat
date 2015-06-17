@@ -220,11 +220,11 @@ func TestSelectScope(t *testing.T) {
 	assert.True(t, postID > 0)
 
 	publishedByUser := `
-		INNER JOIN people P on (P.id = :TABLE.user_id)
+		INNER JOIN people P on (P.id = posts.user_id)
 		WHERE
 			P.name = $1 AND
-			:TABLE.state = 'published' AND
-			:TABLE.deleted_at IS NULL
+			posts.state = 'published' AND
+			posts.deleted_at IS NULL
 		`
 	var posts []*Post
 	err = s.
@@ -261,17 +261,17 @@ func TestSelectScoped(t *testing.T) {
 	assert.True(t, postID > 0)
 
 	publishedByUser := `
-		INNER JOIN people P on (P.id = :TABLE.user_id)
+		INNER JOIN people on (people.id = p.user_id)
 		WHERE
-			P.name = $1 AND
-			:TABLE.state = 'published' AND
-			:TABLE.deleted_at IS NULL
+			people.name = $1 AND
+			p.state = 'published' AND
+			p.deleted_at IS NULL
 	`
 
 	var posts []*Post
 	err = s.
-		Select("posts.*").
-		From("posts").
+		Select("p.*").
+		From("posts p").
 		Scope(publishedByUser, "mgutz").
 		QueryStructs(&posts)
 	assert.NoError(t, err)
