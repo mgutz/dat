@@ -20,6 +20,8 @@ type Execer interface {
 
 const panicExecerMsg = "dat builders are disconnected, use sqlx-runner package"
 
+var nullExecer = &panicExecer{}
+
 // panicExecer is the execer for instances of dat builders from
 // data package.
 type panicExecer struct{}

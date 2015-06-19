@@ -17,62 +17,62 @@ type Builder interface {
 // Call creates a new CallBuilder for the given sproc and args.
 func Call(sproc string, args ...interface{}) *CallBuilder {
 	b := NewCallBuilder(sproc, args...)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // DeleteFrom creates a new DeleteBuilder for the given table.
 func DeleteFrom(table string) *DeleteBuilder {
 	b := NewDeleteBuilder(table)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // InsertInto creates a new InsertBuilder for the given table.
 func InsertInto(table string) *InsertBuilder {
 	b := NewInsertBuilder(table)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // Insect inserts into a table if does not exist.
 func Insect(table string) *InsectBuilder {
 	b := NewInsectBuilder(table)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // Select creates a new SelectBuilder for the given columns.
 func Select(columns ...string) *SelectBuilder {
 	b := NewSelectBuilder(columns...)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // SelectDoc creates a new SelectDocBuilder for the given columns.
 func SelectDoc(columns ...string) *SelectDocBuilder {
 	b := NewSelectDocBuilder(columns...)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // SQL creates a new raw SQL builder.
 func SQL(sql string, args ...interface{}) *RawBuilder {
 	b := NewRawBuilder(sql, args...)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // Update creates a new UpdateBuilder for the given table.
 func Update(table string) *UpdateBuilder {
 	b := NewUpdateBuilder(table)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
 
 // Upsert insert (if it does not exist) or updates a row.
 func Upsert(table string) *UpsertBuilder {
 	b := NewUpsertBuilder(table)
-	b.Execer = &panicExecer{}
+	b.Execer = nullExecer
 	return b
 }
