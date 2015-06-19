@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -294,57 +295,33 @@ func queryStructs(runner runner, builder dat.Builder, dest interface{}) error {
 	return err
 }
 
-// queryJSONStrut executes the query in builder and loads the resulting data into
+// queryJSONStruct executes the query in builder and loads the resulting data into
 // a struct, using json.Unmarshal().
 //
 // Returns ErrNotFound if nothing was found
 func queryJSONStruct(runner runner, builder dat.Builder, dest interface{}) error {
-	fullSQL, args, err := builder.Interpolate()
+	blob, err := queryJSONBlob(runner, builder, true)
 	if err != nil {
 		return err
 	}
-
-	if logger.IsInfo() {
-		// Start the timer:
-		startTime := time.Now()
-		defer func() {
-			logger.Info("QueryJSON",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
-
-	var blob []byte
-
-	// Run the query:
-	if args == nil {
-		err = runner.Get(&blob, fullSQL)
-	} else {
-		err = runner.Get(&blob, fullSQL, args...)
-	}
-	if err != nil {
-		return logSQLError(err, "queryJSONStruct", fullSQL, args)
-	}
-
 	return json.Unmarshal(blob, dest)
 }
 
-// queryJSON executes the query in builder and loads the resulting data into
-// a struct, using json.Unmarshal().
+// queryJSONBlob executes the query in builder and loads the resulting data
+// into a blob. If a single item is to be returned, set single to true.
 //
 // Returns ErrNotFound if nothing was found
-func queryJSONStructs(runner runner, builder dat.Builder, dest interface{}) error {
+func queryJSONBlob(runner runner, builder dat.Builder, single bool) ([]byte, error) {
 	fullSQL, args, err := builder.Interpolate()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if logger.IsInfo() {
 		// Start the timer:
 		startTime := time.Now()
 		defer func() {
-			logger.Info("QueryJSON",
+			logger.Info("QueryJSONBlob",
 				"elapsed", time.Since(startTime).Nanoseconds(),
 				"sql", fullSQL,
 			)
@@ -359,7 +336,7 @@ func queryJSONStructs(runner runner, builder dat.Builder, dest interface{}) erro
 		rows, err = runner.Queryx(fullSQL, args...)
 	}
 	if err != nil {
-		return logSQLError(err, "queryJSONStructs", fullSQL, args)
+		return nil, logSQLError(err, "queryJSONStructs", fullSQL, args)
 	}
 
 	// TODO optimize this later, may be better to
@@ -367,25 +344,51 @@ func queryJSONStructs(runner runner, builder dat.Builder, dest interface{}) erro
 	var blob []byte
 	i := 0
 	for rows.Next() {
-		if i == 0 {
-			buf.WriteRune('[')
-		} else {
-			buf.WriteRune(',')
+		if single && i == 1 {
+			if dat.Strict {
+				logSQLError(errors.New("Multiple results returned"), "Expected single result", fullSQL, args)
+				logger.Fatal("Expected single result, got many")
+			} else {
+				break
+			}
+		}
+
+		if !single {
+			if i == 0 {
+				buf.WriteRune('[')
+			} else {
+				buf.WriteRune(',')
+			}
 		}
 		i++
 
 		err = rows.Scan(&blob)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		buf.Write(blob)
 	}
 
 	if i == 0 {
-		return sql.ErrNoRows
+		return nil, sql.ErrNoRows
 	}
-	buf.WriteRune(']')
-	return json.Unmarshal(buf.Bytes(), dest)
+	if !single {
+		buf.WriteRune(']')
+	}
+
+	return buf.Bytes(), nil
+}
+
+// queryJSON executes the query in builder and loads the resulting data into
+// a struct, using json.Unmarshal().
+//
+// Returns ErrNotFound if nothing was found
+func queryJSONStructs(runner runner, builder dat.Builder, dest interface{}) error {
+	blob, err := queryJSONBlob(runner, builder, false)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(blob, dest)
 }
 
 // queryJSON executes the query in builder and loads the resulting JSON into

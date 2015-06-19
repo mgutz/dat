@@ -26,7 +26,7 @@ func tasks(p *do.Project) {
 	})
 
 	p.Task("test-one", nil, func(c *do.Context) {
-		c.Run(`go test -run Embedded`, do.M{"$in": "sqlx-runner"})
+		c.Run(`LOGXI=* go test -run TestSelectDocDate`, do.M{"$in": "sqlx-runner"})
 	}).Src("*.go")
 
 	p.Task("allocs", nil, func(c *do.Context) {

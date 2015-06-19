@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/mgutz/dat.v1"
@@ -70,6 +71,7 @@ func (ex *Execer) QueryStructs(dest interface{}) error {
 		err := queryJSONStructs(ex.runner, ex.builder, dest)
 		return traceError("QueryJSONStructs", err)
 	}
+
 	err := queryStructs(ex.runner, ex.builder, dest)
 	return traceError("QueryStructs", err)
 }
@@ -77,6 +79,16 @@ func (ex *Execer) QueryStructs(dest interface{}) error {
 // QueryObject wraps the builder's query within a `to_json` then executes and unmarshals
 // the result into dest.
 func (ex *Execer) QueryObject(dest interface{}) error {
+	// TODO this is a hack. All of this runner, execer nested structs is messy.
+	// Use a godo task to copy methods instead of this mess.
+	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
+		b, err := queryJSONBlob(ex.runner, ex.builder, false)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(b, dest)
+	}
+
 	err := queryObject(ex.runner, ex.builder, dest)
 	return traceError("QueryObject", err)
 }
@@ -84,6 +96,12 @@ func (ex *Execer) QueryObject(dest interface{}) error {
 // QueryJSON wraps the builder's query within a `to_json` then executes and returns
 // the JSON []byte representation.
 func (ex *Execer) QueryJSON() ([]byte, error) {
+	// TODO this is a hack. All of this runner, execer nested structs is messy.
+	// Use a godo task to copy methods instead of this mess.
+	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
+		return queryJSONBlob(ex.runner, ex.builder, false)
+	}
+
 	b, err := queryJSON(ex.runner, ex.builder)
 	return b, traceError("QueryObject", err)
 }

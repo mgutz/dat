@@ -30,10 +30,11 @@ type Post struct {
 }
 
 type Comment struct {
-	ID      int    `db:"id"`
-	UserID  int    `db:"user_id"`
-	PostID  int    `db:"post_id"`
-	Comment string `db:"comment"`
+	ID        int          `db:"id"`
+	UserID    int          `db:"user_id"`
+	PostID    int          `db:"post_id"`
+	Comment   string       `db:"comment"`
+	CreatedAt dat.NullTime `db:"created_at"`
 }
 
 const seedData = `

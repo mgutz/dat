@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"encoding/json"
 	"testing"
 
 	"github.com/mgutz/jo/v1"
@@ -248,4 +249,41 @@ func TestSelectDocOneNoRows(t *testing.T) {
 }
 
 func TestSelectDocDate(t *testing.T) {
+	var comments []*Comment
+
+	err := conn.SelectDoc("id", "comment", `created_at as "CreatedAt"`).
+		From("comments").
+		QueryStructs(&comments)
+
+	assert.NoError(t, err)
+	assert.True(t, comments[0].CreatedAt.Valid)
+	assert.True(t, comments[1].CreatedAt.Valid)
+}
+
+func TestSelectDocBytes(t *testing.T) {
+	b, err := conn.SelectDoc("id", "comment").
+		From("comments").
+		OrderBy("id").
+		QueryJSON()
+
+	assert.NoError(t, err)
+
+	var comments jo.Object
+	err = json.Unmarshal(b, &comments)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "A very good day", comments.MustString("[0].comment"))
+	assert.Equal(t, "Yum. Apple pie.", comments.MustString("[1].comment"))
+}
+
+func TestSelectDocObject(t *testing.T) {
+	var comments jo.Object
+	err := conn.SelectDoc("id", "comment").
+		From("comments").
+		OrderBy("id").
+		QueryObject(&comments)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "A very good day", comments.MustString("[0].comment"))
+	assert.Equal(t, "Yum. Apple pie.", comments.MustString("[1].comment"))
 }
