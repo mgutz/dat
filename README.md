@@ -250,14 +250,6 @@ b := DB.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
-### Runners
-
-`dat` was designed to have clear separation between SQL builders and Query execers.
-This is why the runner is in its own package.
-
-*   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
-
-
 ### Tracing SQL
 
 `dat` uses [logxi](https://github.com/mgutz/logxi) for logging. To trace SQL
@@ -667,13 +659,13 @@ if err != nil {
 
 #### Nested Transactions
 
-Simple nested transaction support works as follows:
+Nested transaction logic is as follows:
 
 *   If `Commit` is called in a nested transaction, the operation results in a NOOP.
     Only the top level `Commit` commits a transaction to the database.
 
 *   If `Rollback` is called in a nested transaction, then the entire
-    transaction is rollbacked. `Tx.IsRollbacked` is set to true.
+    transaction is rolled back. `Tx.IsRollbacked` is set to true.
 
 *   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
     for each corresponding `Begin`. The internal state of nested transaction is
@@ -788,7 +780,6 @@ Keep in mind that prepared statements are only valid for the current session
 and unless the same query is be executed *MANY* times in the same session there
 is little benefit in using prepared statements other than protecting against
 SQL injections. See Interpolation Safety section above.
-
 
 #### More Reasons to Use Interpolation
 

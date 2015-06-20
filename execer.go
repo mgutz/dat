@@ -1,5 +1,7 @@
 package dat
 
+import "time"
+
 // Result serves the same purpose as sql.Result. Defining
 // it for the package avoids tight coupling with database/sql.
 type Result struct {
@@ -9,6 +11,7 @@ type Result struct {
 
 // Execer is any object that executes and queries SQL.
 type Execer interface {
+	Cache(id string, ttl time.Duration, invalidate bool) Execer
 	Exec() (*Result, error)
 	QueryScalar(destinations ...interface{}) error
 	QuerySlice(dest interface{}) error
@@ -20,9 +23,17 @@ type Execer interface {
 
 const panicExecerMsg = "dat builders are disconnected, use sqlx-runner package"
 
-// panicExecer is the execer for instances of dat builders from
-// data package.
+var nullExecer = &panicExecer{}
+
+// panicExecer is the execer assigned when a builder is first created.
+// panicExecer raises a panic if any of the Execer methods are called
+// directly from dat. Runners override the execer to communicate with a live
+// database.
 type panicExecer struct{}
+
+func (nop *panicExecer) Cache(id string, ttl time.Duration, invalidate bool) Execer {
+	panic(panicExecerMsg)
+}
 
 // Exec panics when Exec is called.
 func (nop *panicExecer) Exec() (*Result, error) {

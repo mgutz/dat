@@ -24,7 +24,7 @@ func TestSelectDocRow(t *testing.T) {
 	}
 
 	var person Person
-	err := conn.
+	err := testDB.
 		SelectDoc("id", "name").
 		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
@@ -50,7 +50,7 @@ func TestSelectDocNested(t *testing.T) {
 		From("posts").
 		Where("user_id = people.id")
 
-	err := conn.
+	err := testDB.
 		SelectDoc("id", "name").
 		Many("posts", posts).
 		From("people").
@@ -80,7 +80,7 @@ func TestSelectDocNil(t *testing.T) {
 	}
 
 	var person Person
-	err := conn.
+	err := testDB.
 		SelectDoc("id", "name").
 		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
@@ -103,7 +103,7 @@ func TestSelectDocRows(t *testing.T) {
 	}
 
 	var people []*Person
-	err := conn.
+	err := testDB.
 		SelectDoc("id", "name").
 		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
@@ -144,7 +144,7 @@ func TestSelectDocRowsNil(t *testing.T) {
 	}
 
 	var people []*Person
-	err := conn.
+	err := testDB.
 		SelectDoc("id", "name").
 		Many("posts", `SELECT id, title FROM posts WHERE user_id = people.id`).
 		From("people").
@@ -165,7 +165,7 @@ func TestSelectDoc(t *testing.T) {
 	}
 
 	var person Person
-	err := conn.
+	err := testDB.
 		SelectDoc("id", "name").
 		From("people").
 		Where("id = $1", 1).
@@ -251,7 +251,7 @@ func TestSelectDocOneNoRows(t *testing.T) {
 func TestSelectDocDate(t *testing.T) {
 	var comments []*Comment
 
-	err := conn.SelectDoc("id", "comment", `created_at as "CreatedAt"`).
+	err := testDB.SelectDoc("id", "comment", `created_at as "CreatedAt"`).
 		From("comments").
 		QueryStructs(&comments)
 
@@ -261,7 +261,7 @@ func TestSelectDocDate(t *testing.T) {
 }
 
 func TestSelectDocBytes(t *testing.T) {
-	b, err := conn.SelectDoc("id", "comment").
+	b, err := testDB.SelectDoc("id", "comment").
 		From("comments").
 		OrderBy("id").
 		QueryJSON()
@@ -278,7 +278,7 @@ func TestSelectDocBytes(t *testing.T) {
 
 func TestSelectDocObject(t *testing.T) {
 	var comments jo.Object
-	err := conn.SelectDoc("id", "comment").
+	err := testDB.SelectDoc("id", "comment").
 		From("comments").
 		OrderBy("id").
 		QueryObject(&comments)

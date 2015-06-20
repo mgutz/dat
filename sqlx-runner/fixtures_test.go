@@ -101,7 +101,7 @@ func installFixtures() {
 	}
 
 	for _, v := range sqlToRun {
-		_, err := conn.Exec(v)
+		_, err := testDB.Exec(v)
 		if err != nil {
 			logger.Fatal("Failed to execute statement", "sql", v, "err", err)
 		}

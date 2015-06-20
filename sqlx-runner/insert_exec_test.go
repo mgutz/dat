@@ -183,7 +183,7 @@ func TestInsertWhitelist(t *testing.T) {
 	var email sql.NullString
 	var name string
 	var id int64
-	err := conn.
+	err := testDB.
 		InsertInto("people").
 		Whitelist("name").
 		Record(person2).
@@ -214,7 +214,7 @@ func TestInsertBlacklist(t *testing.T) {
 	var name string
 	var id int64
 
-	err := conn.
+	err := testDB.
 		InsertInto("people").
 		Blacklist("id", "foo", "email", "key", "doc", "created_at").
 		Record(person2).
@@ -236,7 +236,7 @@ func TestInsertBytes(t *testing.T) {
 		RETURNING id, image
 	`
 	dat.EnableInterpolation = true
-	err := conn.SQL(sql, "foo", b).QueryScalar(&id, &image)
+	err := testDB.SQL(sql, "foo", b).QueryScalar(&id, &image)
 	assert.NoError(t, err)
 	assert.Exactly(t, b, image)
 	dat.EnableInterpolation = false

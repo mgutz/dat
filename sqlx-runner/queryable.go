@@ -10,7 +10,7 @@ import (
 
 // Queryable is an object that can be queried.
 type Queryable struct {
-	runner runner
+	runner database
 }
 
 // WrapSqlxExt converts a sqlx.Ext to a *Queryable
@@ -18,7 +18,7 @@ func WrapSqlxExt(e sqlx.Ext) *Queryable {
 	switch e := e.(type) {
 	default:
 		panic(fmt.Sprintf("unexpected type %T", e))
-	case runner:
+	case database:
 		return &Queryable{e}
 	}
 }

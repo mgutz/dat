@@ -28,6 +28,10 @@ type Tx struct {
 	IsRollbacked bool
 	state        int
 	stateStack   []int
+
+	// groupID is a unique ID used to log a group of queries
+	// within a transaction
+	groupID int64
 }
 
 // WrapSqlxTx creates a Tx from a sqlx.Tx
