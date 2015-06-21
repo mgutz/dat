@@ -704,6 +704,65 @@ func top() {
 }
 ```
 
+### Caching
+
+dat implements caching backed by an in-memory or Redis store. The in-memory store
+is not recommended for production use.
+
+
+```go
+
+func init() {
+    // namespace is the prefix for keys and should be unique
+    store, err := kvs.NewRedisStore("namespace:", ":6379", "passwordOrEmpty")
+
+    // in-memory database provided by [go-cache](https://github.com/pmylund/go-cache)
+    cleanupInterval := 30 * time.Second
+    store = kvs.NewMemoryStore(cleanupInterval)
+
+    dat.SetCache(store)
+}
+
+// Cache states query for a year using key "namespace:states"
+b, err := DB.
+    SQL(`SELECT * FROM states`).
+    Cache("states", 365 * 24 * time.Hour, false).
+    QueryJSON()
+
+// Cache states query for a year using the hash value of the SQL as the ID.
+//
+// While this is not as efficient since the checksum has to be calculated
+// for each query, it is more flexible. In this example, the interpolated SQL
+// will contain ther user_name (if EnableInterpolation is true)
+// effectively caching each user.
+b, err := DB.
+    SQL(`SELECT * FROM users WHERE user_name = $1`, user).
+    Cache("", 365 * 24 *  time.Hour, false).
+    QueryJSON()
+
+// If EnableInterpolation is not enabled, precompute the key to avoid
+// the checksum calculation. In general, use unique IDs where
+// possible to avoid unnecessary computation.
+key = "user" + user.UserName
+b, err := DB.
+    SQL(`SELECT * FROM users WHERE user_name = $1`, user).
+    Cache(key, 365 * 24 *  time.Hour, false).
+    QueryJSON()
+
+// set invalidate to true to force setting the key
+statesUpdated := true
+b, err := DB.
+    SQL(`SELECT * FROM states`).
+    Cache("states", 365 * 24 *  time.Hour, statesUpdated).
+    QueryJSON()
+
+// Clears the entire cache
+DB.Cache.FlushDB()
+
+// Clears the key "fookey"
+DB.Cache.Del("fookey")
+```
+
 ### Local Interpolation
 
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`

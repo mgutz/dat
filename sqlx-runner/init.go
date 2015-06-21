@@ -14,10 +14,11 @@ func init() {
 	logger = log.New("dat:sqlx")
 }
 
-var cache kvs.KeyValueStore
+// Cache caches query results.
+var Cache kvs.KeyValueStore
 
 // SetCache sets this runner's cache. The default cache is in-memory
 // based. See cache.MemoryKeyValueStore.
 func SetCache(store kvs.KeyValueStore) {
-	cache = store
+	Cache = store
 }

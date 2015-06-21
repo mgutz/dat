@@ -78,23 +78,3 @@ func NewDBFromSqlx(dbx *sqlx.DB) *DB {
 	pgMustNotAllowEscapeSequence(conn)
 	return conn
 }
-
-// InvalidateCache clears the cache for a given key or all keys
-// if key == "".
-func (db *DB) InvalidateCache(key string) {
-	var err error
-	if cache == nil {
-		return
-	}
-	if key == "" {
-		err = cache.Del(key)
-		if err != nil {
-			logger.Warn("Unable to delete key", "key", key)
-		}
-	} else {
-		err = cache.FlushDB()
-		if err != nil {
-			logger.Warn("Unable to delete all keys")
-		}
-	}
-}

@@ -476,8 +476,8 @@ func queryJSONStructs(execer *Execer, dest interface{}) error {
 // the SQL and args to be executed. If value = "" then the SQL is built.
 func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, err error) {
 	// if a cacheID exists, return the value ASAP
-	if cache != nil && !execer.cacheInvalidate && execer.cacheTTL > 0 && execer.cacheID != "" {
-		v, err := cache.Get(execer.cacheID)
+	if Cache != nil && !execer.cacheInvalidate && execer.cacheTTL > 0 && execer.cacheID != "" {
+		v, err := Cache.Get(execer.cacheID)
 		//logger.Warn("DBG cacheOrSQL.1 getting by id", "id", execer.cacheID, "v", v, "err", err)
 		if v != "" && (err == nil || err != kvs.ErrNotFound) {
 			//logger.Warn("DBG cacheOrSQL.11 HIT")
@@ -491,13 +491,13 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 	}
 
 	// since there is no cacheID, use the SQL as the ID
-	if cache != nil && execer.cacheTTL > 0 && execer.cacheID == "" {
+	if Cache != nil && execer.cacheTTL > 0 && execer.cacheID == "" {
 		// this must be set for setCache() to work below
 		execer.cacheID = kvs.Hash(fullSQL)
 
 		if execer.cacheInvalidate {
 		} else {
-			v, err := cache.Get(execer.cacheID)
+			v, err := Cache.Get(execer.cacheID)
 			//logger.Warn("DBG cacheOrSQL.2 getting by hash", "hash", execer.cacheID, "v", v, "err", err)
 			if v != "" && (err == nil || err != kvs.ErrNotFound) {
 				//logger.Warn("DBG cacheOrSQL.22 HIT")
@@ -513,9 +513,9 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 // is set as a side-effect of calling cacheOrSQL function above if
 // execer.cacheID is not set.
 func setCache(execer *Execer, b []byte) {
-	if cache != nil && execer.cacheTTL > 0 {
+	if Cache != nil && execer.cacheTTL > 0 {
 		//logger.Warn("DBG setting cache", "key", execer.cacheID, "data", string(b), "ttl", execer.cacheTTL)
-		err := cache.Set(execer.cacheID, string(b), execer.cacheTTL)
+		err := Cache.Set(execer.cacheID, string(b), execer.cacheTTL)
 		if err != nil {
 			logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
 		}

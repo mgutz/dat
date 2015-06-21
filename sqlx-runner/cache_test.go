@@ -12,7 +12,7 @@ import (
 )
 
 func TestCacheSelectDocBytes(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		b, err := testDB.SelectDoc("id", "comment").
 			From("comments").
@@ -32,7 +32,7 @@ func TestCacheSelectDocBytes(t *testing.T) {
 }
 
 func TestCacheSelectDocBytesByHash(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		b, err := testDB.SelectDoc("id", "comment").
 			From("comments").
@@ -52,7 +52,7 @@ func TestCacheSelectDocBytesByHash(t *testing.T) {
 }
 
 func TestCacheSelectDocObject(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		var comments jo.Object
 		err := testDB.SelectDoc("id", "comment").
@@ -68,7 +68,7 @@ func TestCacheSelectDocObject(t *testing.T) {
 }
 
 func TestCacheSelectDocNested(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	assert := assert.New(t)
 	for i := 0; i < 2; i++ {
 
@@ -98,7 +98,7 @@ func TestCacheSelectDocNested(t *testing.T) {
 }
 
 func TestCacheSelectQueryStructs(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		var people []Person
 		err := testDB.
@@ -126,7 +126,7 @@ func TestCacheSelectQueryStructs(t *testing.T) {
 }
 
 func TestCacheSelectQueryStruct(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 
 		// Found:
@@ -155,7 +155,7 @@ func TestCacheSelectQueryStruct(t *testing.T) {
 }
 
 func TestCacheSelectBySqlQueryStructs(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		var people []*Person
 		dat.EnableInterpolation = true
@@ -175,7 +175,7 @@ func TestCacheSelectBySqlQueryStructs(t *testing.T) {
 }
 
 func TestCacheSelectQueryScalar(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 
 		var name string
@@ -203,7 +203,7 @@ func TestCacheSelectQueryScalar(t *testing.T) {
 }
 
 func TestCacheSelectQuerySlice(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		var names []string
 		err := testDB.
@@ -231,7 +231,7 @@ func TestCacheSelectQuerySlice(t *testing.T) {
 }
 
 func TestCacheSelectQuerySliceByHash(t *testing.T) {
-	testDB.InvalidateCache("")
+	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		var names []string
 		err := testDB.

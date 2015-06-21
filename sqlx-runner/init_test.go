@@ -21,7 +21,7 @@ func init() {
 	dat.Strict = false
 
 	//cache = kvs.NewDefaultMemoryStore()
-	cache, _ = kvs.NewDefaultRedisStore()
+	Cache, _ = kvs.NewDefaultRedisStore()
 }
 
 func beginTxWithFixtures() *Tx {
