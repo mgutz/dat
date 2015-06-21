@@ -709,8 +709,9 @@ func top() {
 dat implements caching backed by an in-memory or Redis store. The in-memory store
 is not recommended for production use.
 
-
 ```go
+// import key-valute store (kvs) package
+import "gopkg.in/mgutz/data.v1/sqlx-runner/kvs"
 
 func init() {
     // namespace is the prefix for keys and should be unique
@@ -720,7 +721,7 @@ func init() {
     cleanupInterval := 30 * time.Second
     store = kvs.NewMemoryStore(cleanupInterval)
 
-    dat.SetCache(store)
+    runner.SetCache(store)
 }
 
 // Cache states query for a year using key "namespace:states"
@@ -746,7 +747,7 @@ b, err := DB.
 key = "user" + user.UserName
 b, err := DB.
     SQL(`SELECT * FROM users WHERE user_name = $1`, user).
-    Cache(key, 365 * 24 *  time.Hour, false).
+    Cache(key, 15 * time.Minute, false).
     QueryJSON()
 
 // set invalidate to true to force setting the key
