@@ -12,6 +12,7 @@ import (
 )
 
 func TestCacheSelectDocBytes(t *testing.T) {
+
 	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		b, err := testDB.SelectDoc("id", "comment").

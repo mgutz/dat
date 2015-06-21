@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/kvs"
@@ -20,8 +21,8 @@ func init() {
 	testDB = NewDB(sqlDB, "postgres")
 	dat.Strict = false
 
-	//cache = kvs.NewDefaultMemoryStore()
-	Cache, _ = kvs.NewDefaultRedisStore()
+	Cache = kvs.NewMemoryKeyValueStore(1 * time.Second)
+	//Cache, _ = kvs.NewDefaultRedisStore()
 }
 
 func beginTxWithFixtures() *Tx {

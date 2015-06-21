@@ -8,11 +8,9 @@ the original dat **
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
 library for Go.
 
-How it is different than other toolkits:
-
 *   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
 
-*   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
+*   Built upon [sqlx](https://github.com/jmoiron/sqlx).
 
 *   SQL and backtick friendly.
 
@@ -20,7 +18,7 @@ How it is different than other toolkits:
     DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
-*   Intuitive JSON Document retrieval (single trip to database!)
+*   Intuitive JSON Document retrieval (single trip to database!, requires Postgres 9.3+)
 
     ```go
     DB.SelectDoc("id", "user_name", "avatar").
@@ -72,13 +70,13 @@ How it is different than other toolkits:
     }
     ```
 
-*   Ordinal placeholders - friendlier than `?`
+*   Ordinal placeholders
 
     ```go
     DB.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
     ```
 
-*   Minimal API Surface. No AST-like language to learn.
+*   Minimal API Surface
 
     ```go
     err := DB.
@@ -87,6 +85,19 @@ How it is different than other toolkits:
         Where("id = $1", id).
         QueryStruct(&user)
     ```
+
+*   Redis caching
+
+    ```go
+    err := DB.
+        Select("id, user_name").
+        From("users").
+        Where("id = $1", id).
+        Cache("somekey", 30 * time.Second, false).
+        QueryStruct(&user)
+    ```
+
+*   Nested transactions
 
 *   Performant
 
@@ -505,7 +516,7 @@ err = DB.
 
 ## Creating Connections
 
-All queries are made in the context of a connection which are acquired
+All queries are made in the context of a connection which is acquired
 from the underlying SQL driver's pool
 
 For one-off operations, use `DB` directly
@@ -565,8 +576,8 @@ func getUsers(conn runner.Connection) ([]*dto.Users, error) {
 
 ### Dates
 
-Dates are a pain in go. Use `dat.NullTime` type to properly
-handle nullable dates from JSON and Postgres.
+Use `dat.NullTime` type to properly handle nullable dates
+from JSON and Postgres.
 
 ### Constants
 
@@ -707,7 +718,8 @@ func top() {
 ### Caching
 
 dat implements caching backed by an in-memory or Redis store. The in-memory store
-is not recommended for production use.
+is not recommended for production use. Caching will cache any object that
+can be marshaled/unmarhsaled with the json package.
 
 ```go
 // import key-valute store (kvs) package
@@ -764,14 +776,15 @@ DB.Cache.FlushDB()
 DB.Cache.Del("fookey")
 ```
 
-### Local Interpolation
+### SQL Interpolation
 
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
-`dat` can interpolate locally to inline query arguments. Let's start with a
-normal SQL statements with arguments
+`dat` can interpolate locally to inline query arguments. For example,
+this statement
 
+go
 ```
 db.Exec(
     "INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
@@ -779,137 +792,25 @@ db.Exec(
 )
 ```
 
-When the statement agove gets executed:
+is sent to the database with the args in-inlined
 
-1. The driver checks if this SQL has been prepared previously on the current connection, using the SQL as the key
-1. If not, the driver sends the SQL statement to the database to prepare the statement
-2. The prepared statement is assigned to the connection
-3. The prepared satement is executed along with arguments
-4. Received data is sent back to the caller
-
-In contrast, `dat` can interpolate the statement locally resulting in
-a SQL statement with often no arguments. The code above results in
-this interpolated SQL
-
+sql
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-When the statement agove gets executed:
-
-1. The statement is treated as simple exec and sent with args to database, since len(args) == 0
-2. Received data is sent back to the caller
-
-#### Interpolation Safety
-
-As of Postgres 9.1, the database does not process escape sequence by default. See
-[String Constants with C-style Escapes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
-In short, all backslashes are treated literally.
-
-`dat` escapes single quotes (apostrophes) on
-small strings, otherwise it uses Postgres' [dollar
-quotes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING)
-to escape strings. The dollar quote tag is randomized at init. If a string contains the
-dollar quote tag, the tag is randomized again and if the string still contains the tag, then
-single quote escaping is used.
-
-As an added safety measure, `dat` checks the Postgres database
-`standard_conforming_strings` setting value on a new connection when
-`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` then set set it to `"on"`
-or disable interpolation. `dat` will panic if it the setting is incompatible.
-
-#### Why is Interpolation Faster?
-
-Here is a comment from [lib/pq connection source](https://github.com/lib/pq/blob/master/conn.go),
-which was prompted by me asking why was Python's psycopg2 so much
-faster in my benchmarks a year or so back:
-
-```go
-// Check to see if we can use the "simpleExec" interface, which is
-// *much* faster than going through prepare/exec
-if len(args) == 0 {
-    // ignore commandTag, our caller doesn't care
-    r, _, err := cn.simpleExec(query)
-    return r, err
-}
-```
-
-That snippet bypasses the prepare/exec roundtrip to the database.
-
-Keep in mind that prepared statements are only valid for the current session
-and unless the same query is be executed *MANY* times in the same session there
-is little benefit in using prepared statements other than protecting against
-SQL injections. See Interpolation Safety section above.
-
-#### More Reasons to Use Interpolation
+Using Interpolation provides other benefits:
 
 *   Performance improvement
 *   Debugging is simpler with interpolated SQL
 *   Use SQL constants like `NOW` and `DEFAULT`
 *   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
 
-`[]byte`,  `[]*byte` and any unhandled values are passed through to the
-driver when interpolating.
+Read [SQL Interpolation](https://github.com/mgutz/dat/wiki/Local-Interpolation) in wiki
+for more details.
 
-### Use With Other Libraries
 
-```go
-import "github.com/mgutz/dat"
+## LICENSE
 
-builder := dat.Select("*").From("posts").Where("user_id = $1", 1)
-
-// Get builder's SQL and arguments
-sql, args := builder.ToSQL()
-fmt.Println(sql)    // SELECT * FROM posts WHERE (user_id = $1)
-fmt.Println(args)   // [1]
-
-// Use raw database/sql for actual query
-rows, err := db.Query(sql, args...)
-
-// Alternatively build the interpolated sql statement
-sql, args, err := builder.Interpolate()
-if len(args) == 0 {
-    rows, err = db.Query(sql)
-} else {
-    rows, err = db.Query(sql, args...)
-}
-```
-
-## Running Tests and Benchmarks
-
-To setup the task runner and create database
-
-```sh
-# install godo task runner
-go get -u gopkg.in/godo.v2/cmd/godo
-
-# install dependencies
-cd tasks
-go get -a
-
-# back to project
-cd ..
-```
-
-Then run any task
-
-```sh
-# (re)create database
-godo createdb
-
-# run tests with traced SQL (optional)
-LOGXI=dat* godo test
-
-# run tests without logs
-godo test
-
-# run benchmarks
-godo bench
-
-# see other tasks
-godo
-```
-
-When createdb prompts for superuser, enter superuser like 'postgres' to create
-the test database. On Mac + Postgress.app use your own user name and password.
+[The MIT License (MIT)](https://github.com/mgutz/dat/blob/master/LICENSE)
 
