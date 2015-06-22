@@ -3,8 +3,8 @@ package runner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestSelectQueryEmbedded(t *testing.T) {
@@ -47,7 +47,7 @@ func TestSelectQueryEmbedded(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, post2.ID)
-	assert.Equal(t, 42, post2.User.ID)
+	assert.EqualValues(t, 42, post2.User.ID)
 }
 
 func TestSelectQueryStructs(t *testing.T) {
@@ -119,7 +119,7 @@ func TestSelectBySqlQueryStructs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, len(people), 1)
 	assert.Equal(t, people[0].Name, "John")
-	assert.Equal(t, people[0].ID, 0)              // not set
+	assert.EqualValues(t, people[0].ID, 0)        // not set
 	assert.Equal(t, people[0].Email.Valid, false) // not set
 	assert.Equal(t, people[0].Email.String, "")   // not set
 }
@@ -176,7 +176,7 @@ func TestScalar(t *testing.T) {
 	var count int64
 	err = s.Select("COUNT(*)").From("people").QueryScalar(&count)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 6)
+	assert.EqualValues(t, count, 6)
 }
 
 func TestSelectExpr(t *testing.T) {
@@ -192,7 +192,7 @@ func TestSelectExpr(t *testing.T) {
 	var count int64
 	err = s.Select("COUNT(*)").From("people").QueryScalar(&count)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 6)
+	assert.EqualValues(t, count, 6)
 }
 
 func TestSelectScope(t *testing.T) {

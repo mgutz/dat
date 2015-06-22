@@ -3,8 +3,8 @@ package runner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestDeleteReal(t *testing.T) {
@@ -24,7 +24,7 @@ func TestDeleteReal(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Ensure we only reflected one row and that the id no longer exists
-	assert.Equal(t, res.RowsAffected, 1)
+	assert.EqualValues(t, res.RowsAffected, 1)
 
 	var count int64
 	err = s.Select("count(*)").
@@ -32,7 +32,7 @@ func TestDeleteReal(t *testing.T) {
 		Where("id = $1", id).
 		QueryScalar(&count)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 0)
+	assert.EqualValues(t, count, 0)
 }
 
 func TestDeleteScope(t *testing.T) {
@@ -57,7 +57,7 @@ func TestDeleteScope(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Ensure we only reflected one row and that the id no longer exists
-	assert.Equal(t, res.RowsAffected, 1)
+	assert.EqualValues(t, res.RowsAffected, 1)
 
 	var count int64
 	err = s.Select("count(*)").
@@ -65,5 +65,5 @@ func TestDeleteScope(t *testing.T) {
 		Where("id = $1", id).
 		QueryScalar(&count)
 	assert.NoError(t, err)
-	assert.Equal(t, count, 0)
+	assert.EqualValues(t, count, 0)
 }

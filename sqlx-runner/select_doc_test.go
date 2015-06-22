@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/mgutz/jo/v1"
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestSelectDocRow(t *testing.T) {
@@ -60,7 +60,7 @@ func TestSelectDocNested(t *testing.T) {
 
 	assert.NoError(err)
 	assert.Equal("Mario", obj.AsString("name"))
-	assert.Equal(1, obj.AsInt64("id"))
+	assert.Equal(1, obj.AsInt("id"))
 
 	assert.Equal("A very good day", obj.AsString("posts[0].comments[0].comment"))
 	assert.Equal("Yum. Apple pie.", obj.AsString("posts[1].comments[0].comment"))
@@ -208,7 +208,7 @@ func TestSelectQueryEmbeddedJSON(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, post.ID)
-	assert.Equal(t, 42, post.User.ID)
+	assert.EqualValues(t, 42, post.User.ID)
 
 	var post2 PostEmbedded2
 	err = s.SelectDoc("id", "state").
@@ -219,7 +219,7 @@ func TestSelectQueryEmbeddedJSON(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 1, post2.ID)
-	assert.Equal(t, 42, post2.User.ID)
+	assert.EqualValues(t, 42, post2.User.ID)
 }
 
 func TestSelectDocOneNoRows(t *testing.T) {

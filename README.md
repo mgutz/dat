@@ -117,8 +117,8 @@ import (
     "database/sql"
 
     _ "github.com/lib/pq"
-    "gopkg.in/mgutz/data.v1"
-    "gopkg.in/mgutz/data.v1/sqlx-runner"
+    "gopkg.in/mgutz/dat.v1"
+    "gopkg.in/mgutz/dat.v1/sqlx-runner"
 )
 
 // global database (pooling provided by SQL driver)

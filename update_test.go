@@ -3,7 +3,7 @@ package dat
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func BenchmarkUpdateValuesSql(b *testing.B) {
@@ -76,8 +76,7 @@ func TestUpdateWhitelist(t *testing.T) {
 		ToSQL()
 
 	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1, %s = $2", "user_id", "other"))
-	assert.Equal(t, args, []interface{}{2, false})
-
+	checkSliceEqual(t, args, []interface{}{2, false})
 }
 
 func TestUpdateBlacklist(t *testing.T) {
@@ -87,8 +86,7 @@ func TestUpdateBlacklist(t *testing.T) {
 		ToSQL()
 
 	assert.Equal(t, sql, quoteSQL("UPDATE a SET %s = $1, %s = $2", "user_id", "other"))
-	assert.Equal(t, args, []interface{}{2, false})
-
+	checkSliceEqual(t, args, []interface{}{2, false})
 }
 
 func TestUpdateWhereExprSql(t *testing.T) {

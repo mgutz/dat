@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"testing"
 
+	"gopkg.in/stretchr/testify.v1/assert"
+
 	"github.com/mgutz/logxi/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionReal(t *testing.T) {
@@ -141,7 +142,7 @@ func TestRollbackWithNestedCommit(t *testing.T) {
 		Where("email = $1", "mario@mgutz.com").
 		QueryStruct(&person)
 	assert.Exactly(t, sql.ErrNoRows, err)
-	assert.Equal(t, 0, person.ID)
+	assert.EqualValues(t, 0, person.ID)
 }
 
 func TestCommitWithNestedCommit(t *testing.T) {

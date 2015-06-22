@@ -3,8 +3,8 @@ package runner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestUpdateKeywordColumnName(t *testing.T) {
@@ -24,7 +24,7 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert our record was updated (and only our record)
-	assert.Equal(t, res.RowsAffected, 1)
+	assert.EqualValues(t, res.RowsAffected, 1)
 
 	var person Person
 	err = s.Select("*").From("people").Where(dat.Eq{"email": "ben@whitehouse.gov"}).QueryStruct(&person)

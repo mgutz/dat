@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 
 	"github.com/mgutz/jo/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCacheSelectDocBytes(t *testing.T) {
@@ -91,7 +91,7 @@ func TestCacheSelectDocNested(t *testing.T) {
 
 		assert.NoError(err)
 		assert.Equal("Mario", obj.AsString("name"))
-		assert.Equal(1, obj.AsInt64("id"))
+		assert.Equal(1, obj.AsInt("id"))
 
 		assert.Equal("A very good day", obj.AsString("posts[0].comments[0].comment"))
 		assert.Equal("Yum. Apple pie.", obj.AsString("posts[1].comments[0].comment"))
@@ -169,7 +169,7 @@ func TestCacheSelectBySqlQueryStructs(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, len(people), 1)
 		assert.Equal(t, people[0].Name, "John")
-		assert.Equal(t, people[0].ID, 0)              // not set
+		assert.Equal(t, people[0].ID, int64(0))       // not set
 		assert.Equal(t, people[0].Email.Valid, false) // not set
 		assert.Equal(t, people[0].Email.String, "")   // not set
 	}

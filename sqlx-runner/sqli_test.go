@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 // https://wfuzz.googlecode.com/svn/trunk/wordlist/Injections/SQL.txt

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/common"
 	"gopkg.in/mgutz/dat.v1/postgres"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestInsertKeywordColumnName(t *testing.T) {
@@ -23,7 +23,7 @@ func TestInsertKeywordColumnName(t *testing.T) {
 		Exec()
 
 	assert.NoError(t, err)
-	assert.Equal(t, res.RowsAffected, 1)
+	assert.EqualValues(t, res.RowsAffected, 1)
 }
 
 func TestInsertDoubleDollarQuote(t *testing.T) {
@@ -140,7 +140,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 		Values("pear", "pear@fruits.local").
 		Exec()
 	assert.NoError(err)
-	assert.Equal(res.RowsAffected, 3)
+	assert.EqualValues(res.RowsAffected, 3)
 
 	person1 := Person{Name: "john_timr"}
 	person2 := Person{Name: "jane_timr"}
@@ -152,7 +152,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 		Exec()
 	assert.NoError(err)
 	n := res.RowsAffected
-	assert.Equal(n, 2)
+	assert.EqualValues(n, 2)
 
 	people := []Person{}
 	err = s.
@@ -172,7 +172,7 @@ func TestInsertMultipleRecords(t *testing.T) {
 			n++
 		}
 	}
-	assert.Equal(n, 2)
+	assert.EqualValues(n, 2)
 }
 
 func TestInsertWhitelist(t *testing.T) {
