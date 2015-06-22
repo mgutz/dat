@@ -10,7 +10,12 @@ library for Go.
 
 *   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
 
-*   Built upon [sqlx](https://github.com/jmoiron/sqlx).
+*   Built on a solid foundation [sqlx](https://github.com/jmoiron/sqlx).
+
+    ```go
+    // child DB is *sqlx.DB
+    DB.DB.Queryx(`SELECT * FROM users`)
+    ```
 
 *   SQL and backtick friendly.
 
@@ -18,7 +23,7 @@ library for Go.
     DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
-*   Intuitive JSON Document retrieval (single trip to database!, requires Postgres 9.3+)
+*   JSON Document retrieval (single trip to Postgres!, requires Postgres 9.3+)
 
     ```go
     DB.SelectDoc("id", "user_name", "avatar").
@@ -45,11 +50,11 @@ library for Go.
     }
     ```
 
-*   Simpler JSON retrieval from database (requires Postgres 9.3+)
+*   JSON marshalable bytes (requires Postgres 9.3+)
 
     ```go
-    var json []byte
-    json, _ = DB.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
+    var b []byte
+    b, _ = DB.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
         "mario",
     ).QueryJSON()
 
@@ -60,23 +65,13 @@ library for Go.
     ).QueryObject(&obj)
     ```
 
-    both result in
-
-    ```json
-    {
-        "id": 1,
-        "user_name": "mario",
-        "created_at": "2015-03-01T14:23"
-    }
-    ```
-
 *   Ordinal placeholders
 
     ```go
     DB.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
     ```
 
-*   Minimal API Surface
+*   SQL-like API
 
     ```go
     err := DB.
@@ -89,11 +84,13 @@ library for Go.
 *   Redis caching
 
     ```go
+    // cache result for 30 seconds
+    key := "user:" + strconv.Itoa(user.id)
     err := DB.
         Select("id, user_name").
         From("users").
-        Where("id = $1", id).
-        Cache("somekey", 30 * time.Second, false).
+        Where("id = $1", user.id).
+        Cache(key, 30 * time.Second, false).
         QueryStruct(&user)
     ```
 
@@ -245,6 +242,7 @@ DB.InsertInto("payments").
 // ensure session user can only update his information
 DB.Update("users").
     SetWhitelist(user, "user_name", "avatar", "quote").
+    Record(userData).
     Where("id = $1", session.UserID).
     Exec()
 ```
@@ -557,7 +555,8 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
-`DB` and `Tx` implement `runner.Connection` interface
+`DB` and `Tx` implement `runner.Connection` interface to facilitate
+keeping code DRY
 
 ```
 func getUsers(conn runner.Connection) ([]*dto.Users, error) {
@@ -649,11 +648,8 @@ tx, err := DB.Begin()
 if err != nil {
     return err
 }
-// safe to call tx.Rollback() or tx.Commit() when deferring AutoCommit()
-defer tx.AutoCommit()
-
-// AutoRollback() is also available if you would rather Commit() at the end
-// and not deal with Rollback on every error.
+// safe to call tx.Rollback() or tx.Commit() later
+defer tx.AutoRollback()
 
 // Issue statements that might cause errors
 res, err := tx.
@@ -663,24 +659,28 @@ res, err := tx.
     Exec()
 
 if err != nil {
-    tx.Rollback()
+    // AutoRollback will rollback the transaction
     return err
 }
+
+// commit to prevent AutoRollback from rolling back the transaction
+tx.Commit()
+return nil
 ```
 
 #### Nested Transactions
 
 Nested transaction logic is as follows:
 
-*   If `Commit` is called in a nested transaction, the operation results in a NOOP.
-    Only the top level `Commit` commits a transaction to the database.
+*   If `Commit` is called in a nested transaction, the operation results in no operatoin (NOOP).
+    Only the top level `Commit` commits the transaction to the database.
 
 *   If `Rollback` is called in a nested transaction, then the entire
     transaction is rolled back. `Tx.IsRollbacked` is set to true.
 
 *   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
-    for each corresponding `Begin`. The internal state of nested transaction is
-    cleaned up in these two methods.
+    for each corresponding `Begin`. The internal state of nested transactions is
+    tracked in these two methods.
 
 ```go
 func nested(conn runner.Connection) error {
@@ -709,7 +709,6 @@ func top() {
     if err != nil {
         return
     }
-
     // top level commits the transaction
     tx.Commit()
 }
@@ -718,18 +717,23 @@ func top() {
 ### Caching
 
 dat implements caching backed by an in-memory or Redis store. The in-memory store
-is not recommended for production use. Caching will cache any object that
-can be marshaled/unmarhsaled with the json package.
+is not recommended for production use. Caching can cache any struct or primitive type that
+can be marshaled/unmarhsaled with the json package due to Redis being a string
+value store.
+
+Caching is performed at the application level not the database level lessening the
+workload on the database.
+
 
 ```go
-// import key-valute store (kvs) package
-import "gopkg.in/mgutz/data.v1/sqlx-runner/kvs"
+// import key-value store (kvs) package
+import "gopkg.in/mgutz/dat.v1/sqlx-runner/kvs"
 
 func init() {
-    // namespace is the prefix for keys and should be unique
+    // Redis: namespace is the prefix for keys and should be unique
     store, err := kvs.NewRedisStore("namespace:", ":6379", "passwordOrEmpty")
 
-    // in-memory database provided by [go-cache](https://github.com/pmylund/go-cache)
+    // In-memory store provided by [go-cache](https://github.com/pmylund/go-cache)
     cleanupInterval := 30 * time.Second
     store = kvs.NewMemoryStore(cleanupInterval)
 
@@ -744,7 +748,7 @@ b, err := DB.
 
 // Cache states query for a year using the hash value of the SQL as the ID.
 //
-// While this is not as efficient since the checksum has to be calculated
+// While this is not as efficient, the checksum has to be calculated
 // for each query, it is more flexible. In this example, the interpolated SQL
 // will contain ther user_name (if EnableInterpolation is true)
 // effectively caching each user.
@@ -753,9 +757,8 @@ b, err := DB.
     Cache("", 365 * 24 *  time.Hour, false).
     QueryJSON()
 
-// If EnableInterpolation is not enabled, precompute the key to avoid
-// the checksum calculation. In general, use unique IDs where
-// possible to avoid unnecessary computation.
+// In general, use known unique IDs to avoid the computation cost
+// of the checksum key.
 key = "user" + user.UserName
 b, err := DB.
     SQL(`SELECT * FROM users WHERE user_name = $1`, user).
@@ -792,23 +795,23 @@ db.Exec(
 )
 ```
 
-is sent to the database with the args in-inlined
+is sent to the database with the args inlined bypassing
+prepared statement logic in the lib/pq layer.
 
 sql
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-Using Interpolation provides other benefits:
+Interpolation provides these benefits:
 
-*   Performance improvement
-*   Debugging is simpler with interpolated SQL
-*   Use SQL constants like `NOW` and `DEFAULT`
-*   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
+*   Performance improvements
+*   Debugging/tracing is simpler with interpolated SQL
+*   May use safe SQL constants like `dat.NOW` and `dat.DEFAULT`
+*   Expand placeholders with slice values `$1 => (1, 2, 3)`
 
 Read [SQL Interpolation](https://github.com/mgutz/dat/wiki/Local-Interpolation) in wiki
-for more details.
-
+for more details regarding built-in safety guards.
 
 ## LICENSE
 
