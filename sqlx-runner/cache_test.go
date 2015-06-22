@@ -11,8 +11,11 @@ import (
 	"github.com/mgutz/jo/v1"
 )
 
-func TestCacheSelectDocBytes(t *testing.T) {
+func TestCachePre(t *testing.T) {
+	installFixtures()
+}
 
+func TestCacheSelectDocBytes(t *testing.T) {
 	Cache.FlushDB()
 	for i := 0; i < 2; i++ {
 		b, err := testDB.SelectDoc("id", "comment").

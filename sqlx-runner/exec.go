@@ -554,7 +554,6 @@ func queryJSON(execer *Execer) ([]byte, error) {
 	} else {
 		err = execer.database.Get(&blob, fullSQL, args...)
 	}
-
 	if err != nil {
 		logSQLError(err, "queryJSON", fullSQL, args)
 	}

@@ -131,11 +131,22 @@ func init() {
         panic(err)
     }
 
+    err = db.Ping()
+    if err != nil {
+        panic("Could not ping database")
+    }
+
+    // set to reasonable values
+    db.SetMaxIdleConns(4)
+    db.SetMaxOpenConns(16)
+
     // set this to enable interpolation
     dat.EnableInterpolation = true
+
     // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
+
     DB = runner.NewDB(db, "postgres")
 }
 
@@ -192,8 +203,8 @@ Note: `dat` does not trim the SQL string, thus any extra whitespace is
 transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason this
-library exists is my dissatisfaction with other SQL builders introducing
-another domain language or AST-like expressions.
+library exists is most SQL builders introduce a DSL to insulate the user
+from SQL.
 
 Query builders shine when dealing with data transfer objects, structs.
 
@@ -520,9 +531,6 @@ from the underlying SQL driver's pool
 For one-off operations, use `DB` directly
 
 ```go
-// a global connection usually created in `init`
-DB := runner.NewDB(db, "postgres")
-
 err := DB.SQL(...).QueryStruct(&post)
 ```
 
@@ -721,19 +729,18 @@ is not recommended for production use. Caching can cache any struct or primitive
 can be marshaled/unmarhsaled with the json package due to Redis being a string
 value store.
 
-Caching is performed at the application level not the database level lessening the
-workload on the database.
-
+Caching is performed before the database driver lessening the workload on
+the database.
 
 ```go
-// import key-value store (kvs) package
-import "gopkg.in/mgutz/dat.v1/sqlx-runner/kvs"
+// key-value store (kvs) package
+import "gopkg.in/mgutz/dat.v1/kvs"
 
 func init() {
     // Redis: namespace is the prefix for keys and should be unique
     store, err := kvs.NewRedisStore("namespace:", ":6379", "passwordOrEmpty")
 
-    // In-memory store provided by [go-cache](https://github.com/pmylund/go-cache)
+    // Or, in-memory store provided by [go-cache](https://github.com/pmylund/go-cache)
     cleanupInterval := 30 * time.Second
     store = kvs.NewMemoryStore(cleanupInterval)
 
@@ -757,7 +764,7 @@ b, err := DB.
     Cache("", 365 * 24 *  time.Hour, false).
     QueryJSON()
 
-// In general, use known unique IDs to avoid the computation cost
+// Prefer using known unique IDs to avoid the computation cost
 // of the checksum key.
 key = "user" + user.UserName
 b, err := DB.
@@ -765,7 +772,7 @@ b, err := DB.
     Cache(key, 15 * time.Minute, false).
     QueryJSON()
 
-// set invalidate to true to force setting the key
+// Set invalidate to true to force setting the key
 statesUpdated := true
 b, err := DB.
     SQL(`SELECT * FROM states`).
@@ -775,7 +782,6 @@ b, err := DB.
 // Clears the entire cache
 DB.Cache.FlushDB()
 
-// Clears the key "fookey"
 DB.Cache.Del("fookey")
 ```
 
@@ -795,7 +801,7 @@ db.Exec(
 )
 ```
 
-is sent to the database with the args inlined bypassing
+is sent to the database with inlined args bypassing
 prepared statement logic in the lib/pq layer.
 
 sql
@@ -811,7 +817,7 @@ Interpolation provides these benefits:
 *   Expand placeholders with slice values `$1 => (1, 2, 3)`
 
 Read [SQL Interpolation](https://github.com/mgutz/dat/wiki/Local-Interpolation) in wiki
-for more details regarding built-in safety guards.
+for more details and SQL injection.
 
 ## LICENSE
 
