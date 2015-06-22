@@ -54,6 +54,26 @@ func logSQLError(err error, msg string, statement string, args []interface{}) er
 	return err
 }
 
+func logExecutionTime(start time.Time, sql string, args []interface{}) {
+	logged := false
+	if logger.IsWarn() {
+		elapsed := time.Since(start)
+		if LogQueriesThreshold > 0 && elapsed.Nanoseconds() > LogQueriesThreshold.Nanoseconds() {
+			if len(args) > 0 {
+				logger.Warn("SLOW query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql, "args", toOutputStr(args))
+			} else {
+				logger.Warn("SLOW query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
+			}
+			logged = true
+		}
+	}
+
+	if logger.IsInfo() && !logged {
+		elapsed := time.Since(start)
+		logger.Info("Query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
+	}
+}
+
 // Exec executes the query built by builder.
 func exec(execer *Execer) (sql.Result, error) {
 	fullSQL, args, err := execer.builder.Interpolate()
@@ -61,13 +81,7 @@ func exec(execer *Execer) (sql.Result, error) {
 		logger.Error("exec.10", "err", err, "sql", fullSQL)
 		return nil, err
 	}
-
-	if logger.IsInfo() {
-		startTime := time.Now()
-		defer func() {
-			logger.Info("exec.20", "elapsed", time.Since(startTime).Nanoseconds(), "sql", fullSQL)
-		}()
-	}
+	defer logExecutionTime(time.Now(), fullSQL, args)
 
 	var result sql.Result
 	if args == nil {
@@ -89,6 +103,7 @@ func query(execer *Execer) (*sqlx.Rows, error) {
 		return nil, err
 	}
 
+	defer logExecutionTime(time.Now(), fullSQL, args)
 	var rows *sqlx.Rows
 	if args == nil {
 		rows, err = execer.database.Queryx(fullSQL)
@@ -120,17 +135,7 @@ func queryScalar(execer *Execer, destinations ...interface{}) error {
 		logger.Warn("queryScalar.2: Could not unmarshal cache data. Continuing with query")
 	}
 
-	if logger.IsInfo() {
-		// Start the timer:
-		startTime := time.Now()
-		defer func() {
-			logger.Info("QueryScalar",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
-
+	defer logExecutionTime(time.Now(), fullSQL, args)
 	// Run the query:
 	var rows *sqlx.Rows
 	if args == nil {
@@ -141,6 +146,7 @@ func queryScalar(execer *Execer, destinations ...interface{}) error {
 	if err != nil {
 		return logSQLError(err, "QueryScalar.load_value.query", fullSQL, args)
 	}
+
 	defer rows.Close()
 	if rows.Next() {
 		err = rows.Scan(destinations...)
@@ -208,18 +214,7 @@ func querySlice(execer *Execer, dest interface{}) error {
 		logger.Warn("querySlice.2: Could not unmarshal cache data. Continuing with query")
 	}
 
-	if logger.IsInfo() {
-		// Start the timer:
-		startTime := time.Now()
-		defer func() {
-			logger.Info("querySlice",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
-
-	// Run the query:
+	defer logExecutionTime(time.Now(), fullSQL, args)
 	var rows *sqlx.Rows
 	if args == nil {
 		rows, err = execer.database.Queryx(fullSQL)
@@ -229,11 +224,10 @@ func querySlice(execer *Execer, dest interface{}) error {
 	if err != nil {
 		return logSQLError(err, "querySlice.load_all_values.query", fullSQL, args)
 	}
-	defer rows.Close()
 
 	sliceValue := valueOfDest
+	defer rows.Close()
 	for rows.Next() {
-
 		// Create a new value to store our row:
 		pointerToNewValue := reflect.New(recordType)
 		newValue := reflect.Indirect(pointerToNewValue)
@@ -281,16 +275,7 @@ func queryStruct(execer *Execer, dest interface{}) error {
 		logger.Warn("queryStruct.2: Could not unmarshal queryStruct cache data. Continuing with query")
 	}
 
-	if logger.IsInfo() {
-		startTime := time.Now()
-		defer func() {
-			logger.Info("QueryStruct",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
-
+	defer logExecutionTime(time.Now(), fullSQL, args)
 	if args == nil {
 		err = execer.database.Get(dest, fullSQL)
 	} else {
@@ -317,32 +302,21 @@ func queryStruct(execer *Execer, dest interface{}) error {
 // Returns the number of items found (which is not necessarily the # of items
 // set)
 func queryStructs(execer *Execer, dest interface{}) error {
-
 	fullSQL, args, blob, err := cacheOrSQL(execer)
 	if err != nil {
 		logger.Error("queryStructs.1: Could not convert to SQL", "err", err)
 		return err
 	}
 	if blob != nil {
-		err = json.Unmarshal(blob, &dest)
+		err = json.Unmarshal(blob, dest)
 		if err == nil {
 			return nil
 		}
-		// log it and fallthrough to let the query continue
-		logger.Warn("queryStructs.2: Could not unmarshal queryStruct cache data. Continuing with query")
+		// log it and let the query continue
+		logger.Warn("queryStructs.2: Could not unmarshal queryStruct cache data. Continuing with query", "err", err)
 	}
 
-	if logger.IsInfo() {
-		// Start the timer:
-		startTime := time.Now()
-		defer func() {
-			logger.Info("QueryStructs",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
-
+	defer logExecutionTime(time.Now(), fullSQL, args)
 	if args == nil {
 		err = execer.database.Select(dest, fullSQL)
 	} else {
@@ -387,17 +361,7 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 		return blob, nil
 	}
 
-	if logger.IsInfo() {
-		// Start the timer:
-		startTime := time.Now()
-		defer func() {
-			logger.Info("QueryJSONBlob",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
-
+	defer logExecutionTime(time.Now(), fullSQL, args)
 	var rows *sqlx.Rows
 	// Run the query:
 	if args == nil {
@@ -413,6 +377,7 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 	var buf bytes.Buffer
 	i := 0
 	if single {
+		defer rows.Close()
 		for rows.Next() {
 			if i == 1 {
 				if dat.Strict {
@@ -431,6 +396,7 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 			buf.Write(blob)
 		}
 	} else {
+		defer rows.Close()
 		for rows.Next() {
 			if i == 0 {
 				buf.WriteRune('[')
@@ -480,7 +446,7 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 		v, err := Cache.Get(execer.cacheID)
 		//logger.Warn("DBG cacheOrSQL.1 getting by id", "id", execer.cacheID, "v", v, "err", err)
 		if v != "" && (err == nil || err != kvs.ErrNotFound) {
-			//logger.Warn("DBG cacheOrSQL.11 HIT")
+			//logger.Warn("DBG cacheOrSQL.11 HIT", "v", v)
 			return "", nil, []byte(v), nil
 		}
 	}
@@ -495,8 +461,7 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 		// this must be set for setCache() to work below
 		execer.cacheID = kvs.Hash(fullSQL)
 
-		if execer.cacheInvalidate {
-		} else {
+		if !execer.cacheInvalidate {
 			v, err := Cache.Get(execer.cacheID)
 			//logger.Warn("DBG cacheOrSQL.2 getting by hash", "hash", execer.cacheID, "v", v, "err", err)
 			if v != "" && (err == nil || err != kvs.ErrNotFound) {
@@ -527,35 +492,24 @@ func setCache(execer *Execer, b []byte) {
 //
 // Returns ErrNotFound if nothing was found
 func queryJSON(execer *Execer) ([]byte, error) {
-
 	fullSQL, args, blob, err := cacheOrSQL(execer)
 	if err != nil {
 		return nil, err
 	}
-
 	if blob != nil {
 		return blob, nil
 	}
 
-	fullSQL = fmt.Sprintf("SELECT TO_JSON(ARRAY_AGG(__datq.*)) FROM (%s) AS __datq", fullSQL)
-
-	if logger.IsInfo() {
-		startTime := time.Now()
-		defer func() {
-			logger.Info("QueryJSON",
-				"elapsed", time.Since(startTime).Nanoseconds(),
-				"sql", fullSQL,
-			)
-		}()
-	}
+	defer logExecutionTime(time.Now(), fullSQL, args)
+	jsonSQL := fmt.Sprintf("SELECT TO_JSON(ARRAY_AGG(__datq.*)) FROM (%s) AS __datq", fullSQL)
 
 	if args == nil {
-		err = execer.database.Get(&blob, fullSQL)
+		err = execer.database.Get(&blob, jsonSQL)
 	} else {
-		err = execer.database.Get(&blob, fullSQL, args...)
+		err = execer.database.Get(&blob, jsonSQL, args...)
 	}
 	if err != nil {
-		logSQLError(err, "queryJSON", fullSQL, args)
+		logSQLError(err, "queryJSON", jsonSQL, args)
 	}
 
 	setCache(execer, blob)

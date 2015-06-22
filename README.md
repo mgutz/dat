@@ -96,6 +96,10 @@ library for Go.
 
 *   Nested transactions
 
+*   SQL tracing
+
+*   Slow query logging
+
 *   Performant
 
     -   ordinal placeholder logic is optimized to be nearly as fast as using `?`
@@ -146,6 +150,9 @@ func init() {
     // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
+
+    // Log any query over 10ms as warnings. (optional)
+    runner.LogQueriesThreshold = 10 * time.Millisecond
 
     DB = runner.NewDB(db, "postgres")
 }
@@ -272,10 +279,16 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 
 ### Tracing SQL
 
-`dat` uses [logxi](https://github.com/mgutz/logxi) for logging. To trace SQL
-set environment variable
+`dat` uses [logxi](https://github.com/mgutz/logxi) for logging. By default,
+*logxi* logs all warnings and errors to the console. `dat` logs the
+SQL and its arguments on any error. In addition, `dat` logs slow queries
+as warnings if `LogQueriesThreshold > 0`
 
-    LOGXI=dat* yourapp
+To trace all SQL, set environment variable
+
+```sh
+LOGXI=dat* yourapp
+```
 
 ## CRUD
 
@@ -372,16 +385,16 @@ err = DB.
     Where("id = $1", post.ID).
     QueryStruct(&other)
 
-published := dat.NewScope(
-    "WHERE user_id = :userID AND state = 'published'",
-    dat.M{"userID": 0},
-)
+published := `
+    WHERE user_id = $1
+        AND state = 'published'
+`
 
 var posts []*Post
 err = DB.
     Select("id, title").
     From("posts").
-    ScopeMap(published, dat.M{"userID": 100})
+    Scope(published, 100).
     QueryStructs(&posts)
 ```
 
@@ -496,7 +509,7 @@ err = DB.
 Scopes predefine JOIN and WHERE conditions.
 Scopes may be used with `DeleteFrom`, `Select` and `Update`.
 
-As an example, a "published" scoped might define published posts
+As an example, a "published" scope might define published posts
 by user.
 
 ```go
@@ -726,8 +739,12 @@ func top() {
 
 dat implements caching backed by an in-memory or Redis store. The in-memory store
 is not recommended for production use. Caching can cache any struct or primitive type that
-can be marshaled/unmarhsaled with the json package due to Redis being a string
+can be marshaled/unmarhsaled cleanly with the json package due to Redis being a string
 value store.
+
+Time is especially problematic as JavaScript, Postgres and Go
+have different time formats. Use the type `dat.NullTime` if you are
+getting `cannot parse time` errors.
 
 Caching is performed before the database driver lessening the workload on
 the database.
@@ -780,9 +797,9 @@ b, err := DB.
     QueryJSON()
 
 // Clears the entire cache
-DB.Cache.FlushDB()
+runner.Cache.FlushDB()
 
-DB.Cache.Del("fookey")
+runner.Cache.Del("fookey")
 ```
 
 ### SQL Interpolation

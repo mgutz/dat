@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"time"
+
 	"github.com/mgutz/logxi/v1"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/kvs"
@@ -8,6 +10,9 @@ import (
 )
 
 var logger log.Logger
+
+// LogQueriesThreshold is the threshold for logging "slow" queries
+var LogQueriesThreshold time.Duration
 
 func init() {
 	dat.Dialect = postgres.New()

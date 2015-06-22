@@ -139,22 +139,24 @@ func (n *NullTime) UnmarshalJSON(b []byte) error {
 		return n.Scan(nil)
 	}
 	// scan for JSON timestamp
-
-	// try postgres format
-	format := "2006-01-02 15:04:05.999999999-07"
-	s := string(b)
-	s = s[1 : len(s)-1]
-	t, err := time.Parse(format, s)
-	if err != nil {
-		format = "2006-01-02T15:04:05.000Z"
-		// try UTC format
-		t, err = time.Parse(format, s)
-		if err != nil {
-			return err
-		}
+	formats := []string{
+		// Go
+		time.RFC3339Nano,
+		// JavaScript JSON.stringify()
+		"2006-01-02T15:04:05.000Z",
+		// postgres
+		"2006-01-02 15:04:05.999999999-07",
 	}
 
-	return n.Scan(t)
+	s := string(b)
+	s = s[1 : len(s)-1]
+	for _, format := range formats {
+		t, err := time.Parse(format, s)
+		if err == nil {
+			return n.Scan(t)
+		}
+	}
+	return logger.Error("Cannot parse time", "time", s, "formats", formats)
 }
 
 // UnmarshalJSON correctly deserializes a NullBool from JSON
