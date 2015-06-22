@@ -58,6 +58,31 @@ type NullBool struct {
 	sql.NullBool
 }
 
+// NullStringFrom creates a valid NullString
+func NullStringFrom(v string) NullString {
+	return NullString{sql.NullString{v, true}}
+}
+
+// NullFloat64From creates a valid NullFloat64
+func NullFloat64From(v float64) NullFloat64 {
+	return NullFloat64{sql.NullFloat64{v, true}}
+}
+
+// NullInt64From creates a valid NullInt64
+func NullInt64From(v int64) NullInt64 {
+	return NullInt64{sql.NullInt64{v, true}}
+}
+
+// NullTimeFrom creates a valid NullTime
+func NullTimeFrom(v time.Time) NullTime {
+	return NullTime{pq.NullTime{v, true}}
+}
+
+// NullBoolFrom creates a valid NullBool
+func NullBoolFrom(v bool) NullBool {
+	return NullBool{sql.NullBool{v, true}}
+}
+
 var nullString = []byte("null")
 
 // MarshalJSON correctly serializes a NullString to JSON
