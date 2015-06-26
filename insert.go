@@ -43,7 +43,7 @@ func (b *InsertBuilder) Blacklist(columns ...string) *InsertBuilder {
 }
 
 // Whitelist defines a whitelist of columns to be inserted. To
-// specify all columsn of a record use "*".
+// specify all columns of a record use "*".
 func (b *InsertBuilder) Whitelist(columns ...string) *InsertBuilder {
 	b.cols = columns
 	return b

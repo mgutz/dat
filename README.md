@@ -8,11 +8,14 @@ the original dat **
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
 library for Go.
 
-How it is different than other toolkits:
-
 *   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
 
-*   Light layer over [sqlx](https://github.com/jmoiron/sqlx)
+*   Built on a solid foundation [sqlx](https://github.com/jmoiron/sqlx).
+
+    ```go
+    // child DB is *sqlx.DB
+    DB.DB.Queryx(`SELECT * FROM users`)
+    ```
 
 *   SQL and backtick friendly.
 
@@ -20,7 +23,7 @@ How it is different than other toolkits:
     DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
-*   Intuitive JSON Document retrieval (single trip to database!)
+*   JSON Document retrieval (single trip to Postgres, requires Postgres 9.3+)
 
     ```go
     DB.SelectDoc("id", "user_name", "avatar").
@@ -47,11 +50,11 @@ How it is different than other toolkits:
     }
     ```
 
-*   Simpler JSON retrieval from database (requires Postgres 9.3+)
+*   JSON marshalable bytes (requires Postgres 9.3+)
 
     ```go
-    var json []byte
-    json, _ = DB.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
+    var b []byte
+    b, _ = DB.SQL(`SELECT id, user_name, created_at FROM users WHERE user_name = $1 `,
         "mario",
     ).QueryJSON()
 
@@ -62,23 +65,13 @@ How it is different than other toolkits:
     ).QueryObject(&obj)
     ```
 
-    both result in
-
-    ```json
-    {
-        "id": 1,
-        "user_name": "mario",
-        "created_at": "2015-03-01T14:23"
-    }
-    ```
-
-*   Ordinal placeholders - friendlier than `?`
+*   Ordinal placeholders
 
     ```go
     DB.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
     ```
 
-*   Minimal API Surface. No AST-like language to learn.
+*   SQL-like API
 
     ```go
     err := DB.
@@ -87,6 +80,25 @@ How it is different than other toolkits:
         Where("id = $1", id).
         QueryStruct(&user)
     ```
+
+*   Redis caching
+
+    ```go
+    // cache result for 30 seconds
+    key := "user:" + strconv.Itoa(user.id)
+    err := DB.
+        Select("id, user_name").
+        From("users").
+        Where("id = $1", user.id).
+        Cache(key, 30 * time.Second, false).
+        QueryStruct(&user)
+    ```
+
+*   Nested transactions
+
+*   SQL tracing
+
+*   Slow query logging
 
 *   Performant
 
@@ -109,8 +121,8 @@ import (
     "database/sql"
 
     _ "github.com/lib/pq"
-    "gopkg.in/mgutz/data.v1"
-    "gopkg.in/mgutz/data.v1/sqlx-runner"
+    "gopkg.in/mgutz/dat.v1"
+    "gopkg.in/mgutz/dat.v1/sqlx-runner"
 )
 
 // global database (pooling provided by SQL driver)
@@ -123,11 +135,25 @@ func init() {
         panic(err)
     }
 
+    err = db.Ping()
+    if err != nil {
+        panic("Could not ping database")
+    }
+
+    // set to reasonable values for production
+    db.SetMaxIdleConns(4)
+    db.SetMaxOpenConns(16)
+
     // set this to enable interpolation
     dat.EnableInterpolation = true
+
     // set to check things like sessions closing.
     // Should be disabled in production/release builds.
     dat.Strict = false
+
+    // Log any query over 10ms as warnings. (optional)
+    runner.LogQueriesThreshold = 10 * time.Millisecond
+
     DB = runner.NewDB(db, "postgres")
 }
 
@@ -137,7 +163,7 @@ type Post struct {
     Body      string        `db:"body"`
     UserID    int64         `db:"user_id"`
     State     string        `db:"state"`
-    UpdatedAt dat.Nulltime  `db:"updated_at"`
+    UpdatedAt dat.NullTime  `db:"updated_at"`
     CreatedAt dat.NullTime  `db:"created_at"`
 }
 
@@ -184,8 +210,8 @@ Note: `dat` does not trim the SQL string, thus any extra whitespace is
 transmitted to the database.
 
 In practice, SQL is easier to write with backticks. Indeed, the reason this
-library exists is my dissatisfaction with other SQL builders introducing
-another domain language or AST-like expressions.
+library exists is most SQL builders introduce a DSL to insulate the user
+from SQL.
 
 Query builders shine when dealing with data transfer objects, structs.
 
@@ -250,20 +276,18 @@ b := DB.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
 
-### Runners
-
-`dat` was designed to have clear separation between SQL builders and Query execers.
-This is why the runner is in its own package.
-
-*   `sqlx-runner` - based on [sqlx](https://github.com/jmoiron/sqlx)
-
-
 ### Tracing SQL
 
-`dat` uses [logxi](https://github.com/mgutz/logxi) for logging. To trace SQL
-set environment variable
+`dat` uses [logxi](https://github.com/mgutz/logxi) for logging. By default,
+*logxi* logs all warnings and errors to the console. `dat` logs the
+SQL and its arguments on any error. In addition, `dat` logs slow queries
+as warnings if `runner.LogQueriesThreshold > 0`
 
-    LOGXI=dat* yourapp
+To trace all SQL, set environment variable
+
+```sh
+LOGXI=dat* yourapp
+```
 
 ## CRUD
 
@@ -273,7 +297,7 @@ Use `Returning` and `QueryStruct` to insert and update struct fields in one
 trip
 
 ```go
-post := Post{Title: "Swith to Postgres", State: "open"}
+var post Post
 
 err := DB.
     InsertInto("posts").
@@ -291,7 +315,7 @@ post := Post{Title: "Go is awesome", State: "open"}
 err := DB.
     InsertInto("posts").
     Blacklist("id", "user_id", "created_at", "updated_at").
-    Record(post).
+    Record(&post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 
@@ -299,7 +323,7 @@ err := DB.
 err := DB.
     InsertInto("posts").
     Whitelist("*").
-    Record(post).
+    Record(&post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 
@@ -360,16 +384,16 @@ err = DB.
     Where("id = $1", post.ID).
     QueryStruct(&other)
 
-published := dat.NewScope(
-    "WHERE user_id = :userID AND state = 'published'",
-    dat.M{"userID": 0},
-)
+published := `
+    WHERE user_id = $1
+        AND state = 'published'
+`
 
 var posts []*Post
 err = DB.
     Select("id, title").
     From("posts").
-    ScopeMap(published, dat.M{"userID": 100})
+    Scope(published, 100).
     QueryStructs(&posts)
 ```
 
@@ -466,7 +490,7 @@ result, err = DB.
 
 ### Joins
 
-Define JOINs as arguments to `From`
+Define JOINs in argument to `From`
 
 ``` go
 err = DB.
@@ -484,7 +508,7 @@ err = DB.
 Scopes predefine JOIN and WHERE conditions.
 Scopes may be used with `DeleteFrom`, `Select` and `Update`.
 
-As an example, a "published" scoped might define published posts
+As an example, a "published" scope might define published posts
 by user.
 
 ```go
@@ -513,15 +537,12 @@ err = DB.
 
 ## Creating Connections
 
-All queries are made in the context of a connection which are acquired
+All queries are made in the context of a connection which is acquired
 from the underlying SQL driver's pool
 
 For one-off operations, use `DB` directly
 
 ```go
-// a global connection usually created in `init`
-DB := runner.NewDB(db, "postgres")
-
 err := DB.SQL(...).QueryStruct(&post)
 ```
 
@@ -554,7 +575,8 @@ func PostsIndex(rw http.ResponseWriter, r *http.Request) {
 }
 ```
 
-`DB` and `Tx` implement `runner.Connection` interface
+`DB` and `Tx` implement `runner.Connection` interface to facilitate
+keeping code DRY
 
 ```
 func getUsers(conn runner.Connection) ([]*dto.Users, error) {
@@ -571,10 +593,56 @@ func getUsers(conn runner.Connection) ([]*dto.Users, error) {
 }
 ```
 
+#### Nested Transactions
+
+Nested transaction logic is as follows:
+
+*   If `Commit` is called in a nested transaction, the operation results in no operation (NOOP).
+    Only the top level `Commit` commits the transaction to the database.
+
+*   If `Rollback` is called in a nested transaction, then the entire
+    transaction is rolled back. `Tx.IsRollbacked` is set to true.
+
+*   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
+    for each corresponding `Begin`. The internal state of nested transactions is
+    tracked in these two methods.
+
+```go
+func nested(conn runner.Connection) error {
+    tx, err := conn.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.AutoRollback()
+
+    _, err := tx.SQL(`INSERT INTO users (email) values $1`, 'me@home.com').Exec()
+    if err != nil {
+        return err
+    }
+    // prevents AutoRollback
+    tx.Commit()
+}
+
+func top() {
+    tx, err := DB.Begin()
+    if err != nil {
+        logger.Fatal("Could not create transaction")
+    }
+    defer tx.AutoRollback()
+
+    err := nested(tx)
+    if err != nil {
+        return
+    }
+    // top level commits the transaction
+    tx.Commit()
+}
+```
+
 ### Dates
 
-Dates are a pain in go. Use `dat.NullTime` type to properly
-handle nullable dates from JSON and Postgres.
+Use `dat.NullTime` type to properly handle nullable dates
+from JSON and Postgres.
 
 ### Constants
 
@@ -638,88 +706,82 @@ err := DB.
     QueryStruct(&post)
 ```
 
-### Transactions
+### Caching
+
+dat implements caching backed by an in-memory or Redis store. The in-memory store
+is not recommended for production use. Caching can cache any struct or primitive type that
+can be marshaled/unmarhsaled cleanly with the json package due to Redis being a string
+value store.
+
+Time is especially problematic as JavaScript, Postgres and Go
+have different time formats. Use the type `dat.NullTime` if you are
+getting `cannot parse time` errors.
+
+Caching is performed before the database driver lessening the workload on
+the database.
 
 ```go
-// Start transaction
-tx, err := DB.Begin()
-if err != nil {
-    return err
+// key-value store (kvs) package
+import "gopkg.in/mgutz/dat.v1/kvs"
+
+func init() {
+    // Redis: namespace is the prefix for keys and should be unique
+    store, err := kvs.NewRedisStore("namespace:", ":6379", "passwordOrEmpty")
+
+    // Or, in-memory store provided by [go-cache](https://github.com/pmylund/go-cache)
+    cleanupInterval := 30 * time.Second
+    store = kvs.NewMemoryStore(cleanupInterval)
+
+    runner.SetCache(store)
 }
-// safe to call tx.Rollback() or tx.Commit() when deferring AutoCommit()
-defer tx.AutoCommit()
 
-// AutoRollback() is also available if you would rather Commit() at the end
-// and not deal with Rollback on every error.
+// Cache states query for a year using key "namespace:states"
+b, err := DB.
+    SQL(`SELECT * FROM states`).
+    Cache("states", 365 * 24 * time.Hour, false).
+    QueryJSON()
 
-// Issue statements that might cause errors
-res, err := tx.
-    Update("posts").
-    Set("state", "deleted").
-    Where("deleted_at IS NOT NULL").
-    Exec()
+// Cache states query for a year using the hash value of the SQL as the ID.
+//
+// While this is not as efficient, the checksum has to be calculated
+// for each query, it is more flexible. In this example, the interpolated SQL
+// will contain ther user_name (if EnableInterpolation is true)
+// effectively caching each user.
+b, err := DB.
+    SQL(`SELECT * FROM users WHERE user_name = $1`, user).
+    Cache("", 365 * 24 *  time.Hour, false).
+    QueryJSON()
 
-if err != nil {
-    tx.Rollback()
-    return err
-}
+// Prefer using known unique IDs to avoid the computation cost
+// of the checksum key.
+key = "user" + user.UserName
+b, err := DB.
+    SQL(`SELECT * FROM users WHERE user_name = $1`, user).
+    Cache(key, 15 * time.Minute, false).
+    QueryJSON()
+
+// Set invalidate to true to force setting the key
+statesUpdated := true
+b, err := DB.
+    SQL(`SELECT * FROM states`).
+    Cache("states", 365 * 24 *  time.Hour, statesUpdated).
+    QueryJSON()
+
+// Clears the entire cache
+runner.Cache.FlushDB()
+
+runner.Cache.Del("fookey")
 ```
 
-#### Nested Transactions
-
-Simple nested transaction support works as follows:
-
-*   If `Commit` is called in a nested transaction, the operation results in a NOOP.
-    Only the top level `Commit` commits a transaction to the database.
-
-*   If `Rollback` is called in a nested transaction, then the entire
-    transaction is rollbacked. `Tx.IsRollbacked` is set to true.
-
-*   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
-    for each corresponding `Begin`. The internal state of nested transaction is
-    cleaned up in these two methods.
-
-```go
-func nested(conn runner.Connection) error {
-    tx, err := conn.Begin()
-    if err != nil {
-        return err
-    }
-    defer tx.AutoRollback()
-
-    _, err := tx.SQL(`INSERT INTO users (email) values $1`, 'me@home.com').Exec()
-    if err != nil {
-        return err
-    }
-    // prevents AutoRollback
-    tx.Commit()
-}
-
-func top() {
-    tx, err := DB.Begin()
-    if err != nil {
-        logger.Fatal("Could not create transaction")
-    }
-    defer tx.AutoRollback()
-
-    err := nested(tx)
-    if err != nil {
-        return
-    }
-
-    // top level commits the transaction
-    tx.Commit()
-}
-```
-
-### Local Interpolation
+### SQL Interpolation
 
 __Interpolation is DISABLED by default. Set `dat.EnableInterpolation = true`
 to enable.__
 
-`dat` can interpolate locally to inline query arguments. Let's start with a
-normal SQL statements with arguments
+`dat` can interpolate locally to inline query arguments. For example,
+this statement
 
+go
 ```
 db.Exec(
     "INSERT INTO (a, b, c, d) VALUES ($1, $2, $3, $4)",
@@ -727,138 +789,25 @@ db.Exec(
 )
 ```
 
-When the statement agove gets executed:
+is sent to the database with inlined args bypassing
+prepared statement logic in the lib/pq layer.
 
-1. The driver checks if this SQL has been prepared previously on the current connection, using the SQL as the key
-1. If not, the driver sends the SQL statement to the database to prepare the statement
-2. The prepared statement is assigned to the connection
-3. The prepared satement is executed along with arguments
-4. Received data is sent back to the caller
-
-In contrast, `dat` can interpolate the statement locally resulting in
-a SQL statement with often no arguments. The code above results in
-this interpolated SQL
-
+sql
 ```
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-When the statement agove gets executed:
+Interpolation provides these benefits:
 
-1. The statement is treated as simple exec and sent with args to database, since len(args) == 0
-2. Received data is sent back to the caller
+*   Performance improvements
+*   Debugging/tracing is simpler with interpolated SQL
+*   May use safe SQL constants like `dat.NOW` and `dat.DEFAULT`
+*   Expand placeholders with slice values `$1 => (1, 2, 3)`
 
-#### Interpolation Safety
+Read [SQL Interpolation](https://github.com/mgutz/dat/wiki/Local-Interpolation) in wiki
+for more details and SQL injection.
 
-As of Postgres 9.1, the database does not process escape sequence by default. See
-[String Constants with C-style Escapes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE).
-In short, all backslashes are treated literally.
+## LICENSE
 
-`dat` escapes single quotes (apostrophes) on
-small strings, otherwise it uses Postgres' [dollar
-quotes](http://www.postgresql.org/docs/current/interactive/sql-syntax-lexical.html#SQL-SYNTAX-DOLLAR-QUOTING)
-to escape strings. The dollar quote tag is randomized at init. If a string contains the
-dollar quote tag, the tag is randomized again and if the string still contains the tag, then
-single quote escaping is used.
-
-As an added safety measure, `dat` checks the Postgres database
-`standard_conforming_strings` setting value on a new connection when
-`dat.EnableInterpolation == true`. If `standard_conforming_strings != "on"` then set set it to `"on"`
-or disable interpolation. `dat` will panic if it the setting is incompatible.
-
-#### Why is Interpolation Faster?
-
-Here is a comment from [lib/pq connection source](https://github.com/lib/pq/blob/master/conn.go),
-which was prompted by me asking why was Python's psycopg2 so much
-faster in my benchmarks a year or so back:
-
-```go
-// Check to see if we can use the "simpleExec" interface, which is
-// *much* faster than going through prepare/exec
-if len(args) == 0 {
-    // ignore commandTag, our caller doesn't care
-    r, _, err := cn.simpleExec(query)
-    return r, err
-}
-```
-
-That snippet bypasses the prepare/exec roundtrip to the database.
-
-Keep in mind that prepared statements are only valid for the current session
-and unless the same query is be executed *MANY* times in the same session there
-is little benefit in using prepared statements other than protecting against
-SQL injections. See Interpolation Safety section above.
-
-
-#### More Reasons to Use Interpolation
-
-*   Performance improvement
-*   Debugging is simpler with interpolated SQL
-*   Use SQL constants like `NOW` and `DEFAULT`
-*   Expand placeholders with expanded slice values `$1 => (1, 2, 3)`
-
-`[]byte`,  `[]*byte` and any unhandled values are passed through to the
-driver when interpolating.
-
-### Use With Other Libraries
-
-```go
-import "github.com/mgutz/dat"
-
-builder := dat.Select("*").From("posts").Where("user_id = $1", 1)
-
-// Get builder's SQL and arguments
-sql, args := builder.ToSQL()
-fmt.Println(sql)    // SELECT * FROM posts WHERE (user_id = $1)
-fmt.Println(args)   // [1]
-
-// Use raw database/sql for actual query
-rows, err := db.Query(sql, args...)
-
-// Alternatively build the interpolated sql statement
-sql, args, err := builder.Interpolate()
-if len(args) == 0 {
-    rows, err = db.Query(sql)
-} else {
-    rows, err = db.Query(sql, args...)
-}
-```
-
-## Running Tests and Benchmarks
-
-To setup the task runner and create database
-
-```sh
-# install godo task runner
-go get -u gopkg.in/godo.v2/cmd/godo
-
-# install dependencies
-cd tasks
-go get -a
-
-# back to project
-cd ..
-```
-
-Then run any task
-
-```sh
-# (re)create database
-godo createdb
-
-# run tests with traced SQL (optional)
-LOGXI=dat* godo test
-
-# run tests without logs
-godo test
-
-# run benchmarks
-godo bench
-
-# see other tasks
-godo
-```
-
-When createdb prompts for superuser, enter superuser like 'postgres' to create
-the test database. On Mac + Postgress.app use your own user name and password.
+[The MIT License (MIT)](https://github.com/mgutz/dat/blob/master/LICENSE)
 

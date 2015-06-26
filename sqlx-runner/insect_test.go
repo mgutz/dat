@@ -3,8 +3,8 @@ package runner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestInsect(t *testing.T) {
@@ -49,7 +49,7 @@ func TestInsectSelect(t *testing.T) {
 		Returning("id").
 		QueryScalar(&id)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, id)
+	assert.EqualValues(t, 1, id)
 }
 
 // Insect should select existing record without updating it (see Upsert)
@@ -65,7 +65,7 @@ func TestInsectSelectWhere(t *testing.T) {
 		Returning("id", "name", "email").
 		QueryStruct(&p)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, p.ID)
+	assert.EqualValues(t, 1, p.ID)
 	assert.Equal(t, "Mario", p.Name)
 	assert.Equal(t, "mario@acme.com", p.Email.String)
 }

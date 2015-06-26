@@ -5,14 +5,15 @@ import (
 	"database/sql"
 	"testing"
 
+	"gopkg.in/stretchr/testify.v1/assert"
+
 	"github.com/mgutz/logxi/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionReal(t *testing.T) {
 	installFixtures()
 
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 
 	var id int64
@@ -43,7 +44,7 @@ func TestTransactionReal(t *testing.T) {
 func TestTransactionRollbackReal(t *testing.T) {
 	installFixtures()
 
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 
 	var person Person
@@ -127,7 +128,7 @@ func TestRollbackWithNestedCommit(t *testing.T) {
 	log.Suppress(true)
 	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = nestedCommit(tx)
 	assert.NoError(t, err)
@@ -135,20 +136,20 @@ func TestRollbackWithNestedCommit(t *testing.T) {
 	assert.NoError(t, err)
 
 	var person Person
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario@mgutz.com").
 		QueryStruct(&person)
 	assert.Exactly(t, sql.ErrNoRows, err)
-	assert.Equal(t, 0, person.ID)
+	assert.EqualValues(t, 0, person.ID)
 }
 
 func TestCommitWithNestedCommit(t *testing.T) {
 	log.Suppress(true)
 	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = nestedCommit(tx)
 	assert.NoError(t, err)
@@ -156,7 +157,7 @@ func TestCommitWithNestedCommit(t *testing.T) {
 	assert.NoError(t, err)
 
 	var person Person
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario@mgutz.com").
@@ -169,7 +170,7 @@ func TestCommitWithNestedNestedCommit(t *testing.T) {
 	log.Suppress(true)
 	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = nestedNestedCommit(tx)
 	assert.NoError(t, err)
@@ -177,7 +178,7 @@ func TestCommitWithNestedNestedCommit(t *testing.T) {
 	assert.NoError(t, err)
 
 	var person Person
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario@mgutz.com").
@@ -185,7 +186,7 @@ func TestCommitWithNestedNestedCommit(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, person.ID > 0)
 
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario2@mgutz.com").
@@ -198,7 +199,7 @@ func TestRollbackWithNestedRollback(t *testing.T) {
 	log.Suppress(true)
 	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = nestedRollback(tx)
 	assert.NoError(t, err)
@@ -206,7 +207,7 @@ func TestRollbackWithNestedRollback(t *testing.T) {
 	assert.Exactly(t, ErrTxRollbacked, err)
 
 	var person Person
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario@mgutz.com").
@@ -218,7 +219,7 @@ func TestCommitWithNestedRollback(t *testing.T) {
 	log.Suppress(true)
 	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = nestedRollback(tx)
 	assert.NoError(t, err)
@@ -226,7 +227,7 @@ func TestCommitWithNestedRollback(t *testing.T) {
 	assert.Exactly(t, ErrTxRollbacked, err)
 
 	var person Person
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario@mgutz.com").
@@ -238,7 +239,7 @@ func TestCommitWithNestedNestedRollback(t *testing.T) {
 	log.Suppress(true)
 	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = nestedNestedRollback(tx)
 	assert.NoError(t, err)
@@ -246,7 +247,7 @@ func TestCommitWithNestedNestedRollback(t *testing.T) {
 	assert.Exactly(t, ErrTxRollbacked, err)
 
 	var person Person
-	err = conn.
+	err = testDB.
 		Select("*").
 		From("people").
 		Where("email = $1", "mario@mgutz.com").
@@ -255,10 +256,10 @@ func TestCommitWithNestedNestedRollback(t *testing.T) {
 }
 
 func TestErrorInBeginIfRollbacked(t *testing.T) {
-	// log.Suppress(true)
-	// defer log.Suppress(false)
+	log.Suppress(true)
+	defer log.Suppress(false)
 	installFixtures()
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	assert.NoError(t, err)
 	err = tx.Rollback()
 	assert.NoError(t, err)

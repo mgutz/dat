@@ -3,8 +3,8 @@ package runner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestUpdateKeywordColumnName(t *testing.T) {
@@ -24,7 +24,7 @@ func TestUpdateKeywordColumnName(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert our record was updated (and only our record)
-	assert.Equal(t, res.RowsAffected, 1)
+	assert.EqualValues(t, res.RowsAffected, 1)
 
 	var person Person
 	err = s.Select("*").From("people").Where(dat.Eq{"email": "ben@whitehouse.gov"}).QueryStruct(&person)
@@ -69,7 +69,7 @@ func TestUpdateWhitelist(t *testing.T) {
 	var foo string
 	var name string
 	var id int64
-	err := conn.
+	err := testDB.
 		InsertInto("people").
 		Whitelist("name", "foo").
 		Record(p).
@@ -84,7 +84,7 @@ func TestUpdateWhitelist(t *testing.T) {
 	p2.Foo = "bah"
 	var name2 string
 	var foo2 string
-	err = conn.
+	err = testDB.
 		Update("people").
 		SetWhitelist(p2, "foo").
 		Where("id = $1", id).
@@ -106,7 +106,7 @@ func TestUpdateBlacklist(t *testing.T) {
 	var foo string
 	var name string
 	var id int64
-	err := conn.
+	err := testDB.
 		InsertInto("people").
 		Whitelist("name", "foo").
 		Record(p).
@@ -121,7 +121,7 @@ func TestUpdateBlacklist(t *testing.T) {
 	p2.Foo = "bah"
 	var name2 string
 	var foo2 string
-	err = conn.
+	err = testDB.
 		Update("people").
 		SetBlacklist(p2, "id", "name", "email", "key", "doc", "created_at").
 		Where("id = $1", id).

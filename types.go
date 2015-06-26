@@ -58,6 +58,31 @@ type NullBool struct {
 	sql.NullBool
 }
 
+// NullStringFrom creates a valid NullString
+func NullStringFrom(v string) NullString {
+	return NullString{sql.NullString{String: v, Valid: true}}
+}
+
+// NullFloat64From creates a valid NullFloat64
+func NullFloat64From(v float64) NullFloat64 {
+	return NullFloat64{sql.NullFloat64{Float64: v, Valid: true}}
+}
+
+// NullInt64From creates a valid NullInt64
+func NullInt64From(v int64) NullInt64 {
+	return NullInt64{sql.NullInt64{Int64: v, Valid: true}}
+}
+
+// NullTimeFrom creates a valid NullTime
+func NullTimeFrom(v time.Time) NullTime {
+	return NullTime{pq.NullTime{Time: v, Valid: true}}
+}
+
+// NullBoolFrom creates a valid NullBool
+func NullBoolFrom(v bool) NullBool {
+	return NullBool{sql.NullBool{Bool: v, Valid: true}}
+}
+
 var nullString = []byte("null")
 
 // MarshalJSON correctly serializes a NullString to JSON
@@ -139,22 +164,24 @@ func (n *NullTime) UnmarshalJSON(b []byte) error {
 		return n.Scan(nil)
 	}
 	// scan for JSON timestamp
-
-	// try postgres format
-	format := "2006-01-02 15:04:05.999999999-07"
-	s := string(b)
-	s = s[1 : len(s)-1]
-	t, err := time.Parse(format, s)
-	if err != nil {
-		format = "2006-01-02T15:04:05.000Z"
-		// try UTC format
-		t, err = time.Parse(format, s)
-		if err != nil {
-			return err
-		}
+	formats := []string{
+		// Go
+		time.RFC3339Nano,
+		// JavaScript JSON.stringify()
+		"2006-01-02T15:04:05.000Z",
+		// postgres
+		"2006-01-02 15:04:05.999999999-07",
 	}
 
-	return n.Scan(t)
+	s := string(b)
+	s = s[1 : len(s)-1]
+	for _, format := range formats {
+		t, err := time.Parse(format, s)
+		if err == nil {
+			return n.Scan(t)
+		}
+	}
+	return logger.Error("Cannot parse time", "time", s, "formats", formats)
 }
 
 // UnmarshalJSON correctly deserializes a NullBool from JSON

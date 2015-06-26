@@ -1,114 +1,107 @@
 package runner
 
 import (
-	"database/sql"
 	"encoding/json"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/mgutz/dat.v1"
 )
 
-// Execer implements dat.Execer
+// Execer executes queries against a database.
 type Execer struct {
-	runner
+	database
 	builder dat.Builder
+
+	cacheID         string
+	cacheTTL        time.Duration
+	cacheInvalidate bool
 }
 
 // NewExecer creates a new instance of Execer.
-func NewExecer(runner runner, builder dat.Builder) *Execer {
-	return &Execer{runner, builder}
+func NewExecer(database database, builder dat.Builder) *Execer {
+	return &Execer{
+		database: database,
+		builder:  builder,
+	}
+}
+
+// Cache caches the results of queries for Select and SelectDoc.
+func (ex *Execer) Cache(id string, ttl time.Duration, invalidate bool) dat.Execer {
+	ex.cacheID = id
+	ex.cacheTTL = ttl
+	ex.cacheInvalidate = invalidate
+	return ex
 }
 
 // Exec executes a builder's query.
 func (ex *Execer) Exec() (*dat.Result, error) {
-	res, err := exec(ex.runner, ex.builder)
+	res, err := exec(ex)
 	if err != nil {
-		return nil, traceError("Exec", err)
+		return nil, err
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return nil, traceError("Exec", err)
+		return nil, err
 	}
 	return &dat.Result{RowsAffected: rowsAffected}, nil
 }
 
 // Queryx executes builder's query and returns rows.
 func (ex *Execer) Queryx() (*sqlx.Rows, error) {
-	n, err := query(ex.runner, ex.builder)
-	return n, traceError("Queryx", err)
+	return query(ex)
 }
 
 // QueryScalar executes builder's query and scans returned row into destinations.
 func (ex *Execer) QueryScalar(destinations ...interface{}) error {
-	err := queryScalar(ex.runner, ex.builder, destinations...)
-	return traceError("QueryScalar", err)
+	return queryScalar(ex, destinations...)
 }
 
 // QuerySlice executes builder's query and builds a slice of values from each row, where
 // each row only has one column.
 func (ex *Execer) QuerySlice(dest interface{}) error {
-	err := querySlice(ex.runner, ex.builder, dest)
-	return traceError("QuerySlice", err)
+	return querySlice(ex, dest)
 }
 
 // QueryStruct executes builders' query and scans the result row into dest.
 func (ex *Execer) QueryStruct(dest interface{}) error {
-	// TODO this is a hack. All of this runner, execer nested structs is getting messy.
-	// Use a godo task to copy methods instead of this mess.
 	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
-		err := queryJSONStruct(ex.runner, ex.builder, dest)
-		return traceError("QueryJSONStruct", err)
+		err := queryJSONStruct(ex, dest)
+		return err
 	}
-	err := queryStruct(ex.runner, ex.builder, dest)
-	return traceError("QueryStruct", err)
+	return queryStruct(ex, dest)
 }
 
 // QueryStructs executes builders' query and scans each row as an item in a slice of structs.
 func (ex *Execer) QueryStructs(dest interface{}) error {
-	// TODO this is a hack. All of this runner, execer nested structs is getting messy.
-	// Use a godo task to copy methods instead of this mess.
 	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
-		err := queryJSONStructs(ex.runner, ex.builder, dest)
-		return traceError("QueryJSONStructs", err)
+		err := queryJSONStructs(ex, dest)
+		return err
 	}
 
-	err := queryStructs(ex.runner, ex.builder, dest)
-	return traceError("QueryStructs", err)
+	return queryStructs(ex, dest)
 }
 
 // QueryObject wraps the builder's query within a `to_json` then executes and unmarshals
 // the result into dest.
 func (ex *Execer) QueryObject(dest interface{}) error {
-	// TODO this is a hack. All of this runner, execer nested structs is messy.
-	// Use a godo task to copy methods instead of this mess.
 	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
-		b, err := queryJSONBlob(ex.runner, ex.builder, false)
+		b, err := queryJSONBlob(ex, false)
 		if err != nil {
 			return err
 		}
 		return json.Unmarshal(b, dest)
 	}
 
-	err := queryObject(ex.runner, ex.builder, dest)
-	return traceError("QueryObject", err)
+	return queryObject(ex, dest)
 }
 
 // QueryJSON wraps the builder's query within a `to_json` then executes and returns
 // the JSON []byte representation.
 func (ex *Execer) QueryJSON() ([]byte, error) {
-	// TODO this is a hack. All of this runner, execer nested structs is messy.
-	// Use a godo task to copy methods instead of this mess.
 	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
-		return queryJSONBlob(ex.runner, ex.builder, false)
+		return queryJSONBlob(ex, false)
 	}
 
-	b, err := queryJSON(ex.runner, ex.builder)
-	return b, traceError("QueryObject", err)
-}
-
-func traceError(name string, err error) error {
-	if dat.Strict && err != nil && err != sql.ErrNoRows && err != dat.ErrNotFound {
-		logger.Error(name, "err", err)
-	}
-	return err
+	return queryJSON(ex)
 }

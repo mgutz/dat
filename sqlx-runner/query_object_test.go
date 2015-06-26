@@ -3,8 +3,9 @@ package runner
 import (
 	"testing"
 
+	"gopkg.in/stretchr/testify.v1/assert"
+
 	"github.com/mgutz/jo/v1"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestQueryObject(t *testing.T) {

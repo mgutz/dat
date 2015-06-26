@@ -3,7 +3,7 @@ package runner
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestSprocRows(t *testing.T) {
@@ -17,11 +17,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 `
-	conn.DB.MustExec(sql)
+	testDB.DB.MustExec(sql)
 
 	var sum int
 	var prod int
-	conn.SQL(`select * from rows_table(1, 2)`).QueryScalar(&sum, &prod)
+	testDB.SQL(`select * from rows_table(1, 2)`).QueryScalar(&sum, &prod)
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }
@@ -36,11 +36,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 `
-	conn.DB.MustExec(sql)
+	testDB.DB.MustExec(sql)
 
 	var sum int
 	var prod int
-	conn.SQL(`select * from row_out(1, 2)`).QueryScalar(&prod, &sum)
+	testDB.SQL(`select * from row_out(1, 2)`).QueryScalar(&prod, &sum)
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }
@@ -81,11 +81,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 `
-	conn.DB.MustExec(sql)
+	testDB.DB.MustExec(sql)
 
 	var sum int
 	var prod int
-	conn.Call("rows_table", 1, 2).QueryScalar(&sum, &prod)
+	testDB.Call("rows_table", 1, 2).QueryScalar(&sum, &prod)
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }
@@ -99,10 +99,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 `
-	conn.DB.MustExec(sql)
+	testDB.DB.MustExec(sql)
 
 	var s string
-	err := conn.Call("hello").QueryScalar(&s)
+	err := testDB.Call("hello").QueryScalar(&s)
 	assert.NoError(t, err)
 	assert.Equal(t, "Hello world!", s)
 }
@@ -116,10 +116,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 `
-	conn.DB.MustExec(sql)
+	testDB.DB.MustExec(sql)
 
 	var s string
-	err := conn.Call("hello2").QueryScalar(&s)
+	err := testDB.Call("hello2").QueryScalar(&s)
 	assert.NoError(t, err)
 	assert.Equal(t, "Hello world!", s)
 }

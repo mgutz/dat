@@ -45,7 +45,7 @@ func benchmarkInsertDatN(b *testing.B, rows int, argc int) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = conn.Exec(sql2, args2...)
+		_, err = testDB.Exec(sql2, args2...)
 		if err != nil {
 			b.Error(err)
 		}
@@ -63,7 +63,7 @@ func benchmarkInsertSqlN(b *testing.B, rows int, argc int) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_, err := conn.Exec(sql, args...)
+		_, err := testDB.Exec(sql, args...)
 		if err != nil {
 			b.Error(err.Error())
 		}
@@ -82,7 +82,7 @@ func benchmarkInsertSqlxN(b *testing.B, rows int, argc int) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		_, err := conn.DB.Exec(sql, args...)
+		_, err := testDB.DB.Exec(sql, args...)
 		if err != nil {
 			b.Error(err.Error())
 		}

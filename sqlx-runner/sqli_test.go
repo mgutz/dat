@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 // https://wfuzz.googlecode.com/svn/trunk/wordlist/Injections/SQL.txt
@@ -154,7 +154,7 @@ func TestSQLInjectionBuilder(t *testing.T) {
 
 		var id int64
 		var comment string
-		err := conn.
+		err := testDB.
 			InsertInto("comments").
 			Columns("comment").
 			Values(fuzz).
@@ -166,7 +166,7 @@ func TestSQLInjectionBuilder(t *testing.T) {
 		assert.Equal(t, fuzz, comment)
 
 		var result int
-		err = conn.SQL(`
+		err = testDB.SQL(`
 			SELECT 42
 			FROM comments
 			WHERE id = $1 AND comment = $2
@@ -186,7 +186,7 @@ func TestSQLInjectionSQL(t *testing.T) {
 
 		var id int64
 		var comment string
-		err := conn.
+		err := testDB.
 			SQL(`
 				INSERT INTO comments (comment)
 				VALUES ($1)
@@ -199,7 +199,7 @@ func TestSQLInjectionSQL(t *testing.T) {
 		assert.Equal(t, fuzz, comment)
 
 		var result int
-		err = conn.SQL(`
+		err = testDB.SQL(`
 			SELECT 42
 			FROM comments
 			WHERE id = $1 AND comment = $2

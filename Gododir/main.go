@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	_ "github.com/lib/pq"
 	do "gopkg.in/godo.v2"
 )
@@ -16,9 +18,16 @@ func tasks(p *do.Project) {
 	p.Task("createdb", nil, createdb).Description("Creates test database")
 
 	p.Task("test", nil, func(c *do.Context) {
+		c.Run(`go test -race`)
+		c.Run(`go test -race`, do.M{"$in": "sqlx-runner"})
+	}).Src("**/*.go").
+		Desc("test with -race flag")
+
+	p.Task("test-fast", nil, func(c *do.Context) {
 		c.Run(`go test`)
 		c.Run(`go test`, do.M{"$in": "sqlx-runner"})
-	}).Src("**/*.go")
+	}).Src("**/*.go").
+		Desc("fater test without -race flag")
 
 	p.Task("test-dir", nil, func(c *do.Context) {
 		dir := c.Args.NonFlags()[0]
@@ -34,6 +43,10 @@ func tasks(p *do.Project) {
 		go test -c
 		GODEBUG=allocfreetrace=1 ./dat.test -test.bench=BenchmarkSelectBasicSql -test.run=none -test.benchtime=10ms 2>trace.log
 		`)
+	})
+
+	p.Task("hello", nil, func(*do.Context) {
+		fmt.Println("hello?")
 	})
 
 	p.Task("bench", nil, func(c *do.Context) {
@@ -61,6 +74,33 @@ func tasks(p *do.Project) {
 	p.Task("default", do.S{"builder-boilerplate"}, nil)
 
 	p.Task("example", nil, func(c *do.Context) {
+	})
+
+	p.Task("lint", nil, func(c *do.Context) {
+		c.Bash(`
+		echo Directory=.
+		golint
+
+		cd sqlx-runner
+		echo
+		echo Directory=sqlx-runner
+		golint
+
+		cd ../kvs
+		echo
+		echo Directory=kvs
+		golint
+
+		cd ../postgres
+		echo
+		echo Directory=postgres
+		golint
+		`)
+	})
+
+	p.Task("mocks", nil, func(c *do.Context) {
+		// go get github.com/vektra/mockery
+		c.Run("mockery --dir=kvs --all")
 	})
 }
 

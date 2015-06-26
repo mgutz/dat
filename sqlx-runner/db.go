@@ -42,7 +42,7 @@ func pgMustNotAllowEscapeSequence(conn *DB) {
 	}
 }
 
-// NewConnection instantiates a Connection for a given database/sql connection
+// NewDB instantiates a Connection for a given database/sql connection
 func NewDB(db *sql.DB, driverName string) *DB {
 	database := sqlx.NewDb(db, driverName)
 	conn := &DB{database, &Queryable{database}}
@@ -51,14 +51,13 @@ func NewDB(db *sql.DB, driverName string) *DB {
 		if dat.Strict {
 			conn.SQL("SET client_min_messages to 'DEBUG';")
 		}
-
 	} else {
 		panic("Unsupported driver: " + driverName)
 	}
 	return conn
 }
 
-// NewConnectionFromString instantiates a Connection from a given driver
+// NewDBFromString instantiates a Connection from a given driver
 // and connection string.
 func NewDBFromString(driver string, connectionString string) *DB {
 	db, err := sql.Open(driver, connectionString)
@@ -72,7 +71,7 @@ func NewDBFromString(driver string, connectionString string) *DB {
 	return NewDB(db, driver)
 }
 
-// NewConnectionFromSqlx creates a new Connection object from existing Sqlx.DB.
+// NewDBFromSqlx creates a new Connection object from existing Sqlx.DB.
 func NewDBFromSqlx(dbx *sqlx.DB) *DB {
 	conn := &DB{dbx, &Queryable{dbx}}
 	pgMustNotAllowEscapeSequence(conn)

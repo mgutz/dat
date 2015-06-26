@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"gopkg.in/mgutz/dat.v1"
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestConnectionExec(t *testing.T) {
@@ -12,7 +12,7 @@ func TestConnectionExec(t *testing.T) {
 
 	id := 0
 	str := ""
-	err := conn.InsertInto("people").
+	err := testDB.InsertInto("people").
 		Columns("name", "foo").
 		Values("conn1", "---").
 		Returning("id", "foo").
@@ -23,7 +23,7 @@ func TestConnectionExec(t *testing.T) {
 	assert.Equal(t, "---", str)
 
 	dat.EnableInterpolation = true
-	_, err = conn.Update("people").
+	_, err = testDB.Update("people").
 		Set("foo", dat.DEFAULT).
 		Returning("foo").
 		Exec()
@@ -39,7 +39,7 @@ func TestEscapeSequences(t *testing.T) {
 	str := ""
 	expect := "I said, \"a's \\ \\\b\f\n\r\t\x1a\"你好'; DELETE FROM people"
 
-	err := conn.InsertInto("people").
+	err := testDB.InsertInto("people").
 		Columns("name", "foo").
 		Values("conn1", expect).
 		Returning("id", "foo").

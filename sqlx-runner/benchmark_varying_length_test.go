@@ -98,7 +98,7 @@ func benchmarkVaryingLengthDatN(b *testing.B, maxBytes int, maxText int) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = conn.Exec(sql2, args2...)
+		_, err = testDB.Exec(sql2, args2...)
 		if err != nil {
 			b.Error(err.Error())
 		}
@@ -115,7 +115,7 @@ func benchmarkVaryingLengthSqlN(b *testing.B, maxBytes int, maxText int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := conn.Exec(sql, args...)
+		_, err := testDB.Exec(sql, args...)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -132,7 +132,7 @@ func benchmarkVaryingLengthSqlxN(b *testing.B, maxBytes int, maxText int) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := conn.DB.Exec(sql, args...)
+		_, err := testDB.DB.Exec(sql, args...)
 		if err != nil {
 			b.Fatal(err)
 		}

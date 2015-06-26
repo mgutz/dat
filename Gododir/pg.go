@@ -110,7 +110,7 @@ func createdb(c *Context) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = db.Exec("create extension hstore")
+	_, err = db.Exec("create extension if not exists hstore")
 	if err != nil {
 		panic(err)
 	}

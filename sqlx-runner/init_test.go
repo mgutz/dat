@@ -5,24 +5,29 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/mgutz/dat.v1/kvs"
 	"gopkg.in/mgutz/dat.v1/postgres"
 )
 
-var conn *DB
+var testDB *DB
 var sqlDB *sql.DB
 
 func init() {
 	dat.Dialect = postgres.New()
 	sqlDB = realDb()
-	conn = NewDB(sqlDB, "postgres")
+	testDB = NewDB(sqlDB, "postgres")
 	dat.Strict = false
+
+	Cache = kvs.NewMemoryKeyValueStore(1 * time.Second)
+	//Cache, _ = kvs.NewDefaultRedisStore()
 }
 
 func beginTxWithFixtures() *Tx {
 	installFixtures()
-	c, err := conn.Begin()
+	c, err := testDB.Begin()
 	if err != nil {
 		panic(err)
 	}

@@ -32,7 +32,7 @@ func execMulti(sql string) error {
 	}
 	// TODO this should be in transaction
 	for _, sq := range statements {
-		_, err := conn.SQL(sq).Exec()
+		_, err := testDB.SQL(sq).Exec()
 		if err != nil {
 			return err
 		}

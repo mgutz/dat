@@ -3,7 +3,7 @@ package dat
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 type missingDbTag struct {
@@ -60,7 +60,7 @@ func TestInsertRecordsToSql(t *testing.T) {
 	sql, args := InsertInto("a").Columns("something_id", "user_id", "other").Record(objs[0]).Record(objs[1]).ToSQL()
 
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3),($4,$5,$6)", "something_id", "user_id", "other"))
-	assert.Equal(t, args, []interface{}{1, 88, false, 2, 99, true})
+	checkSliceEqual(t, args, []interface{}{1, 88, false, 2, 99, true})
 }
 
 func TestInsertWhitelist(t *testing.T) {
@@ -71,7 +71,7 @@ func TestInsertWhitelist(t *testing.T) {
 		Record(objs[1]).
 		ToSQL()
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3),($4,$5,$6)", "something_id", "user_id", "other"))
-	assert.Equal(t, args, []interface{}{1, 88, false, 2, 99, true})
+	checkSliceEqual(t, []interface{}{1, 88, false, 2, 99, true}, args)
 
 	assert.Panics(t, func() {
 		InsertInto("a").Whitelist("*").Values("foo").ToSQL()
@@ -86,7 +86,7 @@ func TestInsertBlacklist(t *testing.T) {
 		Record(objs[1]).
 		ToSQL()
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4)", "user_id", "other"))
-	assert.Equal(t, args, []interface{}{88, false, 99, true})
+	checkSliceEqual(t, args, []interface{}{88, false, 99, true})
 
 	assert.Panics(t, func() {
 		InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()

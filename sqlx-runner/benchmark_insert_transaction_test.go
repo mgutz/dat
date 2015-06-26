@@ -51,7 +51,7 @@ func benchmarkTransactedDatN(b *testing.B, rows int, argc int) {
 	}
 	sql, args := builder.ToSQL()
 
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func benchmarkTransactedSqlN(b *testing.B, rows int, argc int) {
 
 	sql, args := builder.ToSQL()
 
-	tx, err := conn.Begin()
+	tx, err := testDB.Begin()
 	if err != nil {
 		panic(err)
 	}
@@ -104,7 +104,7 @@ func benchmarkTransactedSqlxN(b *testing.B, rows int, argc int) {
 
 	sql, args := builder.ToSQL()
 
-	tx, err := conn.DB.Beginx()
+	tx, err := testDB.DB.Beginx()
 	if err != nil {
 		panic(err)
 	}
