@@ -51,7 +51,6 @@ func NewDB(db *sql.DB, driverName string) *DB {
 		if dat.Strict {
 			conn.SQL("SET client_min_messages to 'DEBUG';")
 		}
-
 	} else {
 		panic("Unsupported driver: " + driverName)
 	}

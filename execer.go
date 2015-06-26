@@ -27,7 +27,7 @@ var nullExecer = &panicExecer{}
 
 // panicExecer is the execer assigned when a builder is first created.
 // panicExecer raises a panic if any of the Execer methods are called
-// directly from dat. Runners override the execer to communicate with a live
+// directly from dat. Runners override the execer to work with a live
 // database.
 type panicExecer struct{}
 

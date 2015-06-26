@@ -1,15 +1,5 @@
 package dat
 
-import "time"
-
-// Cacher caches query results.
-type Cacher interface {
-	// Cache caches the result of a Select or SelectDoc. If id is not provided, an FNV checksum
-	// of the SQL is used as the id. (If interpolation is set, arguments are hashed). Use invalidate to
-	// immediately invalidate the cache to force setting its value.
-	Cache(id string, duration time.Duration, invalidate bool)
-}
-
 // Builder interface is used to tie SQL generators to executors.
 type Builder interface {
 	// ToSQL builds the SQL and arguments from builder.

@@ -23,7 +23,7 @@ library for Go.
     DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
     ```
 
-*   JSON Document retrieval (single trip to Postgres!, requires Postgres 9.3+)
+*   JSON Document retrieval (single trip to Postgres, requires Postgres 9.3+)
 
     ```go
     DB.SelectDoc("id", "user_name", "avatar").
@@ -140,7 +140,7 @@ func init() {
         panic("Could not ping database")
     }
 
-    // set to reasonable values
+    // set to reasonable values for production
     db.SetMaxIdleConns(4)
     db.SetMaxOpenConns(16)
 
@@ -163,7 +163,7 @@ type Post struct {
     Body      string        `db:"body"`
     UserID    int64         `db:"user_id"`
     State     string        `db:"state"`
-    UpdatedAt dat.Nulltime  `db:"updated_at"`
+    UpdatedAt dat.NullTime  `db:"updated_at"`
     CreatedAt dat.NullTime  `db:"created_at"`
 }
 
@@ -260,7 +260,6 @@ DB.InsertInto("payments").
 // ensure session user can only update his information
 DB.Update("users").
     SetWhitelist(user, "user_name", "avatar", "quote").
-    Record(userData).
     Where("id = $1", session.UserID).
     Exec()
 ```
@@ -282,7 +281,7 @@ b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 `dat` uses [logxi](https://github.com/mgutz/logxi) for logging. By default,
 *logxi* logs all warnings and errors to the console. `dat` logs the
 SQL and its arguments on any error. In addition, `dat` logs slow queries
-as warnings if `LogQueriesThreshold > 0`
+as warnings if `runner.LogQueriesThreshold > 0`
 
 To trace all SQL, set environment variable
 
@@ -298,7 +297,7 @@ Use `Returning` and `QueryStruct` to insert and update struct fields in one
 trip
 
 ```go
-post := Post{Title: "Swith to Postgres", State: "open"}
+var post Post
 
 err := DB.
     InsertInto("posts").
@@ -316,7 +315,7 @@ post := Post{Title: "Go is awesome", State: "open"}
 err := DB.
     InsertInto("posts").
     Blacklist("id", "user_id", "created_at", "updated_at").
-    Record(post).
+    Record(&post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 
@@ -324,7 +323,7 @@ err := DB.
 err := DB.
     InsertInto("posts").
     Whitelist("*").
-    Record(post).
+    Record(&post).
     Returning("id", "created_at", "updated_at").
     QueryStruct(&post)
 
@@ -491,7 +490,7 @@ result, err = DB.
 
 ### Joins
 
-Define JOINs as arguments to `From`
+Define JOINs in argument to `From`
 
 ``` go
 err = DB.
@@ -594,6 +593,52 @@ func getUsers(conn runner.Connection) ([]*dto.Users, error) {
 }
 ```
 
+#### Nested Transactions
+
+Nested transaction logic is as follows:
+
+*   If `Commit` is called in a nested transaction, the operation results in no operation (NOOP).
+    Only the top level `Commit` commits the transaction to the database.
+
+*   If `Rollback` is called in a nested transaction, then the entire
+    transaction is rolled back. `Tx.IsRollbacked` is set to true.
+
+*   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
+    for each corresponding `Begin`. The internal state of nested transactions is
+    tracked in these two methods.
+
+```go
+func nested(conn runner.Connection) error {
+    tx, err := conn.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.AutoRollback()
+
+    _, err := tx.SQL(`INSERT INTO users (email) values $1`, 'me@home.com').Exec()
+    if err != nil {
+        return err
+    }
+    // prevents AutoRollback
+    tx.Commit()
+}
+
+func top() {
+    tx, err := DB.Begin()
+    if err != nil {
+        logger.Fatal("Could not create transaction")
+    }
+    defer tx.AutoRollback()
+
+    err := nested(tx)
+    if err != nil {
+        return
+    }
+    // top level commits the transaction
+    tx.Commit()
+}
+```
+
 ### Dates
 
 Use `dat.NullTime` type to properly handle nullable dates
@@ -659,80 +704,6 @@ err := DB.
     From("posts").
     Limit(1).
     QueryStruct(&post)
-```
-
-### Transactions
-
-```go
-// Start transaction
-tx, err := DB.Begin()
-if err != nil {
-    return err
-}
-// safe to call tx.Rollback() or tx.Commit() later
-defer tx.AutoRollback()
-
-// Issue statements that might cause errors
-res, err := tx.
-    Update("posts").
-    Set("state", "deleted").
-    Where("deleted_at IS NOT NULL").
-    Exec()
-
-if err != nil {
-    // AutoRollback will rollback the transaction
-    return err
-}
-
-// commit to prevent AutoRollback from rolling back the transaction
-tx.Commit()
-return nil
-```
-
-#### Nested Transactions
-
-Nested transaction logic is as follows:
-
-*   If `Commit` is called in a nested transaction, the operation results in no operatoin (NOOP).
-    Only the top level `Commit` commits the transaction to the database.
-
-*   If `Rollback` is called in a nested transaction, then the entire
-    transaction is rolled back. `Tx.IsRollbacked` is set to true.
-
-*   Either `defer Tx.AutoCommit()` or `defer Tx.AutoRollback()` **MUST BE CALLED**
-    for each corresponding `Begin`. The internal state of nested transactions is
-    tracked in these two methods.
-
-```go
-func nested(conn runner.Connection) error {
-    tx, err := conn.Begin()
-    if err != nil {
-        return err
-    }
-    defer tx.AutoRollback()
-
-    _, err := tx.SQL(`INSERT INTO users (email) values $1`, 'me@home.com').Exec()
-    if err != nil {
-        return err
-    }
-    // prevents AutoRollback
-    tx.Commit()
-}
-
-func top() {
-    tx, err := DB.Begin()
-    if err != nil {
-        logger.Fatal("Could not create transaction")
-    }
-    defer tx.AutoRollback()
-
-    err := nested(tx)
-    if err != nil {
-        return
-    }
-    // top level commits the transaction
-    tx.Commit()
-}
 ```
 
 ### Caching

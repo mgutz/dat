@@ -154,13 +154,7 @@ func queryScalar(execer *Execer, destinations ...interface{}) error {
 			return logSQLError(err, "QueryScalar.load_value.scan", fullSQL, args)
 		}
 
-		if execer.cacheTTL > 0 {
-			blob, err = json.Marshal(destinations)
-			if err != nil {
-				logger.Warn("queryScalar.4: Could not marshal cache data")
-			}
-			setCache(execer, blob)
-		}
+		setCache(execer, destinations, dtStruct)
 
 		return nil
 	}
@@ -246,13 +240,7 @@ func querySlice(execer *Execer, dest interface{}) error {
 		return logSQLError(err, "querySlice.load_all_values.rows_err", fullSQL, args)
 	}
 
-	if execer.cacheTTL > 0 {
-		blob, err = json.Marshal(dest)
-		if err != nil {
-			logger.Warn("queryStruct.4: Could not marshal cache data")
-		}
-		setCache(execer, blob)
-	}
+	setCache(execer, dest, dtStruct)
 
 	return nil
 }
@@ -286,13 +274,8 @@ func queryStruct(execer *Execer, dest interface{}) error {
 		return err
 	}
 
-	if execer.cacheTTL > 0 {
-		blob, err = json.Marshal(dest)
-		if err != nil {
-			logger.Warn("queryStruct.4: Could not marshal cache data")
-		}
-		setCache(execer, blob)
-	}
+	setCache(execer, dest, dtStruct)
+
 	return nil
 }
 
@@ -326,13 +309,7 @@ func queryStructs(execer *Execer, dest interface{}) error {
 		logSQLError(err, "queryStructs", fullSQL, args)
 	}
 
-	if execer.cacheTTL > 0 {
-		blob, err = json.Marshal(dest)
-		if err != nil {
-			logger.Warn("queryStruct.4: Could not marshal cache data")
-		}
-		setCache(execer, blob)
-	}
+	setCache(execer, dest, dtStruct)
 	return err
 }
 
@@ -421,8 +398,7 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 	}
 
 	blob = buf.Bytes()
-	setCache(execer, blob)
-
+	setCache(execer, blob, dtBytes)
 	return blob, nil
 }
 
@@ -442,10 +418,12 @@ func queryJSONStructs(execer *Execer, dest interface{}) error {
 // the SQL and args to be executed. If value = "" then the SQL is built.
 func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, err error) {
 	// if a cacheID exists, return the value ASAP
-	if Cache != nil && !execer.cacheInvalidate && execer.cacheTTL > 0 && execer.cacheID != "" {
+	if Cache != nil && execer.cacheTTL > 0 && execer.cacheID != "" && !execer.cacheInvalidate {
 		v, err := Cache.Get(execer.cacheID)
 		//logger.Warn("DBG cacheOrSQL.1 getting by id", "id", execer.cacheID, "v", v, "err", err)
-		if v != "" && (err == nil || err != kvs.ErrNotFound) {
+		if err != nil && err != kvs.ErrNotFound {
+			logger.Error("Unable to read cache key. Continuing with query", "key", execer.cacheID)
+		} else if v != "" {
 			//logger.Warn("DBG cacheOrSQL.11 HIT", "v", v)
 			return "", nil, []byte(v), nil
 		}
@@ -456,7 +434,7 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 		return "", nil, nil, err
 	}
 
-	// since there is no cacheID, use the SQL as the ID
+	// if there is no cacheID, use the checksum of SQL as the ID
 	if Cache != nil && execer.cacheTTL > 0 && execer.cacheID == "" {
 		// this must be set for setCache() to work below
 		execer.cacheID = kvs.Hash(fullSQL)
@@ -474,16 +452,44 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 	return fullSQL, args, nil, nil
 }
 
+const (
+	dtStruct = iota
+	dtString
+	dtBytes
+)
+
 // Sets the cache value using the execer.ID key. Note that execer.ID
 // is set as a side-effect of calling cacheOrSQL function above if
-// execer.cacheID is not set.
-func setCache(execer *Execer, b []byte) {
-	if Cache != nil && execer.cacheTTL > 0 {
-		//logger.Warn("DBG setting cache", "key", execer.cacheID, "data", string(b), "ttl", execer.cacheTTL)
-		err := Cache.Set(execer.cacheID, string(b), execer.cacheTTL)
+// execer.cacheID is not set. data must be a string or a value that
+// can be json.Marshal'ed to string.
+func setCache(execer *Execer, data interface{}, dataType int) {
+	if Cache == nil || execer.cacheTTL < 1 {
+		return
+	}
+
+	var s string
+	switch dataType {
+	case dtStruct:
+		b, err := json.Marshal(data)
 		if err != nil {
-			logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
+			logger.Warn("Could not marshal data, clearing", "key", execer.cacheID)
+			err = Cache.Del(execer.cacheID)
+			if err != nil {
+				logger.Error("Could not delete cache key", "key", execer.cacheID)
+			}
+			return
 		}
+		s = string(b)
+	case dtString:
+		s = data.(string)
+	case dtBytes:
+		s = string(data.([]byte))
+	}
+
+	//logger.Warn("DBG setting cache", "key", execer.cacheID, "data", string(b), "ttl", execer.cacheTTL)
+	err := Cache.Set(execer.cacheID, s, execer.cacheTTL)
+	if err != nil {
+		logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
 	}
 }
 
@@ -512,7 +518,7 @@ func queryJSON(execer *Execer) ([]byte, error) {
 		logSQLError(err, "queryJSON", jsonSQL, args)
 	}
 
-	setCache(execer, blob)
+	setCache(execer, blob, dtBytes)
 
 	return blob, err
 }

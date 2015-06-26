@@ -42,7 +42,8 @@ func New() *Postgres {
 	return &Postgres{}
 }
 
-// WriteStringLiteral is part of Dialect implementation.
+// WriteStringLiteral writes an escaped string. No escape characters
+// are allowed.
 //
 // Postgres 9.1+ does not allow any escape
 // sequences by default. See http://www.postgresql.org/docs/9.3/interactive/sql-syntax-lexical.html#SQL-SYNTAX-STRINGS-ESCAPE
@@ -89,7 +90,7 @@ func (pd *Postgres) WriteStringLiteral(buf common.BufferWriter, val string) {
 	}
 }
 
-// WriteIdentifier is part of Dialect implementation.
+// WriteIdentifier writes escaped identifier.
 func (pd *Postgres) WriteIdentifier(buf common.BufferWriter, ident string) {
 	if ident == "" {
 		panic("Identifier is empty string")

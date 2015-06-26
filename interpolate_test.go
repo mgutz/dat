@@ -61,9 +61,9 @@ func TestInterpolateInts(t *testing.T) {
 		uint64(10),
 	}
 
-	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3 AND d = $4 AND e = $5 AND f = $6 AND g = $7 AND h = $8 AND i = $9 AND j = $10", args)
+	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3 AND d = $4 AND e = $5 AND f = $6 AND g = $7 AND h = $8 AND i = $9 AND j = $1", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE a = 1 AND b = -2 AND c = 3 AND d = 4 AND e = 5 AND f = 6 AND g = 7 AND h = 8 AND i = 9 AND j = 10")
+	assert.Equal(t, str, "SELECT * FROM x WHERE a = 1 AND b = -2 AND c = 3 AND d = 4 AND e = 5 AND f = 6 AND g = 7 AND h = 8 AND i = 9 AND j = 1")
 }
 
 func TestInterpolateBools(t *testing.T) {

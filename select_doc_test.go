@@ -2,6 +2,7 @@ package dat
 
 import (
 	"testing"
+	"time"
 
 	"gopkg.in/stretchr/testify.v1/assert"
 )
@@ -72,56 +73,33 @@ func TestSelectDocSQLInnerSQL(t *testing.T) {
 	assert.Equal(t, []interface{}{4, 4}, args)
 }
 
-// func TestSelectDocSQLReturning(t *testing.T) {
-// 	sql, args := SelectDoc("tab").Columns("b", "c").Values(1, 2).Where("d=$1", 4).Returning("f", "g").ToSQL()
-// 	expected := `
-// 	WITH
-// 		upd AS (
-// 			UPDATE tab
-// 			SET "b" = $1, "c" = $2
-// 			WHERE (d=$3)
-// 			RETURNING "f","g"
-// 		), ins AS (
-// 			INSERT INTO "tab"("b","c")
-// 			SELECT $1,$2
-// 			WHERE NOT EXISTS (SELECT 1 FROM upd)
-// 			RETURNING "f","g"
-// 		)
-// 	SELECT * FROM ins UNION ALL SELECT * FROM upd
-// 	`
+func TestSelectDocScope(t *testing.T) {
+	now := NullTimeFrom(time.Now())
 
-// 	assert.Equal(t, stripWS(expected), stripWS(sql))
-// 	assert.Equal(t, []interface{}{1, 2, 4}, args)
-// }
+	sql, args := SelectDoc("e", "f").
+		From("matches m").
+		Scope(`
+			WHERE m.game_id = $1
+				AND (
+					m.id > $3
+					OR (m.id >= $2 AND m.id <= $3 AND m.updated_at > $4)
+				)
+		`, 100, 1, 2, now).
+		ToSQL()
 
-// func TestSelectDocSQLRecord(t *testing.T) {
-// 	var rec = struct {
-// 		B int
-// 		C int
-// 	}{1, 2}
-// 	sql, args := SelectDoc("tab").
-// 		Columns("b", "c").
-// 		Record(rec).
-// 		Where("d=$1", 4).
-// 		Returning("f", "g").
-// 		ToSQL()
+	expected := `
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT e, f
+			FROM matches m
+			WHERE m.game_id=$1
+				AND (
+					m.id > $3
+					OR (m.id >= $2 AND m.id<=$3 AND m.updated_at>$4)
+				)
+		) as dat__item
+	`
 
-// 	expected := `
-// 	WITH
-// 		upd AS (
-// 			UPDATE tab
-// 			SET "b" = $1, "c" = $2
-// 			WHERE (d=$3)
-// 			RETURNING "f","g"
-// 		), ins AS (
-// 			INSERT INTO "tab"("b","c")
-// 			SELECT $1,$2
-// 			WHERE NOT EXISTS (SELECT 1 FROM upd)
-// 			RETURNING "f","g"
-// 		)
-// 	SELECT * FROM ins UNION ALL SELECT * FROM upd
-// 	`
-
-// 	assert.Equal(t, stripWS(expected), stripWS(sql))
-// 	assert.Equal(t, []interface{}{1, 2, 4}, args)
-// }
+	assert.Equal(t, stripWS(expected), stripWS(sql))
+	assert.Equal(t, []interface{}{100, 1, 2, now}, args)
+}

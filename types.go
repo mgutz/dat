@@ -60,27 +60,27 @@ type NullBool struct {
 
 // NullStringFrom creates a valid NullString
 func NullStringFrom(v string) NullString {
-	return NullString{sql.NullString{v, true}}
+	return NullString{sql.NullString{String: v, Valid: true}}
 }
 
 // NullFloat64From creates a valid NullFloat64
 func NullFloat64From(v float64) NullFloat64 {
-	return NullFloat64{sql.NullFloat64{v, true}}
+	return NullFloat64{sql.NullFloat64{Float64: v, Valid: true}}
 }
 
 // NullInt64From creates a valid NullInt64
 func NullInt64From(v int64) NullInt64 {
-	return NullInt64{sql.NullInt64{v, true}}
+	return NullInt64{sql.NullInt64{Int64: v, Valid: true}}
 }
 
 // NullTimeFrom creates a valid NullTime
 func NullTimeFrom(v time.Time) NullTime {
-	return NullTime{pq.NullTime{v, true}}
+	return NullTime{pq.NullTime{Time: v, Valid: true}}
 }
 
 // NullBoolFrom creates a valid NullBool
 func NullBoolFrom(v bool) NullBool {
-	return NullBool{sql.NullBool{v, true}}
+	return NullBool{sql.NullBool{Bool: v, Valid: true}}
 }
 
 var nullString = []byte("null")

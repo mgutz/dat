@@ -1,4 +1,14 @@
-# Changes from legacy to v1
+## v1.1.0
+
+*   [Caching](https://github.com/mgutz/dat#caching) - caching with Redis or (in-memory for testing)
+*   [LogQueriesThreshold](https://github.com/mgutz/dat#tracing-sql) - log slow queries
+*   dat.Null* creators
+*   fix resource cleanup
+*   fix duplicate error logging
+*   include RFC339Nano in NullTime parsing
+*   HUGE BUG in remapPlaceholders
+
+## v1.0.0
 
 *   Original dat moved to legacy branch.
 

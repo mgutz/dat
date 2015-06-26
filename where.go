@@ -2,6 +2,8 @@ package dat
 
 import (
 	"reflect"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/mgutz/dat.v1/common"
@@ -33,31 +35,28 @@ func newWhereFragment(whereSqlOrMap interface{}, args []interface{}) *whereFragm
 	}
 }
 
-func remapPlaceholders(buf common.BufferWriter, statement string, pos int64) int64 {
+var rePlaceholder = regexp.MustCompile(`\$\d+`)
+
+func remapPlaceholders(buf common.BufferWriter, statement string, start int64) int64 {
 	if !strings.Contains(statement, "$") {
 		buf.WriteString(statement)
 		return 0
 	}
 
-	var discardDigits bool
-	var replaced int64
-	for _, r := range statement {
-		if discardDigits {
-			if '0' <= r && r <= '9' {
-				continue
-			}
-			discardDigits = false
+	highest := 0
+	pos := int(start) - 1 // 0-based
+	statement = rePlaceholder.ReplaceAllStringFunc(statement, func(s string) string {
+		i, _ := strconv.Atoi(s[1:])
+		if i > highest {
+			highest = i
 		}
-		if r != '$' {
-			buf.WriteRune(r)
-		} else if r == '$' {
-			// replace relative $1 with absolute like $4
-			writePlaceholder64(buf, pos+replaced)
-			replaced++
-			discardDigits = true
-		}
-	}
-	return replaced
+
+		sum := strconv.Itoa(pos + i)
+		return "$" + sum
+	})
+
+	buf.WriteString(statement)
+	return int64(highest)
 }
 
 // Invariant: for scope conditions only

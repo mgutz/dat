@@ -15,7 +15,7 @@ type KeyValueStore interface {
 	FlushDB() error
 }
 
-// TTLNever means do not attach a TTL to a key
+// TTLNever means do not expire a key
 const TTLNever time.Duration = -1
 
 // NanosecondsPerMillisecond is used to convert between ns and ms.

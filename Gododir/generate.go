@@ -35,7 +35,7 @@ package dat
 func generateTasks(p *do.Project) {
 	p.Task("builder-boilerplate", nil, func(c *do.Context) {
 		context := do.M{
-			"builders": []string{"DeleteBuilder", "InsectBuilder",
+			"builders": []string{"CallBuilder", "DeleteBuilder", "InsectBuilder",
 				"InsertBuilder", "RawBuilder", "SelectBuilder", "SelectDocBuilder",
 				"UpdateBuilder", "UpsertBuilder"},
 		}
@@ -43,7 +43,7 @@ func generateTasks(p *do.Project) {
 		s, err := util.StrTemplate(builderTemplate, context)
 		c.Check(err, "Unalbe ")
 
-		ioutil.WriteFile("v1/builders_generated.go", []byte(s), 0644)
-		c.Run("go fmt v1/builders_generated.go")
+		ioutil.WriteFile("builders_generated.go", []byte(s), 0644)
+		c.Run("go fmt builders_generated.go")
 	}).Desc("Generates builder boilerplate code")
 }
