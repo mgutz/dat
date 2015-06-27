@@ -422,7 +422,7 @@ func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, e
 		v, err := Cache.Get(execer.cacheID)
 		//logger.Warn("DBG cacheOrSQL.1 getting by id", "id", execer.cacheID, "v", v, "err", err)
 		if err != nil && err != kvs.ErrNotFound {
-			logger.Error("Unable to read cache key. Continuing with query", "key", execer.cacheID)
+			logger.Error("Unable to read cache key. Continuing with query", "key", execer.cacheID, "err", err)
 		} else if v != "" {
 			//logger.Warn("DBG cacheOrSQL.11 HIT", "v", v)
 			return "", nil, []byte(v), nil
@@ -472,10 +472,10 @@ func setCache(execer *Execer, data interface{}, dataType int) {
 	case dtStruct:
 		b, err := json.Marshal(data)
 		if err != nil {
-			logger.Warn("Could not marshal data, clearing", "key", execer.cacheID)
+			logger.Warn("Could not marshal data, clearing", "key", execer.cacheID, "err", err)
 			err = Cache.Del(execer.cacheID)
 			if err != nil {
-				logger.Error("Could not delete cache key", "key", execer.cacheID)
+				logger.Error("Could not delete cache key", "key", execer.cacheID, "err", err)
 			}
 			return
 		}

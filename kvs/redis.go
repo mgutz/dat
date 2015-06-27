@@ -72,7 +72,13 @@ func (rs *RedisStore) Get(key string) (string, error) {
 	defer conn.Close()
 
 	key = rs.ns + key
-	return redis.String(conn.Do("GET", key))
+	s, err := redis.String(conn.Do("GET", key))
+	if err == redis.ErrNil {
+		return "", ErrNotFound
+	} else if err != nil {
+		return "", err
+	}
+	return s, nil
 }
 
 // Del deletes a key
