@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mgutz/str"
+
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
@@ -92,14 +94,39 @@ func TestSelectDocScope(t *testing.T) {
 		FROM (
 			SELECT e, f
 			FROM matches m
-			WHERE m.game_id=$1
+			WHERE (m.game_id=$1
 				AND (
 					m.id > $3
 					OR (m.id >= $2 AND m.id<=$3 AND m.updated_at>$4)
-				)
+				))
 		) as dat__item
 	`
 
 	assert.Equal(t, stripWS(expected), stripWS(sql))
 	assert.Equal(t, []interface{}{100, 1, 2, now}, args)
+}
+
+func TestDocScopeWhere(t *testing.T) {
+	published := `
+		INNER JOIN posts p on (p.author_id = u.id)
+		WHERE
+			p.state = $1
+	`
+	sql, args := SelectDoc("u.*, p.*").
+		From(`users u`).
+		Scope(published, "published").
+		Where(`u.id = $1`, 1).
+		ToSQL()
+	sql = str.Clean(sql)
+	expected := `
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT u.*, p.*
+			FROM users u
+				INNER JOIN posts p on (p.author_id = u.id)
+			WHERE (u.id = $1) AND ( p.state = $2 )
+		) as dat__item
+	`
+	assert.Equal(t, stripWS(expected), stripWS(sql))
+	assert.Exactly(t, args, []interface{}{1, "published"})
 }

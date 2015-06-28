@@ -147,15 +147,31 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		buf.WriteString(" FROM ")
 		buf.WriteString(b.table)
 
-		if b.scope == nil {
-			if len(b.whereFragments) > 0 {
-				buf.WriteString(" WHERE ")
-				writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+		if b.scope != nil {
+			var where string
+			sql, args := b.scope.ToSQL(b.table)
+			sql, where = splitWhere(sql)
+			buf.WriteString(sql)
+			if where != "" {
+				fragment := newWhereFragment(where, args)
+				b.whereFragments = append(b.whereFragments, fragment)
 			}
-		} else {
-			whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
-			writeScopeCondition(buf, whereFragment, &args, &placeholderStartPos)
 		}
+
+		if len(b.whereFragments) > 0 {
+			buf.WriteString(" WHERE ")
+			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+		}
+
+		// if b.scope == nil {
+		// 	if len(b.whereFragments) > 0 {
+		// 		buf.WriteString(" WHERE ")
+		// 		writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+		// 	}
+		// } else {
+		// 	whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
+		// 	writeScopeCondition(buf, whereFragment, &args, &placeholderStartPos)
+		// }
 
 		if len(b.groupBys) > 0 {
 			buf.WriteString(" GROUP BY ")
@@ -231,6 +247,7 @@ func (b *SelectDocBuilder) Scope(sql string, args ...interface{}) *SelectDocBuil
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *SelectDocBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	logger.Debug("adding WHERE in dat", "whereOrSqlOrMap", whereSqlOrMap)
 	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
 	return b
 }
