@@ -247,7 +247,6 @@ func (b *SelectDocBuilder) Scope(sql string, args ...interface{}) *SelectDocBuil
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *SelectDocBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	logger.Debug("adding WHERE in dat", "whereOrSqlOrMap", whereSqlOrMap)
 	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
 	return b
 }
