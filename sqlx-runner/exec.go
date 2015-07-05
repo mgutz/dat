@@ -60,9 +60,9 @@ func logExecutionTime(start time.Time, sql string, args []interface{}) {
 		elapsed := time.Since(start)
 		if LogQueriesThreshold > 0 && elapsed.Nanoseconds() > LogQueriesThreshold.Nanoseconds() {
 			if len(args) > 0 {
-				logger.Warn("SLOW query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql, "args", toOutputStr(args))
+				logger.Warn("SLOW query", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql, "args", toOutputStr(args))
 			} else {
-				logger.Warn("SLOW query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
+				logger.Warn("SLOW query", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
 			}
 			logged = true
 		}

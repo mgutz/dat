@@ -48,7 +48,7 @@ func (q *Queryable) Exec(cmd string, args ...interface{}) (*dat.Result, error) {
 		result, err = q.runner.Exec(cmd, args...)
 	}
 	if err != nil {
-		return nil, err
+		return nil, logSQLError(err, "Exec", cmd, args)
 	}
 	rowsAffected, err := result.RowsAffected()
 	return &dat.Result{RowsAffected: rowsAffected}, nil
@@ -66,7 +66,10 @@ func (q *Queryable) ExecBuilder(b dat.Builder) error {
 	} else {
 		_, err = q.runner.Exec(sql, args...)
 	}
-	return err
+	if err != nil {
+		return logSQLError(err, "ExecBuilder", sql, args)
+	}
+	return nil
 }
 
 // ExecMulti executes multiple SQL statements returning the number of
