@@ -165,7 +165,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	var args []interface{}
 
 	buf.WriteString("UPDATE ")
-	buf.WriteString(b.table)
+	writeIdentifier(buf, b.table)
 	buf.WriteString(" SET ")
 
 	var placeholderStartPos int64 = 1

@@ -17,7 +17,7 @@ func TestUpsertSQLWhere(t *testing.T) {
 	expected := `
 	WITH
 		upd AS (
-			UPDATE tab
+			UPDATE "tab"
 			SET "b" = $1, "c" = $2
 			WHERE (d=$3)
 			RETURNING "b","c"
@@ -39,7 +39,7 @@ func TestUpsertSQLReturning(t *testing.T) {
 	expected := `
 	WITH
 		upd AS (
-			UPDATE tab
+			UPDATE "tab"
 			SET "b" = $1, "c" = $2
 			WHERE (d=$3)
 			RETURNING "f","g"
@@ -72,7 +72,7 @@ func TestUpsertSQLRecord(t *testing.T) {
 	expected := `
 	WITH
 		upd AS (
-			UPDATE tab
+			UPDATE "tab"
 			SET "b" = $1, "c" = $2
 			WHERE (d=$3)
 			RETURNING "f","g"
