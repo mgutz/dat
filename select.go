@@ -5,6 +5,7 @@ type SelectBuilder struct {
 	Execer
 
 	isDistinct      bool
+	distinctColumns []string
 	isInterpolated  bool
 	columns         []string
 	table           string
@@ -31,6 +32,13 @@ func NewSelectBuilder(columns ...string) *SelectBuilder {
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectBuilder) Distinct() *SelectBuilder {
 	b.isDistinct = true
+	return b
+}
+
+// DistinctOn sets the columns for DISTINCT ON
+func (b *SelectBuilder) DistinctOn(columns ...string) *SelectBuilder {
+	b.isDistinct = true
+	b.distinctColumns = columns
 	return b
 }
 
@@ -118,7 +126,18 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	buf.WriteString("SELECT ")
 
 	if b.isDistinct {
-		buf.WriteString("DISTINCT ")
+		if len(b.distinctColumns) == 0 {
+			buf.WriteString("DISTINCT ")
+		} else {
+			buf.WriteString("DISTINCT ON (")
+			for i, s := range b.distinctColumns {
+				if i > 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(s)
+			}
+			buf.WriteString(") ")
+		}
 	}
 
 	for i, s := range b.columns {

@@ -130,3 +130,29 @@ func TestDocScopeWhere(t *testing.T) {
 	assert.Equal(t, stripWS(expected), stripWS(sql))
 	assert.Exactly(t, args, []interface{}{1, "published"})
 }
+
+func TestDocDistinctOn(t *testing.T) {
+	published := `
+		INNER JOIN posts p on (p.author_id = u.id)
+		WHERE
+			p.state = $1
+	`
+	sql, args := SelectDoc("u.*, p.*").
+		DistinctOn("aa", "bb").
+		From(`users u`).
+		Scope(published, "published").
+		Where(`u.id = $1`, 1).
+		ToSQL()
+	expected := `
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT DISTINCT ON (aa, bb)
+			u.*, p.*
+			FROM users u
+				INNER JOIN posts p on (p.author_id = u.id)
+			WHERE (u.id = $1) AND ( p.state = $2 )
+		) as dat__item
+	`
+	assert.Equal(t, stripWS(expected), stripWS(sql))
+	assert.Exactly(t, args, []interface{}{1, "published"})
+}

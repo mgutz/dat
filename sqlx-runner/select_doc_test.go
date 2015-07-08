@@ -154,7 +154,6 @@ func TestSelectDocRowsNil(t *testing.T) {
 	assert.Equal(sql.ErrNoRows, err)
 }
 
-// Not efficient but it's doable
 func TestSelectDoc(t *testing.T) {
 	assert := assert.New(t)
 
@@ -167,6 +166,28 @@ func TestSelectDoc(t *testing.T) {
 	var person Person
 	err := testDB.
 		SelectDoc("id", "name").
+		From("people").
+		Where("id = $1", 1).
+		QueryStruct(&person)
+
+	assert.NoError(err)
+	assert.Equal("Mario", person.Name)
+	assert.Equal(1, person.ID)
+}
+
+func TestSelectDocDistinctOn(t *testing.T) {
+	assert := assert.New(t)
+
+	type Person struct {
+		ID    int
+		Name  string
+		Posts []*Post
+	}
+
+	var person Person
+	err := testDB.
+		SelectDoc("id", "name").
+		DistinctOn("id").
 		From("people").
 		Where("id = $1", 1).
 		QueryStruct(&person)

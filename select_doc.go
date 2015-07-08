@@ -100,7 +100,18 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 	}
 
 	if b.isDistinct {
-		buf.WriteString("DISTINCT ")
+		if len(b.distinctColumns) == 0 {
+			buf.WriteString("DISTINCT ")
+		} else {
+			buf.WriteString("DISTINCT ON (")
+			for i, s := range b.distinctColumns {
+				if i > 0 {
+					buf.WriteString(", ")
+				}
+				buf.WriteString(s)
+			}
+			buf.WriteString(") ")
+		}
 	}
 
 	for i, s := range b.columns {
@@ -221,6 +232,13 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectDocBuilder) Distinct() *SelectDocBuilder {
 	b.isDistinct = true
+	return b
+}
+
+// DistinctOn sets the columns for DISTINCT ON
+func (b *SelectDocBuilder) DistinctOn(columns ...string) *SelectDocBuilder {
+	b.isDistinct = true
+	b.distinctColumns = columns
 	return b
 }
 

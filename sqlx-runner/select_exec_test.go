@@ -105,6 +105,33 @@ func TestSelectQueryStruct(t *testing.T) {
 	assert.Contains(t, err.Error(), "no rows")
 }
 
+func TestSelectQueryDistinctOn(t *testing.T) {
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
+	// Found:
+	var person Person
+	err := s.
+		Select("id", "name", "email").
+		DistinctOn("id").
+		From("people").
+		Where("email = $1", "john@acme.com").
+		QueryStruct(&person)
+	assert.NoError(t, err)
+	assert.True(t, person.ID > 0)
+	assert.Equal(t, person.Name, "John")
+	assert.True(t, person.Email.Valid)
+	assert.Equal(t, person.Email.String, "john@acme.com")
+
+	// Not found:
+	var person2 Person
+	err = s.
+		Select("id", "name", "email").
+		From("people").Where("email = $1", "dontexist@acme.com").
+		QueryStruct(&person2)
+	assert.Contains(t, err.Error(), "no rows")
+}
+
 func TestSelectBySqlQueryStructs(t *testing.T) {
 	s := beginTxWithFixtures()
 	defer s.AutoRollback()

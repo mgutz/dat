@@ -256,3 +256,22 @@ func TestScopeJoinOnly(t *testing.T) {
 	assert.Equal(t, "SELECT u.*, p.* FROM users u INNER JOIN posts p on (p.author_id = u.id) WHERE (u.id = $1)", sql)
 	assert.Exactly(t, args, []interface{}{1})
 }
+
+func TestDistinctOn(t *testing.T) {
+	published := `
+		INNER JOIN posts p on (p.author_id = u.id)
+	`
+
+	sql, args := Select("u.*, p.*").
+		DistinctOn("foo", "bar").
+		From(`users u`).
+		Scope(published).
+		Where(`u.id = $1`, 1).
+		ToSQL()
+	assert.Equal(t, stripWS(`
+		SELECT DISTINCT ON (foo, bar) u.*, p.*
+		FROM users u
+			INNER JOIN posts p on (p.author_id = u.id)
+		WHERE (u.id = $1)`), stripWS(sql))
+	assert.Exactly(t, args, []interface{}{1})
+}
