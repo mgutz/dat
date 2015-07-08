@@ -111,7 +111,7 @@ library for Go.
 Get it
 
 ```sh
-go get -u gopkg.in/mgutz/dat.v1
+go get -u gopkg.in/mgutz/dat.v1/sqlx-runner
 ```
 
 Use it
