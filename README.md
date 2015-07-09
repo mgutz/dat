@@ -135,10 +135,8 @@ func init() {
         panic(err)
     }
 
-    err = db.Ping()
-    if err != nil {
-        panic("Could not ping database")
-    }
+    // ensures the database can be pinged with an exponential backoff (15 min)
+    runner.MustPing(db)
 
     // set to reasonable values for production
     db.SetMaxIdleConns(4)
