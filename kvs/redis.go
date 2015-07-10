@@ -41,7 +41,12 @@ func NewDefaultRedisStore() (KeyValueStore, error) {
 func NewRedisStore(ns string, host string, password string) (*RedisStore, error) {
 	logger.Info("Creating redis pool", "ns", ns, "host", host, "usingPassword", password == "")
 	pool := newRedisPool(host, password)
-	return &RedisStore{ns: ns + ":", pool: pool}, nil
+	return NewRedisStoreFromPool(ns, pool), nil
+}
+
+// NewRedisStore creates a new instance of RedisTokenStore from an existing pool.
+func NewRedisStoreFromPool(ns string, pool *redis.Pool) *RedisStore {
+	return &RedisStore{ns: ns + ":", pool: pool}
 }
 
 // RedisStore is a concrete implementation of KeyValueStore for Redis.
