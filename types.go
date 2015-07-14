@@ -259,3 +259,9 @@ func (j *JSON) Scan(src interface{}) error {
 func (j *JSON) Unmarshal(v interface{}) error {
 	return json.Unmarshal([]byte(*j), v)
 }
+
+// Interpolate time to a string
+func (n NullTime) Interpolate() (string, error) {
+	result := n.Time.Format(time.RFC3339Nano)
+	return result, nil
+}

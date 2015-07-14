@@ -33,9 +33,11 @@ func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...in
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *SelectDocBuilder:
 		t.isParent = false
-		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueries = append(b.subQueries, &subInfo{Expr(sql, args...), column})
 	case Builder:
-		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueries = append(b.subQueries, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueries = append(b.subQueries, &subInfo{Expr(t, a...), column})
 	}
@@ -49,9 +51,11 @@ func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...int
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *SelectDocBuilder:
 		t.isParent = false
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
 	case Builder:
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t, a...), column})
 	}
@@ -223,7 +227,6 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 	if b.isParent {
 		buf.WriteString(`) as dat__item`)
 	}
-
 	return buf.String(), args
 }
 

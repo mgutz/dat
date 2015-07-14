@@ -87,7 +87,6 @@ func (tx *Tx) Commit() error {
 	}
 
 	if len(tx.stateStack) == 0 {
-		logger.Debug("REALLY COMMITING")
 		err := tx.Tx.Commit()
 		if err != nil {
 			return logger.Error("commit.error", err)
