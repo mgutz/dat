@@ -65,7 +65,6 @@ func benchmarkTransactedDatN(b *testing.B, rows int, argc int) {
 		}
 		_, err = tx.Exec(sql2, args2...)
 		if err != nil {
-			//fmt.Println(builder)
 			b.Fatal(err)
 		}
 	}

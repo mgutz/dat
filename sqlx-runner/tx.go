@@ -148,7 +148,6 @@ func (tx *Tx) AutoCommit() error {
 
 // AutoRollback rolls back transaction IF neither Commit or Rollback were called.
 func (tx *Tx) AutoRollback() error {
-	logger.Debug("txState", tx.state)
 	tx.Lock()
 	defer tx.Unlock()
 
