@@ -125,6 +125,8 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		b.cols = info.Columns()
 	}
 
+	logger.Debug("cols", b.cols)
+
 	var sql bytes.Buffer
 	var args []interface{}
 
