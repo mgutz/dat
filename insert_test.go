@@ -85,11 +85,12 @@ func TestInsertBlacklist(t *testing.T) {
 		Record(objs[0]).
 		Record(objs[1]).
 		ToSQL()
-	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4)", "user_id", "other"))
+	assert.Equal(t, sql, `INSERT INTO a ("user_id","other") VALUES ($1,$2),($3,$4)`)
 	checkSliceEqual(t, args, []interface{}{88, false, 99, true})
 
 	assert.Panics(t, func() {
+		// does not have any columns or record
 		InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()
-	}, `must use "*" in conjunction with Record`)
+	})
 
 }
