@@ -95,6 +95,10 @@ func (pd *Postgres) WriteIdentifier(buf common.BufferWriter, ident string) {
 	if ident == "" {
 		panic("Identifier is empty string")
 	}
+	if ident == "*" {
+		buf.WriteString(ident)
+		return
+	}
 
 	buf.WriteRune('"')
 	buf.WriteString(ident)
