@@ -243,6 +243,32 @@ var ids []int64
 DB.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 ```
 
+### Field Mapping
+
+**dat** DOES NOT map fields automatically like sqlx. Code is much easier
+to follow if you know which fields are stored in the database. You must
+explicitly set `db` struct tags in your types.
+
+Embedded fields borrows the mapping logic from sqlx.
+
+```go
+type Realm struct {
+    RealmUUID string `db:"realm_uuid"`
+}
+type Group struct {
+    GroupUUID string `db:"group_uuid"`
+    *Realm
+}
+
+g := &Group{Realm: &Realm{"11"}, GroupUUID: "22"}
+
+sql, args := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
+expected := `
+    INSERT INTO groups ("group_uuid", "realm_uuid")
+    VALUES ($1, $2)
+	`
+```
+
 ### Blacklist and Whitelist
 
 Control which columns get inserted or updated when processing external data
