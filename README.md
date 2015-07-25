@@ -245,11 +245,10 @@ DB.SQL("SELECT id FROM posts", title).QuerySlice(&ids)
 
 ### Field Mapping
 
-**dat** DOES NOT map fields automatically like sqlx. Code is much easier
-to follow if you know which fields are stored in the database. You must
-explicitly set `db` struct tags in your types.
+**dat** DOES NOT map fields automatically like sqlx.
+You must explicitly set `db` struct tags in your types.
 
-Embedded fields borrows the mapping logic from sqlx.
+Embedded fields are mapped breadth-first.
 
 ```go
 type Realm struct {
@@ -708,26 +707,6 @@ err := DB.
 
 var ids []int64
 err = DB.Select("id").From("posts").QuerySlice(&ids)
-```
-
-### Embedded structs
-
-```go
-// Columns are mapped to fields breadth-first
-type Post struct {
-    ID        int64      `db:"id"`
-    Title     string     `db:"title"`
-    User      *struct {
-        ID int64         `db:"user_id"`
-    }
-}
-
-var post Post
-err := DB.
-    Select("id, title, user_id").
-    From("posts").
-    Limit(1).
-    QueryStruct(&post)
 ```
 
 ### Caching
