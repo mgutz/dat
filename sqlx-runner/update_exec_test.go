@@ -60,6 +60,37 @@ func TestUpdateReal(t *testing.T) {
 	assert.Equal(t, person.Email.String, "barack@whitehouse.gov")
 }
 
+func TestUpdateReturningStar(t *testing.T) {
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
+	// Insert a George
+	var insertPerson Person
+	err := s.InsertInto("people").Columns("name", "email").
+		Values("George", "george@whitehouse.gov").
+		Returning("*").
+		QueryStruct(&insertPerson)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, insertPerson.ID)
+	assert.Equal(t, insertPerson.Name, "George")
+	assert.Equal(t, insertPerson.Email.Valid, true)
+	assert.Equal(t, insertPerson.Email.String, "george@whitehouse.gov")
+
+	var updatePerson Person
+	err = s.Update("people").
+		Set("name", "Barack").
+		Set("email", "barack@whitehouse.gov").
+		Where("id = $1", insertPerson.ID).
+		Returning("*").
+		QueryStruct(&updatePerson)
+	assert.NoError(t, err)
+	assert.Equal(t, insertPerson.ID, updatePerson.ID)
+	assert.Equal(t, updatePerson.Name, "Barack")
+	assert.Equal(t, updatePerson.Email.Valid, true)
+	assert.Equal(t, updatePerson.Email.String, "barack@whitehouse.gov")
+}
+
 func TestUpdateWhitelist(t *testing.T) {
 	installFixtures()
 
