@@ -29,6 +29,16 @@ func NewSelectBuilder(columns ...string) *SelectBuilder {
 	return &SelectBuilder{columns: columns, isInterpolated: EnableInterpolation}
 }
 
+// Columns adds additional select columns to the builder.
+func (b *SelectBuilder) Columns(columns ...string) *SelectBuilder {
+	if len(columns) == 0 || columns[0] == "" {
+		logger.Error("Select requires 1 or more columns")
+		return nil
+	}
+	b.columns = append(b.columns, columns...)
+	return b
+}
+
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectBuilder) Distinct() *SelectBuilder {
 	b.isDistinct = true

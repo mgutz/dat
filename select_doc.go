@@ -230,7 +230,17 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 	return buf.String(), args
 }
 
-//// Copied form SelectBuilder
+//// Copied form SelectBuilder. Need to return an instance of SelectDocBuilder.
+
+// Columns adds additional select columns to the builder.
+func (b *SelectDocBuilder) Columns(columns ...string) *SelectDocBuilder {
+	if len(columns) == 0 || columns[0] == "" {
+		logger.Error("Select requires 1 or more columns")
+		return nil
+	}
+	b.columns = append(b.columns, columns...)
+	return b
+}
 
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectDocBuilder) Distinct() *SelectDocBuilder {

@@ -193,3 +193,17 @@ func TestNestedSelecDocWhere(t *testing.T) {
 	assert.Equal(t, stripWS(expected), stripWS(sql))
 	assert.Exactly(t, args, []interface{}{1, 10})
 }
+
+func TestSelectDocColumns(t *testing.T) {
+	sql, args := SelectDoc("id, user_name").
+		From("users").
+		Columns("created_at").
+		ToSQL()
+	assert.Equal(t, stripWS(`
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT id, user_name, created_at
+			FROM users
+		) as dat__item`), stripWS(sql))
+	assert.Nil(t, args)
+}

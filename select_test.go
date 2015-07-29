@@ -275,3 +275,15 @@ func TestDistinctOn(t *testing.T) {
 		WHERE (u.id = $1)`), stripWS(sql))
 	assert.Exactly(t, args, []interface{}{1})
 }
+
+func TestSelectColumns(t *testing.T) {
+	sql, args := Select("id, user_name").
+		From("users").
+		Columns("created_at").
+		ToSQL()
+	assert.Equal(t, stripWS(`
+		SELECT id, user_name, created_at
+		FROM users
+		`), stripWS(sql))
+	assert.Nil(t, args)
+}
