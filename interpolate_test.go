@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
+
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
@@ -191,4 +193,17 @@ func TestInterpolateJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT '[1,3,10]'", sql)
 	assert.Equal(t, 0, len(args))
+}
+
+func TestInterpolateInvalidNullTime(t *testing.T) {
+	now := time.Now()
+	invalid := NullTime{pq.NullTime{Valid: false}}
+	valid := NullTime{pq.NullTime{Time: now, Valid: true}}
+
+	s, err := invalid.Interpolate()
+	assert.NoError(t, err)
+	assert.Equal(t, "NULL", s)
+	s, err = valid.Interpolate()
+	assert.NoError(t, err)
+	assert.Equal(t, now.Format(time.RFC3339Nano), s)
 }

@@ -262,6 +262,8 @@ func (j *JSON) Unmarshal(v interface{}) error {
 
 // Interpolate time to a string
 func (n NullTime) Interpolate() (string, error) {
-	result := n.Time.Format(time.RFC3339Nano)
-	return result, nil
+	if n.Valid {
+		return n.Time.Format(time.RFC3339Nano), nil
+	}
+	return "NULL", nil
 }
