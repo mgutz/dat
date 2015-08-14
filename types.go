@@ -20,12 +20,6 @@ type Interpolator interface {
 	Interpolate() (string, error)
 }
 
-// UnsafeStringer is used in interpolation to return a string
-// that should not be escaped.
-type UnsafeStringer interface {
-	UnsafeString() (UnsafeString, error)
-}
-
 // Value implements a valuer for compatibility
 func (u UnsafeString) Value() (driver.Value, error) {
 	panic("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")

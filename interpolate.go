@@ -115,12 +115,6 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		if val, ok := v.(UnsafeString); ok {
 			buf.WriteString(string(val))
 			return nil
-		} else if us, ok := v.(UnsafeStringer); ok {
-			s, err := us.UnsafeString()
-			if err == nil {
-				buf.WriteString(string(s))
-				return nil
-			}
 		} else if _, ok := v.(JSON); ok {
 			passthroughArg()
 			return nil
