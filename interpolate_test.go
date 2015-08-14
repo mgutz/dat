@@ -200,10 +200,11 @@ func TestInterpolateInvalidNullTime(t *testing.T) {
 	invalid := NullTime{pq.NullTime{Valid: false}}
 	valid := NullTime{pq.NullTime{Time: now, Valid: true}}
 
-	s, err := invalid.Interpolate()
+	sql, _, err := Interpolate("SELECT * FROM foo WHERE valid = $1", []interface{}{valid})
 	assert.NoError(t, err)
-	assert.Equal(t, "NULL", s)
-	s, err = valid.Interpolate()
+
+	assert.Equal(t, "SELECT * FROM foo WHERE valid = '"+valid.Time.Format(time.RFC3339Nano)+"'", sql)
+	sql, _, err = Interpolate("SELECT * FROM foo WHERE invalid = $1", []interface{}{invalid})
 	assert.NoError(t, err)
-	assert.Equal(t, now.Format(time.RFC3339Nano), s)
+	assert.Equal(t, stripWS("SELECT * FROM foo WHERE invalid=NULL"), stripWS(sql))
 }
