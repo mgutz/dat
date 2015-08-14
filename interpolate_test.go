@@ -196,15 +196,18 @@ func TestInterpolateJSON(t *testing.T) {
 }
 
 func TestInterpolateInvalidNullTime(t *testing.T) {
-	now := time.Now()
 	invalid := NullTime{pq.NullTime{Valid: false}}
-	valid := NullTime{pq.NullTime{Time: now, Valid: true}}
 
+	sql, _, err := Interpolate("SELECT * FROM foo WHERE invalid = $1", []interface{}{invalid})
+	assert.NoError(t, err)
+	assert.Equal(t, stripWS("SELECT * FROM foo WHERE invalid=NULL"), stripWS(sql))
+}
+
+func TestInterpolateValidNullTime(t *testing.T) {
+	now := time.Now()
+	valid := NullTime{pq.NullTime{Time: now, Valid: true}}
 	sql, _, err := Interpolate("SELECT * FROM foo WHERE valid = $1", []interface{}{valid})
 	assert.NoError(t, err)
 
 	assert.Equal(t, "SELECT * FROM foo WHERE valid = '"+valid.Time.Format(time.RFC3339Nano)+"'", sql)
-	sql, _, err = Interpolate("SELECT * FROM foo WHERE invalid = $1", []interface{}{invalid})
-	assert.NoError(t, err)
-	assert.Equal(t, stripWS("SELECT * FROM foo WHERE invalid=NULL"), stripWS(sql))
 }
