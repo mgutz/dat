@@ -181,7 +181,7 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		} else if kindOfV == reflect.Struct {
 			if typeOfV := valueOfV.Type(); typeOfV == typeOfTime {
 				t := valueOfV.Interface().(time.Time)
-				Dialect.WriteStringLiteral(buf, t.UTC().Format(timeFormat))
+				Dialect.WriteFormattedTime(buf, t)
 			} else {
 				return ErrInvalidValue
 			}

@@ -164,7 +164,7 @@ func TestInterpolatingTime(t *testing.T) {
 
 	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE a = NULL AND b = '0001-01-01 00:00:00Z' AND c = '2004-01-01 01:01:01Z'")
+	assert.Equal(t, "SELECT * FROM x WHERE a = NULL AND b = '0001-01-01T00:00:00Z' AND c = '2004-01-01T01:01:01.000000001Z'", str)
 }
 
 func TestInterpolateErrors(t *testing.T) {
