@@ -20,12 +20,6 @@ type Interpolator interface {
 	Interpolate() (string, error)
 }
 
-// UnsafeStringer is used in interpolation to return a string
-// that should not be escaped.
-type UnsafeStringer interface {
-	UnsafeString() (UnsafeString, error)
-}
-
 // Value implements a valuer for compatibility
 func (u UnsafeString) Value() (driver.Value, error) {
 	panic("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")
@@ -36,8 +30,6 @@ const DEFAULT = UnsafeString("DEFAULT")
 
 // NOW SQL value
 const NOW = UnsafeString("NOW()")
-
-var timeFormat = "2006-01-02 15:04:05Z"
 
 // NullString is a type that can be null or a string
 type NullString struct {
@@ -264,13 +256,4 @@ func (j *JSON) Scan(src interface{}) error {
 // Unmarshal unmarshal's the json in j to v, as in json.Unmarshal.
 func (j *JSON) Unmarshal(v interface{}) error {
 	return json.Unmarshal([]byte(*j), v)
-}
-
-// UnsafeString returns an escaped time format or NULL constant for
-// use by Interpolate.
-func (n NullTime) UnsafeString() (UnsafeString, error) {
-	if n.Valid {
-		return UnsafeString("'" + n.Time.Format(time.RFC3339Nano) + "'"), nil
-	}
-	return "NULL", nil
 }
