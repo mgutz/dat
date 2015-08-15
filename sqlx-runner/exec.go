@@ -48,10 +48,16 @@ func toOutputStr(args []interface{}) string {
 }
 
 func logSQLError(err error, msg string, statement string, args []interface{}) error {
-	if err != nil && err != sql.ErrNoRows {
-		logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+	if err == sql.ErrNoRows {
+		if dat.Strict {
+			return logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+		}
+		if logger.IsDebug() {
+			logger.Debug(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+		}
+		return err
 	}
-	return err
+	return logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 }
 
 func logExecutionTime(start time.Time, sql string, args []interface{}) {

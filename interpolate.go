@@ -120,10 +120,11 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			return nil
 		} else if valuer, ok := v.(Interpolator); ok {
 			s, err := valuer.Interpolate()
-			if err == nil {
-				Dialect.WriteStringLiteral(buf, s)
-				return nil
+			if err != nil {
+				return err
 			}
+			Dialect.WriteStringLiteral(buf, s)
+			return nil
 		} else if valuer, ok := v.(driver.Valuer); ok {
 			val, err := valuer.Value()
 			if err != nil {
