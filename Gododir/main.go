@@ -2,12 +2,15 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 
 	_ "github.com/lib/pq"
 	do "gopkg.in/godo.v2"
 )
 
 func tasks(p *do.Project) {
+	numCPU := runtime.NumCPU()
+
 	do.Env = `
 	DAT_DRIVER=postgres
 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
@@ -18,8 +21,8 @@ func tasks(p *do.Project) {
 	p.Task("createdb", nil, createdb).Description("Creates test database")
 
 	p.Task("test", nil, func(c *do.Context) {
-		c.Run(`go test -race`)
-		c.Run(`go test -race`, do.M{"$in": "sqlx-runner"})
+		c.Run(`GOMAXPROCS={{.numCPU}} go test -race`, do.M{"numCPU": numCPU})
+		c.Run(`GOMAXPROCS={{.numCPU}} go test -race`, do.M{"$in": "sqlx-runner", "numCPU": numCPU})
 	}).Src("**/*.go").
 		Desc("test with -race flag")
 
