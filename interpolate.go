@@ -119,6 +119,12 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			passthroughArg()
 			return nil
 		} else if valuer, ok := v.(Interpolator); ok {
+			valueOfV := reflect.ValueOf(v)
+			if valueOfV.IsNil() {
+				buf.WriteString("NULL")
+				return nil
+			}
+
 			s, err := valuer.Interpolate()
 			if err != nil {
 				return err
