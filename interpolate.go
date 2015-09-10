@@ -116,6 +116,12 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			buf.WriteString(string(val))
 			return nil
 		} else if _, ok := v.(JSON); ok {
+			valueOfV := reflect.ValueOf(v)
+			if valueOfV.IsNil() {
+				buf.WriteString("NULL")
+				return nil
+			}
+
 			passthroughArg()
 			return nil
 		} else if valuer, ok := v.(Interpolator); ok {
