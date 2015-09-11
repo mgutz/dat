@@ -328,7 +328,10 @@ func queryJSONStruct(execer *Execer, dest interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(blob, dest)
+	if blob != nil {
+		return json.Unmarshal(blob, dest)
+	}
+	return nil
 }
 
 // queryJSONBlob executes the query in builder and loads the resulting data
@@ -417,7 +420,10 @@ func queryJSONStructs(execer *Execer, dest interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(blob, dest)
+	if blob != nil {
+		return json.Unmarshal(blob, dest)
+	}
+	return nil
 }
 
 // cacheOrSQL attempts to get a valeu from cache, otherwise it builds
@@ -523,7 +529,6 @@ func queryJSON(execer *Execer) ([]byte, error) {
 	if err != nil {
 		logSQLError(err, "queryJSON", jsonSQL, args)
 	}
-
 	setCache(execer, blob, dtBytes)
 
 	return blob, err
@@ -538,5 +543,8 @@ func queryObject(execer *Execer, dest interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(blob, dest)
+	if blob != nil {
+		return json.Unmarshal(blob, dest)
+	}
+	return nil
 }

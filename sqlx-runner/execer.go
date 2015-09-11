@@ -90,6 +90,9 @@ func (ex *Execer) QueryObject(dest interface{}) error {
 		if err != nil {
 			return err
 		}
+		if b == nil {
+			return nil
+		}
 		return json.Unmarshal(b, dest)
 	}
 
