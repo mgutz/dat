@@ -40,7 +40,7 @@ func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 	newtx := &Tx{Tx: tx, Queryable: &Queryable{tx}}
 	if dat.Strict {
 		time.AfterFunc(1*time.Minute, func() {
-			if newtx.state == txPending {
+			if !newtx.IsRollbacked && newtx.state == txPending {
 				panic("A database transaction was not closed!")
 			}
 		})
