@@ -38,6 +38,7 @@ func TestEmbeddedStructInvalidColumns(t *testing.T) {
 	g := &Group{Realm: &Realm{"11"}, GroupUUID: "22"}
 
 	assert.Panics(t, func() {
+		// realm_uuid must be explicitly defined
 		InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
 	})
 }

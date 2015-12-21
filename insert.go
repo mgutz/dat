@@ -105,7 +105,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 
 	// reflect fields removing blacklisted columns
 	if lenRecords > 0 && b.isBlacklist {
-		b.cols = reflectBlacklistedColumns(b.records[0], b.cols)
+		b.cols = reflectExcludeColumns(b.records[0], b.cols)
 	}
 	// reflect all fields
 	if lenRecords > 0 && b.cols[0] == "*" {

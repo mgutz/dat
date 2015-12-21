@@ -90,7 +90,7 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}) {
 
 	// reflect fields removing blacklisted columns
 	if b.record != nil && b.isBlacklist {
-		b.cols = reflectBlacklistedColumns(b.record, b.cols)
+		b.cols = reflectExcludeColumns(b.record, b.cols)
 	}
 	// reflect all fields
 	if b.record != nil && b.cols[0] == "*" {
