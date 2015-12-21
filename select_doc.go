@@ -175,7 +175,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 
 		if len(b.whereFragments) > 0 {
 			buf.WriteString(" WHERE ")
-			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 
 		// if b.scope == nil {
@@ -200,17 +200,12 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 
 		if len(b.havingFragments) > 0 {
 			buf.WriteString(" HAVING ")
-			writeWhereFragmentsToSql(buf, b.havingFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.havingFragments, &args, &placeholderStartPos)
 		}
 
 		if len(b.orderBys) > 0 {
 			buf.WriteString(" ORDER BY ")
-			for i, s := range b.orderBys {
-				if i > 0 {
-					buf.WriteString(", ")
-				}
-				buf.WriteString(s)
-			}
+			writeCommaFragmentsToSQL(buf, b.orderBys, &args, &placeholderStartPos)
 		}
 
 		if b.limitValid {
@@ -277,8 +272,8 @@ func (b *SelectDocBuilder) Scope(sql string, args ...interface{}) *SelectDocBuil
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
-func (b *SelectDocBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *SelectDocBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
@@ -289,14 +284,14 @@ func (b *SelectDocBuilder) GroupBy(group string) *SelectDocBuilder {
 }
 
 // Having appends a HAVING clause to the statement
-func (b *SelectDocBuilder) Having(whereSqlOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *SelectDocBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
-func (b *SelectDocBuilder) OrderBy(ord string) *SelectDocBuilder {
-	b.orderBys = append(b.orderBys, ord)
+func (b *SelectDocBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	b.orderBys = append(b.orderBys, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 

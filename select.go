@@ -12,7 +12,7 @@ type SelectBuilder struct {
 	whereFragments  []*whereFragment
 	groupBys        []string
 	havingFragments []*whereFragment
-	orderBys        []string
+	orderBys        []*whereFragment
 	limitCount      uint64
 	limitValid      bool
 	offsetCount     uint64
@@ -74,8 +74,8 @@ func (b *SelectBuilder) Scope(sql string, args ...interface{}) *SelectBuilder {
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
-func (b *SelectBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *SelectBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
@@ -86,14 +86,14 @@ func (b *SelectBuilder) GroupBy(group string) *SelectBuilder {
 }
 
 // Having appends a HAVING clause to the statement
-func (b *SelectBuilder) Having(whereSqlOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *SelectBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
+	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
-func (b *SelectBuilder) OrderBy(ord string) *SelectBuilder {
-	b.orderBys = append(b.orderBys, ord)
+func (b *SelectBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
+	b.orderBys = append(b.orderBys, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
@@ -174,7 +174,7 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 
 	if len(b.whereFragments) > 0 {
 		buf.WriteString(" WHERE ")
-		writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+		writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 	}
 
 	if len(b.groupBys) > 0 {
@@ -189,17 +189,12 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 
 	if len(b.havingFragments) > 0 {
 		buf.WriteString(" HAVING ")
-		writeWhereFragmentsToSql(buf, b.havingFragments, &args, &placeholderStartPos)
+		writeAndFragmentsToSQL(buf, b.havingFragments, &args, &placeholderStartPos)
 	}
 
 	if len(b.orderBys) > 0 {
 		buf.WriteString(" ORDER BY ")
-		for i, s := range b.orderBys {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(s)
-		}
+		writeCommaFragmentsToSQL(buf, b.orderBys, &args, &placeholderStartPos)
 	}
 
 	if b.limitValid {

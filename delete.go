@@ -6,11 +6,6 @@ type DeleteBuilder struct {
 
 	table          string
 	whereFragments []*whereFragment
-	orderBys       []string
-	limitCount     uint64
-	limitValid     bool
-	offsetCount    uint64
-	offsetValid    bool
 	id             int
 	isInterpolated bool
 	scope          Scope
@@ -39,30 +34,10 @@ func (b *DeleteBuilder) Scope(sql string, args ...interface{}) *DeleteBuilder {
 	return b
 }
 
-// Where appends a WHERE clause to the statement whereSqlOrMap can be a
+// Where appends a WHERE clause to the statement whereSQLOrMap can be a
 // string or map. If it's a string, args wil replaces any places holders
-func (b *DeleteBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *DeleteBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
-	return b
-}
-
-// OrderBy appends an ORDER BY clause to the statement
-func (b *DeleteBuilder) OrderBy(ord string) *DeleteBuilder {
-	b.orderBys = append(b.orderBys, ord)
-	return b
-}
-
-// Limit sets a LIMIT clause for the statement; overrides any existing LIMIT
-func (b *DeleteBuilder) Limit(limit uint64) *DeleteBuilder {
-	b.limitCount = limit
-	b.limitValid = true
-	return b
-}
-
-// Offset sets an OFFSET clause for the statement; overrides any existing OFFSET
-func (b *DeleteBuilder) Offset(offset uint64) *DeleteBuilder {
-	b.offsetCount = offset
-	b.offsetValid = true
+func (b *DeleteBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *DeleteBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
@@ -87,32 +62,11 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 	if b.scope == nil {
 		if len(b.whereFragments) > 0 {
 			buf.WriteString(" WHERE ")
-			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 	} else {
 		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
 		writeScopeCondition(buf, whereFragment, &args, &placeholderStartPos)
-	}
-
-	// Ordering and limiting
-	if len(b.orderBys) > 0 {
-		buf.WriteString(" ORDER BY ")
-		for i, s := range b.orderBys {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(s)
-		}
-	}
-
-	if b.limitValid {
-		buf.WriteString(" LIMIT ")
-		writeUint64(buf, b.limitCount)
-	}
-
-	if b.offsetValid {
-		buf.WriteString(" OFFSET ")
-		writeUint64(buf, b.offsetCount)
 	}
 
 	return buf.String(), args

@@ -192,7 +192,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	if b.scope == nil {
 		if len(b.whereFragments) > 0 {
 			buf.WriteString(" WHERE ")
-			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 	} else {
 		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))

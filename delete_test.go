@@ -10,7 +10,7 @@ func BenchmarkDeleteSql(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		DeleteFrom("alpha").Where("a", "b").Limit(1).OrderBy("id").ToSQL()
+		DeleteFrom("alpha").Where("a = $1", "b").ToSQL()
 	}
 }
 
@@ -28,9 +28,9 @@ func TestDeleteSingleToSql(t *testing.T) {
 }
 
 func TestDeleteTenStaringFromTwentyToSql(t *testing.T) {
-	sql, _ := DeleteFrom("a").Limit(10).Offset(20).OrderBy("id").ToSQL()
+	sql, _ := DeleteFrom("a").ToSQL()
 
-	assert.Equal(t, sql, "DELETE FROM a ORDER BY id LIMIT 10 OFFSET 20")
+	assert.Equal(t, sql, "DELETE FROM a")
 }
 
 func TestDeleteWhereExprSql(t *testing.T) {
