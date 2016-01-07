@@ -43,7 +43,7 @@ func TestSelectDocRow(t *testing.T) {
 func TestSelectDocNested(t *testing.T) {
 	assert := assert.New(t)
 
-	var obj jo.Object
+	var person Person
 
 	posts := dat.SelectDoc("id", "title").
 		Many("comments", `SELECT * FROM comments WHERE comments.id = posts.id`).
@@ -56,14 +56,14 @@ func TestSelectDocNested(t *testing.T) {
 		From("people").
 		Where("id = $1", 1).
 		SetIsInterpolated(true).
-		QueryStruct(&obj)
+		QueryStruct(&person)
 
 	assert.NoError(err)
-	assert.Equal("Mario", obj.AsString("name"))
-	assert.Equal(1, obj.AsInt("id"))
+	assert.Equal("Mario", person.Name)
+	assert.Equal(int64(1), person.ID)
 
-	assert.Equal("A very good day", obj.AsString("posts[0].comments[0].comment"))
-	assert.Equal("Yum. Apple pie.", obj.AsString("posts[1].comments[0].comment"))
+	assert.Equal("A very good day", person.Posts[0].Comments[0].Comment)
+	assert.Equal("Yum. Apple pie.", person.Posts[1].Comments[0].Comment)
 }
 
 func TestSelectDocNil(t *testing.T) {

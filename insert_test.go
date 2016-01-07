@@ -97,3 +97,21 @@ func TestInsertBlacklist(t *testing.T) {
 		InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()
 	})
 }
+
+func TestInsertDuplicateColumns(t *testing.T) {
+	type A struct {
+		Status string `db:"status"`
+	}
+
+	type B struct {
+		Status string `db:"status"`
+		A
+	}
+
+	b := B{}
+	b.Status = "open"
+	b.A.Status = "closed"
+	sql, args := InsertInto("a").Columns("status").Record(&b).ToSQL()
+	assert.Equal(t, sql, `INSERT INTO a ("status") VALUES ($1)`)
+	assert.Equal(t, args, []interface{}{"open"})
+}
