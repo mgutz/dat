@@ -361,6 +361,10 @@ func getMapping(t reflect.Type, tagName string, mapFunc, tagMapFunc func(string)
 
 	flds := &StructMap{Index: m, Tree: root, Paths: map[string]*FieldInfo{}, Names: map[string]*FieldInfo{}}
 	for _, fi := range flds.Index {
+		// use only the first found tag column in BFS
+		if flds.Paths[fi.Path] != nil {
+			continue
+		}
 		flds.Paths[fi.Path] = fi
 		if fi.Name != "" && !fi.Embedded {
 			flds.Names[fi.Path] = fi
