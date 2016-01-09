@@ -97,6 +97,14 @@ func (pd *Postgres) WriteIdentifier(buf common.BufferWriter, ident string) {
 	}
 
 	buf.WriteRune('"')
-	buf.WriteString(ident)
+	if strings.Contains(ident, ".") {
+		for _, char := range ident {
+			if char == '.' {
+				buf.WriteString("\".\"")
+			}
+		}
+	} else {
+		buf.WriteString(ident)
+	}
 	buf.WriteRune('"')
 }
