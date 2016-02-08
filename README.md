@@ -713,7 +713,7 @@ err = DB.Select("id").From("posts").QuerySlice(&ids)
 
 dat implements caching backed by an in-memory or Redis store. The in-memory store
 is not recommended for production use. Caching can cache any struct or primitive type that
-can be marshaled/unmarhsaled cleanly with the json package due to Redis being a string
+can be marshaled/unmarshaled cleanly with the json package due to Redis being a string
 value store.
 
 Time is especially problematic as JavaScript, Postgres and Go
