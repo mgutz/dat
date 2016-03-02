@@ -8,7 +8,7 @@ the original dat **
 `dat` (Data Access Toolkit) is a fast, lightweight and intuitive Postgres
 library for Go.
 
-*   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`.
+*   Focused on Postgres. See `Insert`, `Upsert`, `SelectDoc`, `QueryJSON`.
 
 *   Built on a solid foundation [sqlx](https://github.com/jmoiron/sqlx).
 
