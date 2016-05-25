@@ -69,19 +69,19 @@ func valuesFor(recordType reflect.Type, record reflect.Value, columns []string) 
 
 func reflectColumns(v interface{}) []string {
 	cols := []string{}
-	for _, tag := range reflectFields(v).Names {
-		cols = append(cols, tag.Name)
+	for _, name := range reflectFields(v).DeclaredNames {
+		cols = append(cols, name)
 	}
 	return cols
 }
 
 func reflectExcludeColumns(v interface{}, blacklist []string) []string {
 	cols := []string{}
-	for _, tag := range reflectFields(v).Names {
-		if str.SliceContains(blacklist, tag.Name) {
+	for _, name := range reflectFields(v).DeclaredNames {
+		if str.SliceContains(blacklist, name) {
 			continue
 		}
-		cols = append(cols, tag.Name)
+		cols = append(cols, name)
 	}
 
 	return cols

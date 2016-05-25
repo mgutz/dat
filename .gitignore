@@ -2,3 +2,4 @@
 trace.log
 *.test
 godobin*
+vendor/

@@ -33,6 +33,9 @@ type StructMap struct {
 	Index []*FieldInfo
 	Paths map[string]*FieldInfo
 	Names map[string]*FieldInfo
+
+	// MG: ordered by struct declaration
+	DeclaredNames []string
 }
 
 // GetByPath returns a *FieldInfo for a given string path.
@@ -361,12 +364,14 @@ func getMapping(t reflect.Type, tagName string, mapFunc, tagMapFunc func(string)
 
 	flds := &StructMap{Index: m, Tree: root, Paths: map[string]*FieldInfo{}, Names: map[string]*FieldInfo{}}
 	for _, fi := range flds.Index {
-		// use only the first found tag column in BFS
+		// MG: use only the first found tag column in BFS
 		if flds.Paths[fi.Path] != nil {
 			continue
 		}
+
 		flds.Paths[fi.Path] = fi
 		if fi.Name != "" && !fi.Embedded {
+			flds.DeclaredNames = append(flds.DeclaredNames, fi.Path) // MG
 			flds.Names[fi.Path] = fi
 		}
 	}
