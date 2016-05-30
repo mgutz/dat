@@ -1,6 +1,6 @@
 package dat
 
-import "gopkg.in/mgutz/dat.v1/common"
+import "github.com/syreclabs/dat/common"
 
 // Dialect is the active SQLDialect.
 var Dialect SQLDialect

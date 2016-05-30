@@ -1,6 +1,6 @@
 package runner
 
-import "gopkg.in/mgutz/dat.v1"
+import "github.com/syreclabs/dat"
 
 // Connection is a queryable connection and represents a DB or Tx.
 type Connection interface {
