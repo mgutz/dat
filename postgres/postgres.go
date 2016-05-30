@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/mgutz/dat.v1/common"
+	"github.com/syreclabs/dat/common"
 )
 
 // pgDollarTag is the double dollar tag for escaping strings.
@@ -97,6 +97,16 @@ func (pd *Postgres) WriteIdentifier(buf common.BufferWriter, ident string) {
 	}
 
 	buf.WriteRune('"')
-	buf.WriteString(ident)
+	if strings.Contains(ident, ".") {
+		for _, char := range ident {
+			if char == '.' {
+				buf.WriteString("\".\"")
+			} else {
+				buf.WriteRune(char)
+			}
+		}
+	} else {
+		buf.WriteString(ident)
+	}
 	buf.WriteRune('"')
 }

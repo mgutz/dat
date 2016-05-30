@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"gopkg.in/mgutz/dat.v1"
+	"github.com/syreclabs/dat"
 )
 
 // DB represents an abstract database connection pool.

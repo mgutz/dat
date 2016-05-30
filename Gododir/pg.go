@@ -9,10 +9,10 @@ import (
 
 	"github.com/mgutz/ansi"
 	"github.com/mgutz/str"
+	"github.com/syreclabs/dat"
+	"github.com/syreclabs/dat/sqlx-runner"
 	. "gopkg.in/godo.v2"
 	"gopkg.in/godo.v2/util"
-	"gopkg.in/mgutz/dat.v1"
-	"gopkg.in/mgutz/dat.v1/sqlx-runner"
 )
 
 func mapBytesToString(m map[string]interface{}) {
