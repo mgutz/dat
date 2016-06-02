@@ -305,4 +305,18 @@ func TestSelectScoped(t *testing.T) {
 	assert.Equal(t, posts[0].Title, "my post")
 }
 
+func TestSelectFor(t *testing.T) {
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
+	var p Person
+	err := s.Select("*").
+		From("people").
+		Where("id = $1", 1).
+		For("UPDATE").
+		QueryStruct(&p)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), p.ID)
+}
+
 // Series of tests that test mapping struct fields to columns

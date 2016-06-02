@@ -8,6 +8,7 @@ type SelectBuilder struct {
 	distinctColumns []string
 	isInterpolated  bool
 	columns         []string
+	fors            []string
 	table           string
 	whereFragments  []*whereFragment
 	groupBys        []string
@@ -55,6 +56,12 @@ func (b *SelectBuilder) DistinctOn(columns ...string) *SelectBuilder {
 // From sets the table to SELECT FROM. JOINs may also be defined here.
 func (b *SelectBuilder) From(from string) *SelectBuilder {
 	b.table = from
+	return b
+}
+
+// For adds FOR clause to SELECT.
+func (b *SelectBuilder) For(options ...string) *SelectBuilder {
+	b.fors = options
 	return b
 }
 
@@ -205,6 +212,15 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	if b.offsetValid {
 		buf.WriteString(" OFFSET ")
 		writeUint64(buf, b.offsetCount)
+	}
+
+	// add FOR clause
+	if len(b.fors) > 0 {
+		buf.WriteString(" FOR")
+		for _, s := range b.fors {
+			buf.WriteString(" ")
+			buf.WriteString(s)
+		}
 	}
 
 	return buf.String(), args

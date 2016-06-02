@@ -287,3 +287,16 @@ func TestSelectColumns(t *testing.T) {
 		`), stripWS(sql))
 	assert.Nil(t, args)
 }
+
+func TestSelectFor(t *testing.T) {
+	sql, args := Select("id").
+		From("users").
+		Where("id > $1", 1000).
+		For("UPDATE").
+		ToSQL()
+
+	assert.Equal(t, stripWS(`
+		SELECT id FROM users WHERE (id > $1) FOR UPDATE
+	`), stripWS(sql))
+	assert.Exactly(t, []interface{}{1000}, args)
+}

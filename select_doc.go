@@ -217,6 +217,15 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 			buf.WriteString(" OFFSET ")
 			writeUint64(buf, b.offsetCount)
 		}
+
+		// add FOR clause
+		if len(b.fors) > 0 {
+			buf.WriteString(" FOR")
+			for _, s := range b.fors {
+				buf.WriteString(" ")
+				buf.WriteString(s)
+			}
+		}
 	}
 
 	if b.isParent {
@@ -253,6 +262,12 @@ func (b *SelectDocBuilder) DistinctOn(columns ...string) *SelectDocBuilder {
 // From sets the table to SELECT FROM
 func (b *SelectDocBuilder) From(from string) *SelectDocBuilder {
 	b.table = from
+	return b
+}
+
+// For adds FOR clause to SELECT.
+func (b *SelectDocBuilder) For(options ...string) *SelectDocBuilder {
+	b.fors = options
 	return b
 }
 

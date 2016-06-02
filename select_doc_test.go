@@ -207,3 +207,19 @@ func TestSelectDocColumns(t *testing.T) {
 		) as dat__item`), stripWS(sql))
 	assert.Nil(t, args)
 }
+
+func TestSelectDocFor(t *testing.T) {
+	sql, args := SelectDoc("id, user_name").
+		From("users").
+		Columns("created_at").
+		For("UPDATE").
+		ToSQL()
+	assert.Equal(t, stripWS(`
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT id, user_name, created_at
+			FROM users
+			FOR UPDATE
+		) as dat__item`), stripWS(sql))
+	assert.Nil(t, args)
+}

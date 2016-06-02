@@ -308,3 +308,16 @@ func TestSelectDocObject(t *testing.T) {
 	assert.Equal(t, "A very good day", comments.MustString("[0].comment"))
 	assert.Equal(t, "Yum. Apple pie.", comments.MustString("[1].comment"))
 }
+
+func TestSelectDocForObject(t *testing.T) {
+	var comments jo.Object
+	err := testDB.SelectDoc("id", "comment").
+		From("comments").
+		OrderBy("id").
+		For("UPDATE").
+		QueryObject(&comments)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "A very good day", comments.MustString("[0].comment"))
+	assert.Equal(t, "Yum. Apple pie.", comments.MustString("[1].comment"))
+}
