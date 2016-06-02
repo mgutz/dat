@@ -1,6 +1,7 @@
 package dat
 
 import (
+	"strings"
 	"testing"
 
 	"gopkg.in/stretchr/testify.v1/assert"
@@ -85,11 +86,32 @@ func TestInsertBlacklist(t *testing.T) {
 		Record(objs[0]).
 		Record(objs[1]).
 		ToSQL()
-	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4)", "user_id", "other"))
+	// order is not guaranteed
+	//assert.Equal(t, sql, `INSERT INTO a ("user_id","other") VALUES ($1,$2),($3,$4)`)
+	assert.True(t, strings.Contains(sql, `"user_id"`))
+	assert.True(t, strings.Contains(sql, `"other"`))
 	checkSliceEqual(t, args, []interface{}{88, false, 99, true})
 
 	assert.Panics(t, func() {
+		// does not have any columns or record
 		InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()
-	}, `must use "*" in conjunction with Record`)
+	})
+}
 
+func TestInsertDuplicateColumns(t *testing.T) {
+	type A struct {
+		Status string `db:"status"`
+	}
+
+	type B struct {
+		Status string `db:"status"`
+		A
+	}
+
+	b := B{}
+	b.Status = "open"
+	b.A.Status = "closed"
+	sql, args := InsertInto("a").Columns("status").Record(&b).ToSQL()
+	assert.Equal(t, sql, `INSERT INTO a ("status") VALUES ($1)`)
+	assert.Equal(t, args, []interface{}{"open"})
 }

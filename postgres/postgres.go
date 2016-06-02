@@ -3,6 +3,7 @@ package postgres
 import (
 	"bytes"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -95,8 +96,50 @@ func (pd *Postgres) WriteIdentifier(buf common.BufferWriter, ident string) {
 	if ident == "" {
 		panic("Identifier is empty string")
 	}
+	if ident == "*" {
+		buf.WriteString(ident)
+		return
+	}
 
 	buf.WriteRune('"')
 	buf.WriteString(ident)
 	buf.WriteRune('"')
+}
+
+// WriteFormattedTime formats t into a format postgres understands.
+// Taken with gratitude from pq: https://github.com/lib/pq/blob/b269bd035a727d6c1081f76e7a239a1b00674c40/encode.go#L403
+func (pd *Postgres) WriteFormattedTime(buf common.BufferWriter, t time.Time) {
+	buf.WriteRune('\'')
+	defer buf.WriteRune('\'')
+	// XXX: This doesn't currently deal with infinity values
+
+	// Need to send dates before 0001 A.D. with " BC" suffix, instead of the
+	// minus sign preferred by Go.
+	// Beware, "0000" in ISO is "1 BC", "-0001" is "2 BC" and so on
+	bc := false
+	if t.Year() <= 0 {
+		// flip year sign, and add 1, e.g: "0" will be "1", and "-10" will be "11"
+		t = t.AddDate((-t.Year())*2+1, 0, 0)
+		bc = true
+	}
+	buf.WriteString(t.Format(time.RFC3339Nano))
+
+	_, offset := t.Zone()
+	offset = offset % 60
+	if offset != 0 {
+		// RFC3339Nano already printed the minus sign
+		if offset < 0 {
+			offset = -offset
+		}
+
+		buf.WriteRune(':')
+		if offset < 10 {
+			buf.WriteRune('0')
+		}
+		buf.WriteString(strconv.FormatInt(int64(offset), 10))
+	}
+
+	if bc {
+		buf.WriteString(" BC")
+	}
 }

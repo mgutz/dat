@@ -18,6 +18,8 @@ type Person struct {
 	Key       dat.NullString  `db:"key"`
 	Name      string          `db:"name"`
 	CreatedAt dat.NullTime    `db:"created_at"`
+
+	Posts []*Post `json:"posts"`
 }
 
 type Post struct {
@@ -27,6 +29,8 @@ type Post struct {
 	Title     string       `db:"title"`
 	DeletedAt dat.NullTime `db:"deleted_at"`
 	CreatedAt dat.NullTime `db:"created_at"`
+
+	Comments []*Comment `json:"comments"`
 }
 
 type Comment struct {

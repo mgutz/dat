@@ -13,11 +13,12 @@ func TestDeleteReal(t *testing.T) {
 
 	var id int64
 	// Insert a Barack
-	s.InsertInto("people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Barack", "barack@whitehouse.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	// Delete Barack
 	res, err := s.DeleteFrom("people").Where("id = $1", id).Exec()
@@ -41,11 +42,12 @@ func TestDeleteScope(t *testing.T) {
 
 	var id int64
 	// Insert a Barack
-	s.InsertInto("people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Barack", "barack@whitehouse.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	scope := dat.NewScope("WHERE id = :id", dat.M{"id": 0})
 

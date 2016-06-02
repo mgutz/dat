@@ -31,8 +31,6 @@ const DEFAULT = UnsafeString("DEFAULT")
 // NOW SQL value
 const NOW = UnsafeString("NOW()")
 
-var timeFormat = "2006-01-02 15:04:05Z"
-
 // NullString is a type that can be null or a string
 type NullString struct {
 	sql.NullString
@@ -251,7 +249,7 @@ func (j *JSON) Scan(src interface{}) error {
 	default:
 		return errors.New("Incompatible type for JSON")
 	}
-	*j = JSON(append((*j)[0:0], source...))
+	*j = append((*j)[0:0], source...)
 	return nil
 }
 

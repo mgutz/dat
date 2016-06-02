@@ -40,13 +40,14 @@ func TestUpdateReal(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	s.InsertInto("people").Columns("name", "email").
+	err := s.InsertInto("people").Columns("name", "email").
 		Values("George", "george@whitehouse.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	// Rename our George to Barack
-	_, err := s.Update("people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id).Exec()
+	_, err = s.Update("people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id).Exec()
 
 	assert.NoError(t, err)
 
@@ -58,6 +59,37 @@ func TestUpdateReal(t *testing.T) {
 	assert.Equal(t, person.Name, "Barack")
 	assert.Equal(t, person.Email.Valid, true)
 	assert.Equal(t, person.Email.String, "barack@whitehouse.gov")
+}
+
+func TestUpdateReturningStar(t *testing.T) {
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
+	// Insert a George
+	var insertPerson Person
+	err := s.InsertInto("people").Columns("name", "email").
+		Values("George", "george@whitehouse.gov").
+		Returning("*").
+		QueryStruct(&insertPerson)
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, insertPerson.ID)
+	assert.Equal(t, insertPerson.Name, "George")
+	assert.Equal(t, insertPerson.Email.Valid, true)
+	assert.Equal(t, insertPerson.Email.String, "george@whitehouse.gov")
+
+	var updatePerson Person
+	err = s.Update("people").
+		Set("name", "Barack").
+		Set("email", "barack@whitehouse.gov").
+		Where("id = $1", insertPerson.ID).
+		Returning("*").
+		QueryStruct(&updatePerson)
+	assert.NoError(t, err)
+	assert.Equal(t, insertPerson.ID, updatePerson.ID)
+	assert.Equal(t, updatePerson.Name, "Barack")
+	assert.Equal(t, updatePerson.Email.Valid, true)
+	assert.Equal(t, updatePerson.Email.String, "barack@whitehouse.gov")
 }
 
 func TestUpdateWhitelist(t *testing.T) {
@@ -139,16 +171,17 @@ func TestUpdateScope(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	s.InsertInto("people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Scope", "scope@foo.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	scope := dat.NewScope("WHERE id = :id", dat.M{"id": 1000})
 
 	// Rename our George to Barack
-	_, err := s.
+	_, err = s.
 		Update("people").
 		SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).
 		ScopeMap(scope, dat.M{"id": id}).
@@ -172,16 +205,17 @@ func TestUpdateScopeFunc(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	s.InsertInto("people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Scope", "scope@foo.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	scope := `WHERE id = $1`
 
 	// Rename our George to Barack
-	_, err := s.
+	_, err = s.
 		Update("people").
 		SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).
 		Scope(scope, id).

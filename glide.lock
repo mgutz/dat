@@ -1,0 +1,68 @@
+hash: 5a05f6f0251efcf7bdf147fdf1a112ec9f041e07992205c32e11871838e31aef
+updated: 2016-05-27T21:12:32.287971295-07:00
+imports:
+- name: github.com/cenkalti/backoff
+  version: c29158af31815ccc31ca29c86c121bc39e00d3d8
+- name: github.com/garyburd/redigo
+  version: b8dc90050f24c1a73a52f107f3f575be67b21b7c
+  subpackages:
+  - redis
+  - internal
+- name: github.com/howeyc/gopass
+  version: 66487b23f2880ba32e185121d2cd51a338ea069a
+- name: github.com/jmoiron/sqlx
+  version: a7f971fe8ea891a1a74ddb40c623f5722e28e8a8
+  subpackages:
+  - reflectx
+- name: github.com/lib/pq
+  version: ee1442bda7bd1b6a84e913bdb421cb1874ec629d
+  subpackages:
+  - oid
+- name: github.com/mattn/go-colorable
+  version: e8a10ddc7d2a7fe255f6fd7f501070a4cb62c183
+- name: github.com/mattn/go-isatty
+  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
+- name: github.com/mgutz/ansi
+  version: c286dcecd19ff979eeb73ea444e479b903f2cfcb
+- name: github.com/mgutz/jo
+  version: 0b027231853f934a4fe43d82d269c16adc54a225
+  subpackages:
+  - v1
+- name: github.com/mgutz/logxi
+  version: 7d364cab682d1b7b9063a3293c9e8c3087194940
+  subpackages:
+  - v1
+- name: github.com/mgutz/minimist
+  version: 39eb8cf573ca29344bd7d7e6ba4d7febdebd37a9
+- name: github.com/mgutz/str
+  version: 968bf66e3da857419e4f6e71b2d5c9ae95682dc4
+- name: github.com/mgutz/to
+  version: 2a0bcba0661696e339461f5efb2273f4459dd1b9
+- name: github.com/MichaelTJones/walk
+  version: 3af09438b0ab0e8f296410bfa646a7e635ea1fc0
+- name: github.com/nozzle/throttler
+  version: d9b45f19996c645d38c9266d1f5cf1990e930119
+- name: github.com/pmylund/go-cache
+  version: 1881a9bccb818787f68c52bfba648c6cf34c34fa
+- name: github.com/satori/go.uuid
+  version: f9ab0dce87d815821e221626b772e3475a0d2749
+- name: golang.org/x/crypto
+  version: 5bcd134fee4dd1475da17714aac19c0aa0142e2f
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/sys
+  version: d4feaf1a7e61e1d9e79e6c4e76c6349e9cab0a03
+  subpackages:
+  - unix
+- name: gopkg.in/godo.v2
+  version: b5fd2f0bef1ebe832e628cfad18ab1cc707f65a1
+  subpackages:
+  - util
+  - glob
+  - watcher
+  - watcher/fswatch
+- name: gopkg.in/stretchr/testify.v1
+  version: f390dcf405f7b83c997eac1b06768bb9f44dec18
+  subpackages:
+  - assert
+devImports: []

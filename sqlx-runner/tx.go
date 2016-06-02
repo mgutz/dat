@@ -14,6 +14,7 @@ const (
 	txPending = iota
 	txCommitted
 	txRollbacked
+	txErred
 )
 
 // ErrTxRollbacked occurs when Commit() or Rollback() is called on a
@@ -28,10 +29,6 @@ type Tx struct {
 	IsRollbacked bool
 	state        int
 	stateStack   []int
-
-	// groupID is a unique ID used to log a group of queries
-	// within a transaction
-	groupID int64
 }
 
 // WrapSqlxTx creates a Tx from a sqlx.Tx
@@ -39,8 +36,8 @@ func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 	newtx := &Tx{Tx: tx, Queryable: &Queryable{tx}}
 	if dat.Strict {
 		time.AfterFunc(1*time.Minute, func() {
-			if newtx.state == txPending {
-				panic("A database session was not closed!")
+			if !newtx.IsRollbacked && newtx.state == txPending {
+				panic("A database transaction was not closed!")
 			}
 		})
 	}
@@ -51,6 +48,9 @@ func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 func (db *DB) Begin() (*Tx, error) {
 	tx, err := db.DB.Beginx()
 	if err != nil {
+		if dat.Strict {
+			logger.Fatal("Could not create transaction")
+		}
 		return nil, logger.Error("begin.error", err)
 	}
 	logger.Debug("begin tx")
@@ -87,9 +87,9 @@ func (tx *Tx) Commit() error {
 	}
 
 	if len(tx.stateStack) == 0 {
-		logger.Debug("REALLY COMMITING")
 		err := tx.Tx.Commit()
 		if err != nil {
+			tx.state = txErred
 			return logger.Error("commit.error", err)
 		}
 	}
@@ -114,6 +114,7 @@ func (tx *Tx) Rollback() error {
 	// rollback is sent to the database even in nested state
 	err := tx.Tx.Rollback()
 	if err != nil {
+		tx.state = txErred
 		return logger.Error("Unable to rollback", "err", err)
 	}
 
@@ -135,8 +136,9 @@ func (tx *Tx) AutoCommit() error {
 
 	err := tx.Tx.Commit()
 	if err != nil {
+		tx.state = txErred
 		if dat.Strict {
-			log.Fatalf("Could not close session: %s\n", err.Error())
+			log.Fatalf("Could not commit transaction: %s\n", err.Error())
 		}
 		tx.popState()
 		return logger.Error("transaction.AutoCommit.commit_error", err)
@@ -149,7 +151,6 @@ func (tx *Tx) AutoCommit() error {
 
 // AutoRollback rolls back transaction IF neither Commit or Rollback were called.
 func (tx *Tx) AutoRollback() error {
-	logger.Debug("txState", tx.state)
 	tx.Lock()
 	defer tx.Unlock()
 
@@ -160,8 +161,9 @@ func (tx *Tx) AutoRollback() error {
 
 	err := tx.Tx.Rollback()
 	if err != nil {
+		tx.state = txErred
 		if dat.Strict {
-			log.Fatalf("Could not rollback session: %s\n", err.Error())
+			log.Fatalf("Could not rollback transaction: %s\n", err.Error())
 		}
 		tx.popState()
 		return logger.Error("transaction.AutoRollback.rollback_error", err)

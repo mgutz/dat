@@ -1,0 +1,25 @@
+package: gopkg.in/mgutz/dat.v1
+import:
+- package: github.com/cenkalti/backoff
+- package: github.com/garyburd/redigo
+  subpackages:
+  - redis
+- package: github.com/jmoiron/sqlx
+- package: github.com/lib/pq
+- package: github.com/mgutz/ansi
+- package: github.com/mgutz/jo
+  subpackages:
+  - v1
+- package: github.com/mgutz/logxi
+  subpackages:
+  - v1
+- package: github.com/mgutz/str
+- package: github.com/pmylund/go-cache
+- package: github.com/satori/go.uuid
+- package: gopkg.in/godo.v2
+  subpackages:
+  - util
+- package: gopkg.in/stretchr/testify.v1
+  subpackages:
+  - assert
+

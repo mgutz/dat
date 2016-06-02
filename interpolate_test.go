@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
+
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
@@ -162,7 +164,7 @@ func TestInterpolatingTime(t *testing.T) {
 
 	str, _, err := Interpolate("SELECT * FROM x WHERE a = $1 AND b = $2 AND c = $3", args)
 	assert.NoError(t, err)
-	assert.Equal(t, str, "SELECT * FROM x WHERE a = NULL AND b = '0001-01-01 00:00:00Z' AND c = '2004-01-01 01:01:01Z'")
+	assert.Equal(t, "SELECT * FROM x WHERE a = NULL AND b = '0001-01-01T00:00:00Z' AND c = '2004-01-01T01:01:01.000000001Z'", str)
 }
 
 func TestInterpolateErrors(t *testing.T) {
@@ -191,4 +193,21 @@ func TestInterpolateJSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT '[1,3,10]'", sql)
 	assert.Equal(t, 0, len(args))
+}
+
+func TestInterpolateInvalidNullTime(t *testing.T) {
+	invalid := NullTime{pq.NullTime{Valid: false}}
+
+	sql, _, err := Interpolate("SELECT * FROM foo WHERE invalid = $1", []interface{}{invalid})
+	assert.NoError(t, err)
+	assert.Equal(t, stripWS("SELECT * FROM foo WHERE invalid=NULL"), stripWS(sql))
+}
+
+func TestInterpolateValidNullTime(t *testing.T) {
+	now := time.Now()
+	valid := NullTime{pq.NullTime{Time: now, Valid: true}}
+	sql, _, err := Interpolate("SELECT * FROM foo WHERE valid = $1", []interface{}{valid})
+	assert.NoError(t, err)
+
+	assert.Equal(t, "SELECT * FROM foo WHERE valid = '"+valid.Time.Format(time.RFC3339Nano)+"'", sql)
 }

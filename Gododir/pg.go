@@ -9,7 +9,7 @@ import (
 
 	"github.com/mgutz/ansi"
 	"github.com/mgutz/str"
-	. "gopkg.in/godo.v2"
+	do "gopkg.in/godo.v2"
 	"gopkg.in/godo.v2/util"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/sqlx-runner"
@@ -65,11 +65,11 @@ func querySQL(sql string, args []interface{}) {
 	util.Info("pg", "OK\n")
 }
 
-func createdb(c *Context) {
-	user := Prompt("superuser: ")
-	password := PromptPassword("password: ")
+func createdb(c *do.Context) {
+	user := do.Prompt("superuser: ")
+	password := do.PromptPassword("password: ")
 
-	dsn := str.Template("user={{user}} password={{password}} dbname=postgres host=localhost sslmode=disable", M{
+	dsn := str.Template("user={{user}} password={{password}} dbname=postgres host=localhost sslmode=disable", do.M{
 		"user":     user,
 		"password": password,
 	})
@@ -85,12 +85,12 @@ func createdb(c *Context) {
 		"create database {{dbname}} owner {{user}}",
 	}
 	for _, cmd := range commands {
-		sql := str.Template(cmd, M{
+		sql2 := str.Template(cmd, do.M{
 			"dbname":   "dbr_test",
 			"user":     "dbr",
 			"password": "!test",
 		})
-		_, err = db.Exec(sql)
+		_, err = db.Exec(sql2)
 		if err != nil {
 			panic(err)
 		}
@@ -102,7 +102,7 @@ func createdb(c *Context) {
 		panic(err)
 	}
 
-	dsn = str.Template("user={{user}} password={{password}} dbname=dbr_test host=localhost sslmode=disable", M{
+	dsn = str.Template("user={{user}} password={{password}} dbname=dbr_test host=localhost sslmode=disable", do.M{
 		"user":     user,
 		"password": password,
 	})
@@ -123,19 +123,19 @@ var db *runner.DB
 func getConnection() *runner.DB {
 
 	if db == nil {
-		connectionString := Getenv("DAT_DSN")
+		connectionString := do.Getenv("DAT_DSN")
 		db = runner.NewDBFromString("postgres", connectionString)
 	}
 	return db
 }
 
-func pgTasks(p *Project) {
-	Env = `
+func pgTasks(p *do.Project) {
+	do.Env = `
 	DAT_DRIVER=postgres
 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
 	`
 
-	p.Task("file", nil, func(c *Context) {
+	p.Task("file", nil, func(c *do.Context) {
 		filename := c.Args.Leftover()[0]
 		if !util.FileExists(filename) {
 			util.Error("ERR", "file not found %s", filename)
@@ -159,7 +159,7 @@ func pgTasks(p *Project) {
 		querySQL(sql, args)
 	}).Desc("Executes a SQL file with placeholders")
 
-	p.Task("query", nil, func(c *Context) {
+	p.Task("query", nil, func(c *do.Context) {
 		if len(c.Args.Leftover()) != 1 {
 			fmt.Println(`usage: godo query -- "SELECT * ..." `)
 			return

@@ -1,11 +1,8 @@
 package dat
 
 import (
-	"log"
 	"reflect"
 	"strconv"
-
-	"github.com/mgutz/str"
 )
 
 // UpdateBuilder contains the clauses for an UPDATE statement
@@ -54,53 +51,45 @@ func (b *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 }
 
 // SetBlacklist creates SET clause(s) using a record and blacklist of columns
-func (b *UpdateBuilder) SetBlacklist(rec interface{}, columns ...string) *UpdateBuilder {
-	val := reflect.Indirect(reflect.ValueOf(rec))
-	vname := val.String()
-	vtype := val.Type()
-
-	if len(columns) == 0 {
-		panic("SetBlacklist a list of columns names")
+func (b *UpdateBuilder) SetBlacklist(rec interface{}, blacklist ...string) *UpdateBuilder {
+	if len(blacklist) == 0 {
+		panic("SetBlacklist requires a list of columns names")
 	}
 
-	for i := 0; i < vtype.NumField(); i++ {
-		f := vtype.Field(i)
-		dbName := f.Tag.Get("db")
-		if dbName == "" {
-			log.Fatalf("%s must have db struct tags for all fields: `db:\"\"`", vname)
-		}
-		if !str.SliceContains(columns, dbName) {
-			value := val.Field(i).Interface()
-			b.Set(dbName, value)
-		}
+	columns := reflectExcludeColumns(rec, blacklist)
+	ind := reflect.Indirect(reflect.ValueOf(rec))
+	vals, err := valuesFor(ind.Type(), ind, columns)
+	if err != nil {
+		panic(err)
 	}
+
+	for i, val := range vals {
+		b.Set(columns[i], val)
+	}
+
 	return b
 }
 
 // SetWhitelist creates SET clause(s) using a record and whitelist of columns.
 // To specify all columns, use "*".
-func (b *UpdateBuilder) SetWhitelist(rec interface{}, columns ...string) *UpdateBuilder {
-	val := reflect.Indirect(reflect.ValueOf(rec))
-	vname := val.String()
-	vtype := val.Type()
-
-	isWildcard := len(columns) == 0 || columns[0] == "*"
-
-	for i := 0; i < vtype.NumField(); i++ {
-		f := vtype.Field(i)
-		dbName := f.Tag.Get("db")
-		if dbName == "" {
-			log.Fatalf("%s must have db struct tags for all fields: `db:\"\"`", vname)
-		}
-		value := val.Field(i).Interface()
-
-		if isWildcard {
-			b.Set(dbName, value)
-		} else if str.SliceContains(columns, dbName) {
-			b.Set(dbName, value)
-		}
-
+func (b *UpdateBuilder) SetWhitelist(rec interface{}, whitelist ...string) *UpdateBuilder {
+	var columns []string
+	if len(whitelist) == 0 || whitelist[0] == "*" {
+		columns = reflectColumns(rec)
+	} else {
+		columns = whitelist
 	}
+
+	ind := reflect.Indirect(reflect.ValueOf(rec))
+	vals, err := valuesFor(ind.Type(), ind, columns)
+	if err != nil {
+		panic(err)
+	}
+
+	for i, val := range vals {
+		b.Set(columns[i], val)
+	}
+
 	return b
 }
 
@@ -119,8 +108,8 @@ func (b *UpdateBuilder) Scope(sql string, args ...interface{}) *UpdateBuilder {
 }
 
 // Where appends a WHERE clause to the statement
-func (b *UpdateBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *UpdateBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *UpdateBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *UpdateBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
@@ -203,7 +192,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	if b.scope == nil {
 		if len(b.whereFragments) > 0 {
 			buf.WriteString(" WHERE ")
-			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 	} else {
 		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))

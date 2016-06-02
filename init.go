@@ -12,7 +12,7 @@ var logger log.Logger
 // Strict tells dat to raise errors
 var Strict = false
 
-// Whether to enable interpolation
+// EnableInterpolation enables or disable interpolation
 var EnableInterpolation = false
 
 // maxLookup is the max lookup index for predefined lookup tables

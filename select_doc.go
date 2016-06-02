@@ -33,9 +33,11 @@ func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...in
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *SelectDocBuilder:
 		t.isParent = false
-		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueries = append(b.subQueries, &subInfo{Expr(sql, args...), column})
 	case Builder:
-		b.subQueries = append(b.subQueries, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueries = append(b.subQueries, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueries = append(b.subQueries, &subInfo{Expr(t, a...), column})
 	}
@@ -49,9 +51,11 @@ func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...int
 		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *SelectDocBuilder:
 		t.isParent = false
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
 	case Builder:
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t.ToSQL()), column})
+		sql, args := t.ToSQL()
+		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t, a...), column})
 	}
@@ -160,18 +164,18 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 
 		if b.scope != nil {
 			var where string
-			sql, args := b.scope.ToSQL(b.table)
+			sql, args2 := b.scope.ToSQL(b.table)
 			sql, where = splitWhere(sql)
 			buf.WriteString(sql)
 			if where != "" {
-				fragment := newWhereFragment(where, args)
+				fragment := newWhereFragment(where, args2)
 				b.whereFragments = append(b.whereFragments, fragment)
 			}
 		}
 
 		if len(b.whereFragments) > 0 {
 			buf.WriteString(" WHERE ")
-			writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 
 		// if b.scope == nil {
@@ -196,17 +200,12 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 
 		if len(b.havingFragments) > 0 {
 			buf.WriteString(" HAVING ")
-			writeWhereFragmentsToSql(buf, b.havingFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, b.havingFragments, &args, &placeholderStartPos)
 		}
 
 		if len(b.orderBys) > 0 {
 			buf.WriteString(" ORDER BY ")
-			for i, s := range b.orderBys {
-				if i > 0 {
-					buf.WriteString(", ")
-				}
-				buf.WriteString(s)
-			}
+			writeCommaFragmentsToSQL(buf, b.orderBys, &args, &placeholderStartPos)
 		}
 
 		if b.limitValid {
@@ -223,11 +222,20 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 	if b.isParent {
 		buf.WriteString(`) as dat__item`)
 	}
-
 	return buf.String(), args
 }
 
-//// Copied form SelectBuilder
+//// Copied form SelectBuilder. Need to return an instance of SelectDocBuilder.
+
+// Columns adds additional select columns to the builder.
+func (b *SelectDocBuilder) Columns(columns ...string) *SelectDocBuilder {
+	if len(columns) == 0 || columns[0] == "" {
+		logger.Error("Select requires 1 or more columns")
+		return nil
+	}
+	b.columns = append(b.columns, columns...)
+	return b
+}
 
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectDocBuilder) Distinct() *SelectDocBuilder {
@@ -264,8 +272,8 @@ func (b *SelectDocBuilder) Scope(sql string, args ...interface{}) *SelectDocBuil
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
-func (b *SelectDocBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *SelectDocBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
@@ -276,14 +284,14 @@ func (b *SelectDocBuilder) GroupBy(group string) *SelectDocBuilder {
 }
 
 // Having appends a HAVING clause to the statement
-func (b *SelectDocBuilder) Having(whereSqlOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *SelectDocBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
-func (b *SelectDocBuilder) OrderBy(ord string) *SelectDocBuilder {
-	b.orderBys = append(b.orderBys, ord)
+func (b *SelectDocBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
+	b.orderBys = append(b.orderBys, newWhereFragment(whereSQLOrMap, args))
 	return b
 }
 

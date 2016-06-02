@@ -2,12 +2,15 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 
 	_ "github.com/lib/pq"
 	do "gopkg.in/godo.v2"
 )
 
 func tasks(p *do.Project) {
+	numCPU := runtime.NumCPU()
+
 	do.Env = `
 	DAT_DRIVER=postgres
 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
@@ -18,8 +21,8 @@ func tasks(p *do.Project) {
 	p.Task("createdb", nil, createdb).Description("Creates test database")
 
 	p.Task("test", nil, func(c *do.Context) {
-		c.Run(`go test -race`)
-		c.Run(`go test -race`, do.M{"$in": "sqlx-runner"})
+		c.Run(`GOMAXPROCS={{.numCPU}} go test -race`, do.M{"numCPU": numCPU})
+		c.Run(`GOMAXPROCS={{.numCPU}} go test -race`, do.M{"$in": "sqlx-runner", "numCPU": numCPU})
 	}).Src("**/*.go").
 		Desc("test with -race flag")
 
@@ -35,7 +38,7 @@ func tasks(p *do.Project) {
 	})
 
 	p.Task("test-one", nil, func(c *do.Context) {
-		c.Run(`LOGXI=* go test -run TestSelectDocDate`, do.M{"$in": "sqlx-runner"})
+		c.Run(`LOGXI=* go test -run TestTimeout`, do.M{"$in": "sqlx-runner"})
 	}).Src("*.go")
 
 	p.Task("allocs", nil, func(c *do.Context) {
@@ -77,25 +80,7 @@ func tasks(p *do.Project) {
 	})
 
 	p.Task("lint", nil, func(c *do.Context) {
-		c.Bash(`
-		echo Directory=.
-		golint
-
-		cd sqlx-runner
-		echo
-		echo Directory=sqlx-runner
-		golint
-
-		cd ../kvs
-		echo
-		echo Directory=kvs
-		golint
-
-		cd ../postgres
-		echo
-		echo Directory=postgres
-		golint
-		`)
+		c.Bash("gometalinter --deadline=2m -D gotype -D dupl ./...")
 	})
 
 	p.Task("mocks", nil, func(c *do.Context) {

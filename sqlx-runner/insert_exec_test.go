@@ -195,7 +195,7 @@ func TestInsertWhitelist(t *testing.T) {
 	assert.Equal(t, name, "Barack")
 }
 
-func TestInsertBlacklist(t *testing.T) {
+func TestInsertExecBlacklist(t *testing.T) {
 	// type Person struct {
 	// 	ID        int64          `db:"id"`
 	// 	Name      string         `db:"name"`

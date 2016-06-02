@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
+	guid "github.com/satori/go.uuid"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/kvs"
 )
@@ -48,10 +51,27 @@ func toOutputStr(args []interface{}) string {
 }
 
 func logSQLError(err error, msg string, statement string, args []interface{}) error {
-	if err != nil && err != sql.ErrNoRows {
-		logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+	// it might be possible for a query to finish in between ex.timeout expiring locally
+	// and before pg_cancel_backend executes on postgres server.
+	if pe, ok := err.(*pq.Error); ok {
+		if pe.Code == "57014" {
+			// dat initiates the cancellation of a query on timeout.  Coerce the error into
+			// a timedout error so the end user does not see a false error in the logs.
+			if strings.HasPrefix(statement, queryIDPrefix) {
+				return dat.ErrTimedout
+			}
+		}
+	} else if err == sql.ErrNoRows {
+		if dat.Strict {
+			return logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+		}
+		if logger.IsDebug() {
+			logger.Debug(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+		}
+		return err
 	}
-	return err
+
+	return logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 }
 
 func logExecutionTime(start time.Time, sql string, args []interface{}) {
@@ -74,55 +94,127 @@ func logExecutionTime(start time.Time, sql string, args []interface{}) {
 	}
 }
 
-// Exec executes the query built by builder.
-func exec(execer *Execer) (sql.Result, error) {
-	fullSQL, args, err := execer.builder.Interpolate()
+func (ex *Execer) exec() (sql.Result, error) {
+	if ex.timeout == 0 {
+		return ex.execFn()
+	}
+
+	ch := make(chan bool, 1)
+	var result sql.Result
+	var err error
+	go func() {
+		result, err = ex.execFn()
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return nil, ex.Cancel()
+		case <-ch:
+			return result, err
+		}
+	}
+}
+
+// execFn executes the query built by builder. Use execFn when data is not
+// to be returned.
+func (ex *Execer) execFn() (sql.Result, error) {
+	fullSQL, args, err := ex.Interpolate()
 	if err != nil {
-		logger.Error("exec.10", "err", err, "sql", fullSQL)
-		return nil, err
+		return nil, logger.Error("execFn.10", "err", err, "sql", fullSQL)
 	}
 	defer logExecutionTime(time.Now(), fullSQL, args)
 
 	var result sql.Result
-	if args == nil {
-		result, err = execer.database.Exec(fullSQL)
-	} else {
-		result, err = execer.database.Exec(fullSQL, args...)
-	}
+	result, err = ex.database.Exec(fullSQL, args...)
 	if err != nil {
-		return nil, logSQLError(err, "exec.30", fullSQL, args)
+		return nil, logSQLError(err, "execFn.30:"+fmt.Sprintf("%T", err), fullSQL, args)
 	}
 
 	return result, nil
 }
 
+// execSQL executes SQL. DO NOT add timeout logic here since this is called
+// by Cancel when a timeout occurs.
+func (ex *Execer) execSQL(fullSQL string, args []interface{}) (sql.Result, error) {
+	defer logExecutionTime(time.Now(), fullSQL, args)
+
+	var result sql.Result
+	var err error
+	result, err = ex.database.Exec(fullSQL, args...)
+	if err != nil {
+		return nil, logSQLError(err, "execSQL.30", fullSQL, args)
+	}
+
+	return result, nil
+}
+
+func (ex *Execer) query() (*sqlx.Rows, error) {
+	if ex.timeout == 0 {
+		return ex.queryFn()
+	}
+
+	ch := make(chan bool, 1)
+	var rows *sqlx.Rows
+	var err error
+	go func() {
+		rows, err = ex.queryFn()
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return nil, ex.Cancel()
+		case <-ch:
+			//logger.Error("doexec completed")
+			return rows, err
+		}
+	}
+}
+
 // Query delegates to the internal runner's Query.
-func query(execer *Execer) (*sqlx.Rows, error) {
-	fullSQL, args, err := execer.builder.Interpolate()
+func (ex *Execer) queryFn() (*sqlx.Rows, error) {
+	fullSQL, args, err := ex.Interpolate()
 	if err != nil {
 		return nil, err
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	var rows *sqlx.Rows
-	if args == nil {
-		rows, err = execer.database.Queryx(fullSQL)
-	} else {
-		rows, err = execer.database.Queryx(fullSQL, args...)
-	}
+	rows, err := ex.database.Queryx(fullSQL, args...)
 	if err != nil {
-		return nil, logSQLError(err, "query", fullSQL, args)
+		return nil, logSQLError(err, "queryFn.30", fullSQL, args)
 	}
 
 	return rows, nil
+}
+
+func (ex *Execer) queryScalar(destinations ...interface{}) error {
+	if ex.timeout == 0 {
+		return ex.queryScalarFn(destinations)
+	}
+
+	ch := make(chan bool, 1)
+	var err error
+	go func() {
+		err = ex.queryScalarFn(destinations)
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return ex.Cancel()
+		case <-ch:
+			return err
+		}
+	}
 }
 
 // QueryScan executes the query in builder and loads the resulting data into
 // one or more destinations.
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func queryScalar(execer *Execer, destinations ...interface{}) error {
-	fullSQL, args, blob, err := cacheOrSQL(execer)
+func (ex *Execer) queryScalarFn(destinations []interface{}) error {
+	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
 		return err
 	}
@@ -132,44 +224,59 @@ func queryScalar(execer *Execer, destinations ...interface{}) error {
 			return nil
 		}
 		// log it and fallthrough to let the query continue
-		logger.Warn("queryScalar.2: Could not unmarshal cache data. Continuing with query")
+		logger.Warn("queryScalarFn.10: Could not unmarshal cache data. Continuing with query")
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
 	// Run the query:
 	var rows *sqlx.Rows
-	if args == nil {
-		rows, err = execer.database.Queryx(fullSQL)
-	} else {
-		rows, err = execer.database.Queryx(fullSQL, args...)
-	}
+	rows, err = ex.database.Queryx(fullSQL, args...)
 	if err != nil {
-		return logSQLError(err, "QueryScalar.load_value.query", fullSQL, args)
+		return logSQLError(err, "queryScalarFn.12: querying database", fullSQL, args)
 	}
 
 	defer rows.Close()
 	if rows.Next() {
 		err = rows.Scan(destinations...)
 		if err != nil {
-			return logSQLError(err, "QueryScalar.load_value.scan", fullSQL, args)
+			return logSQLError(err, "queryScalarFn.14: scanning to destination", fullSQL, args)
 		}
-
-		setCache(execer, destinations, dtStruct)
-
+		ex.setCache(destinations, dtStruct)
 		return nil
 	}
 	if err := rows.Err(); err != nil {
-		return logSQLError(err, "QueryScalar.load_value.rows_err", fullSQL, args)
+		return logSQLError(err, "queryScalarFn.20: iterating through rows", fullSQL, args)
 	}
 
 	return dat.ErrNotFound
+}
+
+func (ex *Execer) querySlice(dest interface{}) error {
+	if ex.timeout == 0 {
+		return ex.querySliceFn(dest)
+	}
+
+	ch := make(chan bool, 1)
+	var err error
+	go func() {
+		err = ex.querySliceFn(dest)
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return ex.Cancel()
+		case <-ch:
+			return err
+		}
+	}
 }
 
 // QuerySlice executes the query in builder and loads the resulting data into a
 // slice of primitive values
 //
 // Returns ErrNotFound if no value was found, and it was therefore not set.
-func querySlice(execer *Execer, dest interface{}) error {
+func (ex *Execer) querySliceFn(dest interface{}) error {
 	// Validate the dest and reflection values we need
 
 	// This must be a pointer to a slice
@@ -195,7 +302,7 @@ func querySlice(execer *Execer, dest interface{}) error {
 		reflect.ValueOf(dest)
 	}
 
-	fullSQL, args, blob, err := cacheOrSQL(execer)
+	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
 		return err
 	}
@@ -209,12 +316,7 @@ func querySlice(execer *Execer, dest interface{}) error {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	var rows *sqlx.Rows
-	if args == nil {
-		rows, err = execer.database.Queryx(fullSQL)
-	} else {
-		rows, err = execer.database.Queryx(fullSQL, args...)
-	}
+	rows, err := ex.database.Queryx(fullSQL, args...)
 	if err != nil {
 		return logSQLError(err, "querySlice.load_all_values.query", fullSQL, args)
 	}
@@ -240,17 +342,38 @@ func querySlice(execer *Execer, dest interface{}) error {
 		return logSQLError(err, "querySlice.load_all_values.rows_err", fullSQL, args)
 	}
 
-	setCache(execer, dest, dtStruct)
+	ex.setCache(dest, dtStruct)
 
 	return nil
+}
+
+func (ex *Execer) queryStruct(dest interface{}) error {
+	if ex.timeout == 0 {
+		return ex.queryStructFn(dest)
+	}
+
+	ch := make(chan bool, 1)
+	var err error
+	go func() {
+		err = ex.queryStructFn(dest)
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return ex.Cancel()
+		case <-ch:
+			return err
+		}
+	}
 }
 
 // QueryStruct executes the query in builder and loads the resulting data into
 // a struct dest must be a pointer to a struct
 //
 // Returns ErrNotFound if nothing was found
-func queryStruct(execer *Execer, dest interface{}) error {
-	fullSQL, args, blob, err := cacheOrSQL(execer)
+func (ex *Execer) queryStructFn(dest interface{}) error {
+	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
 		return err
 	}
@@ -264,19 +387,34 @@ func queryStruct(execer *Execer, dest interface{}) error {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	if args == nil {
-		err = execer.database.Get(dest, fullSQL)
-	} else {
-		err = execer.database.Get(dest, fullSQL, args...)
-	}
+	err = ex.database.Get(dest, fullSQL, args...)
 	if err != nil {
-		logSQLError(err, "queryStruct.3", fullSQL, args)
-		return err
+		return logSQLError(err, "queryStruct.3", fullSQL, args)
 	}
 
-	setCache(execer, dest, dtStruct)
-
+	ex.setCache(dest, dtStruct)
 	return nil
+}
+
+func (ex *Execer) queryStructs(dest interface{}) error {
+	if ex.timeout == 0 {
+		return ex.queryStructsFn(dest)
+	}
+
+	ch := make(chan bool, 1)
+	var err error
+	go func() {
+		err = ex.queryStructsFn(dest)
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return ex.Cancel()
+		case <-ch:
+			return err
+		}
+	}
 }
 
 // QueryStructs executes the query in builderand loads the resulting data into
@@ -284,8 +422,8 @@ func queryStruct(execer *Execer, dest interface{}) error {
 //
 // Returns the number of items found (which is not necessarily the # of items
 // set)
-func queryStructs(execer *Execer, dest interface{}) error {
-	fullSQL, args, blob, err := cacheOrSQL(execer)
+func (ex *Execer) queryStructsFn(dest interface{}) error {
+	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
 		logger.Error("queryStructs.1: Could not convert to SQL", "err", err)
 		return err
@@ -300,16 +438,12 @@ func queryStructs(execer *Execer, dest interface{}) error {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	if args == nil {
-		err = execer.database.Select(dest, fullSQL)
-	} else {
-		err = execer.database.Select(dest, fullSQL, args...)
-	}
+	err = ex.database.Select(dest, fullSQL, args...)
 	if err != nil {
 		logSQLError(err, "queryStructs", fullSQL, args)
 	}
 
-	setCache(execer, dest, dtStruct)
+	ex.setCache(dest, dtStruct)
 	return err
 }
 
@@ -317,20 +451,45 @@ func queryStructs(execer *Execer, dest interface{}) error {
 // a struct, using json.Unmarshal().
 //
 // Returns ErrNotFound if nothing was found
-func queryJSONStruct(execer *Execer, dest interface{}) error {
-	blob, err := queryJSONBlob(execer, true)
+func (ex *Execer) queryJSONStruct(dest interface{}) error {
+	blob, err := ex.queryJSONBlob(true)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(blob, dest)
+	if blob != nil {
+		return json.Unmarshal(blob, dest)
+	}
+	return nil
+}
+
+func (ex *Execer) queryJSONBlob(single bool) ([]byte, error) {
+	if ex.timeout == 0 {
+		return ex.queryJSONBlobFn(single)
+	}
+
+	ch := make(chan bool, 1)
+	var err error
+	var b []byte
+	go func() {
+		b, err = ex.queryJSONBlobFn(single)
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return nil, ex.Cancel()
+		case <-ch:
+			return b, err
+		}
+	}
 }
 
 // queryJSONBlob executes the query in builder and loads the resulting data
 // into a blob. If a single item is to be returned, set single to true.
 //
 // Returns ErrNotFound if nothing was found
-func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
-	fullSQL, args, blob, err := cacheOrSQL(execer)
+func (ex *Execer) queryJSONBlobFn(single bool) ([]byte, error) {
+	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
 		return nil, err
 	}
@@ -339,13 +498,7 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	var rows *sqlx.Rows
-	// Run the query:
-	if args == nil {
-		rows, err = execer.database.Queryx(fullSQL)
-	} else {
-		rows, err = execer.database.Queryx(fullSQL, args...)
-	}
+	rows, err := ex.database.Queryx(fullSQL, args...)
 	if err != nil {
 		return nil, logSQLError(err, "queryJSONStructs", fullSQL, args)
 	}
@@ -398,7 +551,7 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 	}
 
 	blob = buf.Bytes()
-	setCache(execer, blob, dtBytes)
+	ex.setCache(blob, dtBytes)
 	return blob, nil
 }
 
@@ -406,41 +559,45 @@ func queryJSONBlob(execer *Execer, single bool) ([]byte, error) {
 // a struct, using json.Unmarshal().
 //
 // Returns ErrNotFound if nothing was found
-func queryJSONStructs(execer *Execer, dest interface{}) error {
-	blob, err := queryJSONBlob(execer, false)
+func (ex *Execer) queryJSONStructs(dest interface{}) error {
+	blob, err := ex.queryJSONBlob(false)
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(blob, dest)
+	if blob != nil {
+		return json.Unmarshal(blob, dest)
+	}
+	return nil
 }
 
 // cacheOrSQL attempts to get a valeu from cache, otherwise it builds
 // the SQL and args to be executed. If value = "" then the SQL is built.
-func cacheOrSQL(execer *Execer) (sql string, args []interface{}, value []byte, err error) {
+// Returns sql, args, value, err.
+func (ex *Execer) cacheOrSQL() (string, []interface{}, []byte, error) {
 	// if a cacheID exists, return the value ASAP
-	if Cache != nil && execer.cacheTTL > 0 && execer.cacheID != "" && !execer.cacheInvalidate {
-		v, err := Cache.Get(execer.cacheID)
+	if Cache != nil && ex.cacheTTL > 0 && ex.cacheID != "" && !ex.cacheInvalidate {
+		v, err := Cache.Get(ex.cacheID)
 		//logger.Warn("DBG cacheOrSQL.1 getting by id", "id", execer.cacheID, "v", v, "err", err)
 		if err != nil && err != kvs.ErrNotFound {
-			logger.Error("Unable to read cache key. Continuing with query", "key", execer.cacheID, "err", err)
+			logger.Error("Unable to read cache key. Continuing with query", "key", ex.cacheID, "err", err)
 		} else if v != "" {
 			//logger.Warn("DBG cacheOrSQL.11 HIT", "v", v)
 			return "", nil, []byte(v), nil
 		}
 	}
 
-	fullSQL, args, err := execer.builder.Interpolate()
+	fullSQL, args, err := ex.Interpolate()
 	if err != nil {
 		return "", nil, nil, err
 	}
 
 	// if there is no cacheID, use the checksum of SQL as the ID
-	if Cache != nil && execer.cacheTTL > 0 && execer.cacheID == "" {
+	if Cache != nil && ex.cacheTTL > 0 && ex.cacheID == "" {
 		// this must be set for setCache() to work below
-		execer.cacheID = kvs.Hash(fullSQL)
+		ex.cacheID = kvs.Hash(fullSQL)
 
-		if !execer.cacheInvalidate {
-			v, err := Cache.Get(execer.cacheID)
+		if !ex.cacheInvalidate {
+			v, err := Cache.Get(ex.cacheID)
 			//logger.Warn("DBG cacheOrSQL.2 getting by hash", "hash", execer.cacheID, "v", v, "err", err)
 			if v != "" && (err == nil || err != kvs.ErrNotFound) {
 				//logger.Warn("DBG cacheOrSQL.22 HIT")
@@ -462,8 +619,8 @@ const (
 // is set as a side-effect of calling cacheOrSQL function above if
 // execer.cacheID is not set. data must be a string or a value that
 // can be json.Marshal'ed to string.
-func setCache(execer *Execer, data interface{}, dataType int) {
-	if Cache == nil || execer.cacheTTL < 1 {
+func (ex *Execer) setCache(data interface{}, dataType int) {
+	if Cache == nil || ex.cacheTTL < 1 {
 		return
 	}
 
@@ -472,10 +629,10 @@ func setCache(execer *Execer, data interface{}, dataType int) {
 	case dtStruct:
 		b, err := json.Marshal(data)
 		if err != nil {
-			logger.Warn("Could not marshal data, clearing", "key", execer.cacheID, "err", err)
-			err = Cache.Del(execer.cacheID)
+			logger.Warn("Could not marshal data, clearing", "key", ex.cacheID, "err", err)
+			err = Cache.Del(ex.cacheID)
 			if err != nil {
-				logger.Error("Could not delete cache key", "key", execer.cacheID, "err", err)
+				logger.Error("Could not delete cache key", "key", ex.cacheID, "err", err)
 			}
 			return
 		}
@@ -487,9 +644,32 @@ func setCache(execer *Execer, data interface{}, dataType int) {
 	}
 
 	//logger.Warn("DBG setting cache", "key", execer.cacheID, "data", string(b), "ttl", execer.cacheTTL)
-	err := Cache.Set(execer.cacheID, s, execer.cacheTTL)
+	err := Cache.Set(ex.cacheID, s, ex.cacheTTL)
 	if err != nil {
 		logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
+	}
+}
+
+func (ex *Execer) queryJSON() ([]byte, error) {
+	if ex.timeout == 0 {
+		return ex.queryJSONFn()
+	}
+
+	ch := make(chan bool, 1)
+	var err error
+	var b []byte
+	go func() {
+		b, err = ex.queryJSONFn()
+		ch <- true
+	}()
+	for {
+		select {
+		case <-time.After(ex.timeout):
+			return nil, ex.Cancel()
+		case <-ch:
+			//logger.Error("doexec completed")
+			return b, err
+		}
 	}
 }
 
@@ -497,8 +677,8 @@ func setCache(execer *Execer, data interface{}, dataType int) {
 // a bytes slice compatible.
 //
 // Returns ErrNotFound if nothing was found
-func queryJSON(execer *Execer) ([]byte, error) {
-	fullSQL, args, blob, err := cacheOrSQL(execer)
+func (ex *Execer) queryJSONFn() ([]byte, error) {
+	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
 		return nil, err
 	}
@@ -509,16 +689,11 @@ func queryJSON(execer *Execer) ([]byte, error) {
 	defer logExecutionTime(time.Now(), fullSQL, args)
 	jsonSQL := fmt.Sprintf("SELECT TO_JSON(ARRAY_AGG(__datq.*)) FROM (%s) AS __datq", fullSQL)
 
-	if args == nil {
-		err = execer.database.Get(&blob, jsonSQL)
-	} else {
-		err = execer.database.Get(&blob, jsonSQL, args...)
-	}
+	err = ex.database.Get(&blob, jsonSQL, args...)
 	if err != nil {
 		logSQLError(err, "queryJSON", jsonSQL, args)
 	}
-
-	setCache(execer, blob, dtBytes)
+	ex.setCache(blob, dtBytes)
 
 	return blob, err
 }
@@ -527,10 +702,18 @@ func queryJSON(execer *Execer) ([]byte, error) {
 // an object agreeable with json.Unmarshal.
 //
 // Returns ErrNotFound if nothing was found
-func queryObject(execer *Execer, dest interface{}) error {
-	blob, err := queryJSON(execer)
+func (ex *Execer) queryObject(dest interface{}) error {
+	blob, err := ex.queryJSON()
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(blob, dest)
+	if blob != nil {
+		return json.Unmarshal(blob, dest)
+	}
+	return nil
+}
+
+// uuid generates a UUID.
+func uuid() string {
+	return fmt.Sprintf("%s", guid.NewV4())
 }

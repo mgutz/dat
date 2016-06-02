@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/mgutz/logxi/v1"
+
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/kvs"
 	"gopkg.in/mgutz/dat.v1/postgres"
@@ -20,6 +22,7 @@ func init() {
 	sqlDB = realDb()
 	testDB = NewDB(sqlDB, "postgres")
 	dat.Strict = false
+	log.Suppress(true)
 
 	Cache = kvs.NewMemoryKeyValueStore(1 * time.Second)
 	//Cache, _ = kvs.NewDefaultRedisStore()

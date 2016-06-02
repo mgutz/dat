@@ -58,8 +58,8 @@ func TestUpsertSQLReturning(t *testing.T) {
 
 func TestUpsertSQLRecord(t *testing.T) {
 	var rec = struct {
-		B int
-		C int
+		B int `db:"b"`
+		C int `db:"c"`
 	}{1, 2}
 
 	sql, args := Upsert("tab").

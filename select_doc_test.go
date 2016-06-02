@@ -156,3 +156,54 @@ func TestDocDistinctOn(t *testing.T) {
 	assert.Equal(t, stripWS(expected), stripWS(sql))
 	assert.Exactly(t, args, []interface{}{1, "published"})
 }
+
+func TestNestedSelecDocWhere(t *testing.T) {
+	user := SelectDoc("id", "user_name").
+		Many("comments", `SELECT * FROM comments WHERE id = u.id`).
+		From("users u").
+		Where("u.id = $1", 1)
+
+	sql, args := SelectDoc("id").
+		One("user", user).
+		From(`games`).
+		Where(`id = $1`, 10).
+		ToSQL()
+
+	expected := `
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT id,
+				(
+					SELECT row_to_json(dat__user.*)
+					FROM (
+						SELECT id, user_name,
+							(
+								SELECT array_agg(dat__comments.*)
+								FROM (SELECT * FROM comments WHERE id = u.id)
+								AS dat__comments
+							) AS "comments"
+						FROM users u
+						WHERE (u.id = $1)
+					) AS dat__user
+				) AS "user"
+			FROM games
+			WHERE (id = $2)
+		) as dat__item
+	`
+	assert.Equal(t, stripWS(expected), stripWS(sql))
+	assert.Exactly(t, args, []interface{}{1, 10})
+}
+
+func TestSelectDocColumns(t *testing.T) {
+	sql, args := SelectDoc("id, user_name").
+		From("users").
+		Columns("created_at").
+		ToSQL()
+	assert.Equal(t, stripWS(`
+		SELECT row_to_json(dat__item.*)
+		FROM (
+			SELECT id, user_name, created_at
+			FROM users
+		) as dat__item`), stripWS(sql))
+	assert.Nil(t, args)
+}

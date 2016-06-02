@@ -1,3 +1,14 @@
+## v1.next
+
+Timeouts per query. If a timeout occurs, then the query will be cancelled through
+`pg_cancel_backend`
+
+```go
+err := DB.Select("SELECT pg_sleep(1)").Timeout(1 * time.Millisecond).Exec()
+err ==  dat.ErrTimedout
+```
+
+
 ## v1.1.0
 
 *   [Caching](https://github.com/mgutz/dat#caching) - caching with Redis or (in-memory for testing)

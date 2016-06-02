@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
+
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
@@ -45,4 +47,12 @@ func TestNullBoolFrom(t *testing.T) {
 
 	assert.True(t, n.Valid)
 	assert.Equal(t, n.Bool, v)
+}
+
+func TestInvalidNullTime(t *testing.T) {
+	n := NullTime{pq.NullTime{Valid: false}}
+
+	assert.False(t, n.Valid)
+	var when time.Time
+	assert.Equal(t, n.Time, when)
 }
