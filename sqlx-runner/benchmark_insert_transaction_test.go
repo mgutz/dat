@@ -15,32 +15,32 @@ func BenchmarkTransactedDat2(b *testing.B) {
 	benchmarkTransactedDatN(b, 1, 2)
 }
 
-func BenchmarkTransactedSql2(b *testing.B) {
-	benchmarkTransactedSqlN(b, 1, 2)
+func BenchmarkTransactedSQL2(b *testing.B) {
+	benchmarkTransactedSQLN(b, 1, 2)
 }
 
 func BenchmarkTransactedDat4(b *testing.B) {
 	benchmarkTransactedDatN(b, 1, 4)
 }
 
-func BenchmarkTransactedSql4(b *testing.B) {
-	benchmarkTransactedSqlN(b, 1, 4)
+func BenchmarkTransactedSQL4(b *testing.B) {
+	benchmarkTransactedSQLN(b, 1, 4)
 }
 
 func BenchmarkTransactedDat8(b *testing.B) {
 	benchmarkTransactedDatN(b, 2, 4)
 }
 
-func BenchmarkTransactedSql8(b *testing.B) {
-	benchmarkTransactedSqlN(b, 2, 4)
+func BenchmarkTransactedSQL8(b *testing.B) {
+	benchmarkTransactedSQLN(b, 2, 4)
 }
 
 func BenchmarkTransactedDat64(b *testing.B) {
 	benchmarkTransactedDatN(b, 16, 4)
 }
 
-func BenchmarkTransactedSql64(b *testing.B) {
-	benchmarkTransactedSqlN(b, 16, 4)
+func BenchmarkTransactedSQL64(b *testing.B) {
+	benchmarkTransactedSQLN(b, 16, 4)
 }
 
 func benchmarkTransactedDatN(b *testing.B, rows int, argc int) {
@@ -70,7 +70,7 @@ func benchmarkTransactedDatN(b *testing.B, rows int, argc int) {
 	}
 }
 
-func benchmarkTransactedSqlN(b *testing.B, rows int, argc int) {
+func benchmarkTransactedSQLN(b *testing.B, rows int, argc int) {
 	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)
 	if err != nil {
@@ -94,7 +94,7 @@ func benchmarkTransactedSqlN(b *testing.B, rows int, argc int) {
 	}
 }
 
-func benchmarkTransactedSqlxN(b *testing.B, rows int, argc int) {
+func benchmarkTransactedSQLxN(b *testing.B, rows int, argc int) {
 	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)
 	if err != nil {

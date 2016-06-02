@@ -21,7 +21,8 @@ $$ LANGUAGE plpgsql;
 
 	var sum int
 	var prod int
-	testDB.SQL(`select * from rows_table(1, 2)`).QueryScalar(&sum, &prod)
+	err := testDB.SQL(`select * from rows_table(1, 2)`).QueryScalar(&sum, &prod)
+	assert.NoError(t, err)
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }
@@ -40,7 +41,8 @@ $$ LANGUAGE plpgsql;
 
 	var sum int
 	var prod int
-	testDB.SQL(`select * from row_out(1, 2)`).QueryScalar(&prod, &sum)
+	err := testDB.SQL(`select * from row_out(1, 2)`).QueryScalar(&prod, &sum)
+	assert.NoError(t, err)
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }
@@ -85,7 +87,8 @@ $$ LANGUAGE plpgsql;
 
 	var sum int
 	var prod int
-	testDB.Call("rows_table", 1, 2).QueryScalar(&sum, &prod)
+	err := testDB.Call("rows_table", 1, 2).QueryScalar(&sum, &prod)
+	assert.NoError(t, err)
 	assert.Equal(t, sum, 3)
 	assert.Equal(t, prod, 2)
 }

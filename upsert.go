@@ -204,7 +204,7 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}) {
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
-func (b *UpsertBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *UpsertBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *UpsertBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *UpsertBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }

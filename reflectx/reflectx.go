@@ -34,7 +34,8 @@ type StructMap struct {
 	Paths map[string]*FieldInfo
 	Names map[string]*FieldInfo
 
-	// MG: ordered by struct declaration
+	// mgutz: ordered by struct tag declaration index (workaround for string
+	// comparison of generated SQL tests)
 	DeclaredNames []string
 }
 
@@ -329,7 +330,7 @@ func getMapping(t reflect.Type, tagName string, mapFunc, tagMapFunc func(string)
 			}
 
 			// skip unexported fields
-			if len(f.PkgPath) != 0 {
+			if len(f.PkgPath) != 0 && !f.Anonymous {
 				continue
 			}
 
@@ -364,15 +365,15 @@ func getMapping(t reflect.Type, tagName string, mapFunc, tagMapFunc func(string)
 
 	flds := &StructMap{Index: m, Tree: root, Paths: map[string]*FieldInfo{}, Names: map[string]*FieldInfo{}}
 	for _, fi := range flds.Index {
-		// MG: use only the first found tag column in BFS
+		// mgutz: use only the first found tag column in BFS
 		if flds.Paths[fi.Path] != nil {
 			continue
 		}
 
 		flds.Paths[fi.Path] = fi
 		if fi.Name != "" && !fi.Embedded {
-			flds.DeclaredNames = append(flds.DeclaredNames, fi.Path) // MG
 			flds.Names[fi.Path] = fi
+			flds.DeclaredNames = append(flds.DeclaredNames, fi.Path) // mgutz
 		}
 	}
 

@@ -17,7 +17,7 @@ func BenchmarkVaryingLengthDatBinary128(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlBinary128(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 128, 0)
+	benchmarkVaryingLengthSQLN(b, 128, 0)
 }
 
 func BenchmarkVaryingLengthDatBinary512(b *testing.B) {
@@ -25,7 +25,7 @@ func BenchmarkVaryingLengthDatBinary512(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlBinary512(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 512, 0)
+	benchmarkVaryingLengthSQLN(b, 512, 0)
 }
 
 func BenchmarkVaryingLengthDatBinary4K(b *testing.B) {
@@ -33,7 +33,7 @@ func BenchmarkVaryingLengthDatBinary4K(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlBinary4K(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 4096, 0)
+	benchmarkVaryingLengthSQLN(b, 4096, 0)
 }
 
 func BenchmarkVaryingLengthDatBinary8K(b *testing.B) {
@@ -41,7 +41,7 @@ func BenchmarkVaryingLengthDatBinary8K(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlBinary8K(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 8*1024, 0)
+	benchmarkVaryingLengthSQLN(b, 8*1024, 0)
 }
 
 func BenchmarkVaryingLengthDatText128(b *testing.B) {
@@ -49,7 +49,7 @@ func BenchmarkVaryingLengthDatText128(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlText128(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 0, 128)
+	benchmarkVaryingLengthSQLN(b, 0, 128)
 }
 
 func BenchmarkVaryingLengthDatText512(b *testing.B) {
@@ -57,7 +57,7 @@ func BenchmarkVaryingLengthDatText512(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlText512(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 0, 512)
+	benchmarkVaryingLengthSQLN(b, 0, 512)
 }
 
 func BenchmarkVaryingLengthDatText4K(b *testing.B) {
@@ -65,7 +65,7 @@ func BenchmarkVaryingLengthDatText4K(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlText4K(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 0, 4096)
+	benchmarkVaryingLengthSQLN(b, 0, 4096)
 }
 
 func BenchmarkVaryingLengthDatText8K(b *testing.B) {
@@ -73,7 +73,7 @@ func BenchmarkVaryingLengthDatText8K(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlText8K(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 0, 8*1024)
+	benchmarkVaryingLengthSQLN(b, 0, 8*1024)
 }
 
 func BenchmarkVaryingLengthDatText64K(b *testing.B) {
@@ -81,7 +81,7 @@ func BenchmarkVaryingLengthDatText64K(b *testing.B) {
 }
 
 func BenchmarkVaryingLengthSqlText64K(b *testing.B) {
-	benchmarkVaryingLengthSqlN(b, 0, 64*1024)
+	benchmarkVaryingLengthSQLN(b, 0, 64*1024)
 }
 
 func benchmarkVaryingLengthDatN(b *testing.B, maxBytes int, maxText int) {
@@ -105,7 +105,7 @@ func benchmarkVaryingLengthDatN(b *testing.B, maxBytes int, maxText int) {
 	}
 }
 
-func benchmarkVaryingLengthSqlN(b *testing.B, maxBytes int, maxText int) {
+func benchmarkVaryingLengthSQLN(b *testing.B, maxBytes int, maxText int) {
 	benchReset()
 	builder, err := benchInsertVaryingLengthBuilder(maxBytes, maxText)
 	if err != nil {

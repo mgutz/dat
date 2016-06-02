@@ -17,4 +17,9 @@ var (
 	ErrInvalidValue = errors.New("trying to interpolate invalid value into query")
 	// ErrArgumentMismatch ...
 	ErrArgumentMismatch = errors.New("mismatch between ? (placeholders) and arguments")
+	// ErrTimedout occurs when a query times out.
+	ErrTimedout = errors.New("query timed out")
+	// ErrInvalidOperation occurs when an invalid operation occurs like cancelling
+	// an operation without a procPID.
+	ErrInvalidOperation = errors.New("invalid operation")
 )

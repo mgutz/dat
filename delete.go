@@ -6,7 +6,6 @@ type DeleteBuilder struct {
 
 	table          string
 	whereFragments []*whereFragment
-	id             int
 	isInterpolated bool
 	scope          Scope
 }

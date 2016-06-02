@@ -29,10 +29,6 @@ type Tx struct {
 	IsRollbacked bool
 	state        int
 	stateStack   []int
-
-	// groupID is a unique ID used to log a group of queries
-	// within a transaction
-	groupID int64
 }
 
 // WrapSqlxTx creates a Tx from a sqlx.Tx
@@ -52,6 +48,9 @@ func WrapSqlxTx(tx *sqlx.Tx) *Tx {
 func (db *DB) Begin() (*Tx, error) {
 	tx, err := db.DB.Beginx()
 	if err != nil {
+		if dat.Strict {
+			logger.Fatal("Could not create transaction")
+		}
 		return nil, logger.Error("begin.error", err)
 	}
 	logger.Debug("begin tx")

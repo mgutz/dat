@@ -1,5 +1,5 @@
-hash: f90b0621c510aff0787fb569777cae05da07946e5c1145bec1d113644f98ea26
-updated: 2016-05-25T11:38:20.40701756-07:00
+hash: 5a05f6f0251efcf7bdf147fdf1a112ec9f041e07992205c32e11871838e31aef
+updated: 2016-05-27T21:12:32.287971295-07:00
 imports:
 - name: github.com/cenkalti/backoff
   version: c29158af31815ccc31ca29c86c121bc39e00d3d8
@@ -24,6 +24,10 @@ imports:
   version: 56b76bdf51f7708750eac80fa38b952bb9f32639
 - name: github.com/mgutz/ansi
   version: c286dcecd19ff979eeb73ea444e479b903f2cfcb
+- name: github.com/mgutz/jo
+  version: 0b027231853f934a4fe43d82d269c16adc54a225
+  subpackages:
+  - v1
 - name: github.com/mgutz/logxi
   version: 7d364cab682d1b7b9063a3293c9e8c3087194940
   subpackages:
@@ -40,6 +44,8 @@ imports:
   version: d9b45f19996c645d38c9266d1f5cf1990e930119
 - name: github.com/pmylund/go-cache
   version: 1881a9bccb818787f68c52bfba648c6cf34c34fa
+- name: github.com/satori/go.uuid
+  version: f9ab0dce87d815821e221626b772e3475a0d2749
 - name: golang.org/x/crypto
   version: 5bcd134fee4dd1475da17714aac19c0aa0142e2f
   subpackages:

@@ -16,7 +16,7 @@ func newRedisPool(host, password string) *redis.Pool {
 				return nil, err
 			}
 			if password != "" {
-				if _, err := c.Do("AUTH", password); err != nil {
+				if _, err = c.Do("AUTH", password); err != nil {
 					c.Close()
 					return nil, err
 				}
@@ -44,7 +44,7 @@ func NewRedisStore(ns string, host string, password string) (*RedisStore, error)
 	return NewRedisStoreFromPool(ns, pool), nil
 }
 
-// NewRedisStore creates a new instance of RedisTokenStore from an existing pool.
+// NewRedisStoreFromPool creates a new instance of RedisTokenStore from an existing pool.
 func NewRedisStoreFromPool(ns string, pool *redis.Pool) *RedisStore {
 	return &RedisStore{ns: ns + ":", pool: pool}
 }

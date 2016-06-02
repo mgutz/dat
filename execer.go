@@ -12,7 +12,10 @@ type Result struct {
 // Execer is any object that executes and queries SQL.
 type Execer interface {
 	Cache(id string, ttl time.Duration, invalidate bool) Execer
+	Timeout(time.Duration) Execer
+	Interpolate() (string, []interface{}, error)
 	Exec() (*Result, error)
+
 	QueryScalar(destinations ...interface{}) error
 	QuerySlice(dest interface{}) error
 	QueryStruct(dest interface{}) error
@@ -35,8 +38,16 @@ func (nop *panicExecer) Cache(id string, ttl time.Duration, invalidate bool) Exe
 	panic(panicExecerMsg)
 }
 
+func (nop *panicExecer) Timeout(time.Duration) Execer {
+	panic(panicExecerMsg)
+}
+
 // Exec panics when Exec is called.
 func (nop *panicExecer) Exec() (*Result, error) {
+	panic(panicExecerMsg)
+}
+
+func (nop *panicExecer) Interpolate() (string, []interface{}, error) {
 	panic(panicExecerMsg)
 }
 

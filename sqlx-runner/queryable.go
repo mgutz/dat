@@ -51,6 +51,9 @@ func (q *Queryable) Exec(cmd string, args ...interface{}) (*dat.Result, error) {
 		return nil, logSQLError(err, "Exec", cmd, args)
 	}
 	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, logSQLError(err, "Exec", cmd, args)
+	}
 	return &dat.Result{RowsAffected: rowsAffected}, nil
 }
 

@@ -186,7 +186,7 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}) {
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
-func (b *InsectBuilder) Where(whereSqlOrMap interface{}, args ...interface{}) *InsectBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSqlOrMap, args))
+func (b *InsectBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *InsectBuilder {
+	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
 	return b
 }

@@ -40,8 +40,6 @@ func isFloat(k reflect.Kind) bool {
 //   - booleans
 //   - times
 var typeOfTime = reflect.TypeOf(time.Time{})
-var typeOfUnsafeString = reflect.TypeOf(UnsafeString(""))
-var typeOfBytes = reflect.TypeOf([]byte{})
 
 // Interpolate takes a SQL string with placeholders and a list of arguments to
 // replace them with. Returns a blank string and error if the number of placeholders
@@ -241,13 +239,13 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 		return nil
 	}
 
-	lenSql := len(sql)
+	lenSQL := len(sql)
 	done := false
 	for i, r := range sql {
 		if accumulateDigits {
 			if '0' <= r && r <= '9' {
 				digits.WriteRune(r)
-				if i < lenSql-1 {
+				if i < lenSQL-1 {
 					continue
 				}
 				// last rune is part of a placeholder, fallthrough
@@ -289,12 +287,4 @@ func interpolate(builder Builder) (string, []interface{}, error) {
 		return Interpolate(sql, args)
 	}
 	return sql, args, nil
-}
-
-func mustInterpolate(builder Builder) (string, []interface{}) {
-	sql, args, err := interpolate(builder)
-	if err != nil {
-		logger.Error("mustInterpolate", "err", err, "sql", sql)
-	}
-	return sql, args
 }

@@ -40,13 +40,14 @@ func TestUpdateReal(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	s.InsertInto("people").Columns("name", "email").
+	err := s.InsertInto("people").Columns("name", "email").
 		Values("George", "george@whitehouse.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	// Rename our George to Barack
-	_, err := s.Update("people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id).Exec()
+	_, err = s.Update("people").SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).Where("id = $1", id).Exec()
 
 	assert.NoError(t, err)
 
@@ -170,16 +171,17 @@ func TestUpdateScope(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	s.InsertInto("people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Scope", "scope@foo.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	scope := dat.NewScope("WHERE id = :id", dat.M{"id": 1000})
 
 	// Rename our George to Barack
-	_, err := s.
+	_, err = s.
 		Update("people").
 		SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).
 		ScopeMap(scope, dat.M{"id": id}).
@@ -203,16 +205,17 @@ func TestUpdateScopeFunc(t *testing.T) {
 
 	var id int64
 	// Insert a George
-	s.InsertInto("people").
+	err := s.InsertInto("people").
 		Columns("name", "email").
 		Values("Scope", "scope@foo.gov").
 		Returning("id").
 		QueryScalar(&id)
+	assert.NoError(t, err)
 
 	scope := `WHERE id = $1`
 
 	// Rename our George to Barack
-	_, err := s.
+	_, err = s.
 		Update("people").
 		SetMap(map[string]interface{}{"name": "Barack", "email": "barack@whitehouse.gov"}).
 		Scope(scope, id).

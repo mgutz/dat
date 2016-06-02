@@ -14,7 +14,7 @@ func BenchmarkBuildExecSQLDat2(b *testing.B) {
 }
 
 func BenchmarkBuildExecSQLSql2(b *testing.B) {
-	benchmarkBuildInsertSqlN(b, 1, 2)
+	benchmarkBuildInsertSQLN(b, 1, 2)
 }
 
 func BenchmarkBuildExecSQLDat4(b *testing.B) {
@@ -22,7 +22,7 @@ func BenchmarkBuildExecSQLDat4(b *testing.B) {
 }
 
 func BenchmarkBuildExecSQLSql4(b *testing.B) {
-	benchmarkBuildInsertSqlN(b, 1, 4)
+	benchmarkBuildInsertSQLN(b, 1, 4)
 }
 
 func BenchmarkBuildExecSQLDat8(b *testing.B) {
@@ -30,7 +30,7 @@ func BenchmarkBuildExecSQLDat8(b *testing.B) {
 }
 
 func BenchmarkBuildExecSQLSql8(b *testing.B) {
-	benchmarkBuildInsertSqlN(b, 2, 4)
+	benchmarkBuildInsertSQLN(b, 2, 4)
 }
 
 func BenchmarkBuildExecSQLDat64(b *testing.B) {
@@ -38,7 +38,7 @@ func BenchmarkBuildExecSQLDat64(b *testing.B) {
 }
 
 func BenchmarkBuildExecSQLSql64(b *testing.B) {
-	benchmarkBuildInsertSqlN(b, 16, 4)
+	benchmarkBuildInsertSQLN(b, 16, 4)
 }
 
 func benchmarkBuildInsertDatN(b *testing.B, rows int, argc int) {
@@ -65,7 +65,7 @@ func benchmarkBuildInsertDatN(b *testing.B, rows int, argc int) {
 	}
 }
 
-func benchmarkBuildInsertSqlN(b *testing.B, rows int, argc int) {
+func benchmarkBuildInsertSQLN(b *testing.B, rows int, argc int) {
 	benchReset()
 	builder, err := benchInsertBuilder(rows, argc)
 	if err != nil {

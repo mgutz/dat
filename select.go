@@ -163,11 +163,11 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 	var placeholderStartPos int64 = 1
 	if b.scope != nil {
 		var where string
-		sql, args := b.scope.ToSQL(b.table)
+		sql, args2 := b.scope.ToSQL(b.table)
 		sql, where = splitWhere(sql)
 		buf.WriteString(sql)
 		if where != "" {
-			fragment := newWhereFragment(where, args)
+			fragment := newWhereFragment(where, args2)
 			b.whereFragments = append(b.whereFragments, fragment)
 		}
 	}
