@@ -9,6 +9,8 @@ import (
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
+type varargs []interface{}
+
 func init() {
 	Dialect = postgres.New()
 }
