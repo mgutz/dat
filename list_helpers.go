@@ -1,7 +1,7 @@
 package dat
 
 import (
-	"gopkg.in/mgutz/dat.v1/common"
+	"gopkg.in/mgutz/dat.v2/common"
 )
 
 var bufPool = common.NewBufferPool()
@@ -11,12 +11,12 @@ func writeIdentifiers(buf common.BufferWriter, columns []string, join string) {
 		if i > 0 {
 			buf.WriteString(join)
 		}
-		Dialect.WriteIdentifier(buf, column)
+		buf.WriteString(column)
 	}
 }
 
 func writeIdentifier(buf common.BufferWriter, name string) {
-	Dialect.WriteIdentifier(buf, name)
+	buf.WriteString(name)
 }
 
 func buildPlaceholders(buf common.BufferWriter, start, length int) {

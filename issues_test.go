@@ -28,7 +28,7 @@ func TestIssue26(t *testing.T) {
 			Where("id = $1", customer.ID).
 			Returning("updated_at").ToSQL()
 
-	assert.Equal(t, sql, `UPDATE "customers" SET "first" = $1, "last" = $2 WHERE (id = $3) RETURNING "updated_at"`)
+	assert.Equal(t, sql, `UPDATE customers SET first = $1, last = $2 WHERE (id = $3) RETURNING updated_at`)
 	assert.Exactly(t, args, []interface{}{"", "", int64(0)})
 }
 
@@ -45,12 +45,12 @@ func TestIssue29(t *testing.T) {
 // TestIssue46 schemas not supported
 func TestIssue46(t *testing.T) {
 	// problem with UPDATE hello.world HW
-	sql, args := Update("hello.world HW").Set("name", "John Doe").Where("id = $1", 23).ToSQL()
-	assert.Equal(t, stripWS(`UPDATE "hello"."world" SET "name"=$1 WHERE (id=$2)`), stripWS(sql))
+	sql, args := Update("public.world pw").Set("pw.name", "John Doe").Where("pw.id = $1", 23).ToSQL()
+	assert.Equal(t, stripWS(`UPDATE public.world pw SET pw.name=$1 WHERE (pw.id=$2)`), stripWS(sql))
 	assert.Exactly(t, []interface{}{"John Doe", 23}, args)
 
 	sql, args = Select("id").From("public.table").ToSQL()
-	assert.Equal(t, stripWS(`SELECT id FROM "public"."table"`), stripWS(sql))
+	assert.Equal(t, stripWS(`SELECT id FROM public.table`), stripWS(sql))
 	assert.Nil(t, args)
 
 	// raw SQL should not escape anything

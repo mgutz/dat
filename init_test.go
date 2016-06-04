@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1/postgres"
+	"gopkg.in/mgutz/dat.v2/postgres"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
@@ -27,7 +27,7 @@ func quoteSQL(sqlFmt string, cols ...string) string {
 
 func quoteColumn(column string) string {
 	var buffer bytes.Buffer
-	Dialect.WriteIdentifier(&buffer, column)
+	writeIdentifier(&buffer, column)
 	return buffer.String()
 }
 

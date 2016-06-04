@@ -208,7 +208,7 @@ func TestSelectVarieties(t *testing.T) {
 func TestSelectScope(t *testing.T) {
 	scope := NewScope("WHERE :TABLE.id = :id and name = :name", M{"id": 1, "name": "foo"})
 	sql, args := Select("a").From("b").ScopeMap(scope, M{"name": "mario"}).ToSQL()
-	assert.Equal(t, `SELECT a FROM b WHERE ( "b".id = $1 and name = $2)`, sql)
+	assert.Equal(t, `SELECT a FROM b WHERE ( b.id = $1 and name = $2)`, sql)
 	assert.Exactly(t, args, []interface{}{1, "mario"})
 }
 

@@ -154,7 +154,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 	var args []interface{}
 
 	buf.WriteString("UPDATE ")
-	writeIdentifier(buf, b.table)
+	buf.WriteString(b.table)
 	buf.WriteString(" SET ")
 
 	var placeholderStartPos int64 = 1
@@ -164,7 +164,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		if i > 0 {
 			buf.WriteString(", ")
 		}
-		Dialect.WriteIdentifier(buf, c.column)
+		writeIdentifier(buf, c.column)
 		if e, ok := c.value.(*Expression); ok {
 			start := placeholderStartPos
 			buf.WriteString(" = ")
@@ -227,7 +227,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		} else {
 			buf.WriteRune(',')
 		}
-		Dialect.WriteIdentifier(buf, c)
+		writeIdentifier(buf, c)
 	}
 
 	return buf.String(), args

@@ -62,7 +62,7 @@ func (scope *MapScope) ToSQL(table string) (string, []interface{}) {
 	sql := reField.ReplaceAllStringFunc(scope.SQL, func(found string) string {
 		buf.Reset()
 		if found == ":TABLE" {
-			Dialect.WriteIdentifier(buf, table)
+			writeIdentifier(buf, table)
 			return buf.String()
 		}
 		if args == nil {
@@ -85,7 +85,7 @@ func escapeScopeTable(sql string, table string) string {
 	}
 
 	var buf bytes.Buffer
-	Dialect.WriteIdentifier(&buf, table)
+	writeIdentifier(&buf, table)
 	quoted := buf.String()
 	return strings.Replace(sql, ":TABLE", quoted, -1)
 }

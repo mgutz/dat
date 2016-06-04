@@ -19,7 +19,7 @@ func TestEmbeddedStructMapping(t *testing.T) {
 
 	sql, args := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
 	expected := `
-		INSERT INTO groups ("group_uuid", "realm_uuid")
+		INSERT INTO groups (group_uuid, realm_uuid)
 		VALUES ($1, $2)
 	`
 	assert.Equal(t, stripWS(expected), stripWS(sql))

@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/mgutz/dat.v1/common"
+	"gopkg.in/mgutz/dat.v2/common"
 )
 
 // Eq is a map column -> value pairs which must be matched in a query
@@ -161,7 +161,7 @@ func writeWhereCondition(buf common.BufferWriter, k string, pred string, anyCond
 		buf.WriteRune('(')
 		anyConditions = true
 	}
-	Dialect.WriteIdentifier(buf, k)
+	writeIdentifier(buf, k)
 	buf.WriteString(pred)
 	buf.WriteRune(')')
 

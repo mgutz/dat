@@ -88,8 +88,8 @@ func TestInsertBlacklist(t *testing.T) {
 		ToSQL()
 	// order is not guaranteed
 	//assert.Equal(t, sql, `INSERT INTO a ("user_id","other") VALUES ($1,$2),($3,$4)`)
-	assert.True(t, strings.Contains(sql, `"user_id"`))
-	assert.True(t, strings.Contains(sql, `"other"`))
+	assert.True(t, strings.Contains(sql, `user_id`))
+	assert.True(t, strings.Contains(sql, `other`))
 	checkSliceEqual(t, args, []interface{}{88, false, 99, true})
 
 	assert.Panics(t, func() {
@@ -112,6 +112,6 @@ func TestInsertDuplicateColumns(t *testing.T) {
 	b.Status = "open"
 	b.A.Status = "closed"
 	sql, args := InsertInto("a").Columns("status").Record(&b).ToSQL()
-	assert.Equal(t, sql, `INSERT INTO a ("status") VALUES ($1)`)
+	assert.Equal(t, sql, `INSERT INTO a (status) VALUES ($1)`)
 	assert.Equal(t, args, []interface{}{"open"})
 }

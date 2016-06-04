@@ -107,7 +107,7 @@
 Get it
 
 ```sh
-go get -u gopkg.in/mgutz/dat.v1/sqlx-runner
+go get -u gopkg.in/mgutz/dat.v2/sqlx-runner
 ```
 
 Use it
@@ -117,8 +117,8 @@ import (
     "database/sql"
 
     _ "github.com/lib/pq"
-    "gopkg.in/mgutz/dat.v1"
-    "gopkg.in/mgutz/dat.v1/sqlx-runner"
+    "gopkg.in/mgutz/dat.v2"
+    "gopkg.in/mgutz/dat.v2/sqlx-runner"
 )
 
 // global database (pooling provided by SQL driver)
@@ -729,7 +729,7 @@ the database.
 
 ```go
 // key-value store (kvs) package
-import "gopkg.in/mgutz/dat.v1/kvs"
+import "gopkg.in/mgutz/dat.v2/kvs"
 
 func init() {
     // Redis: namespace is the prefix for keys and should be unique

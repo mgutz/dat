@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/mgutz/jo/v1"
-	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/mgutz/dat.v2"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 

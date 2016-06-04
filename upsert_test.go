@@ -17,15 +17,15 @@ func TestUpsertSQLWhere(t *testing.T) {
 	expected := `
 	WITH
 		upd AS (
-			UPDATE "tab"
-			SET "b" = $1, "c" = $2
+			UPDATE tab
+			SET b = $1, c = $2
 			WHERE (d=$3)
-			RETURNING "b","c"
+			RETURNING b,c
 		), ins AS (
-			INSERT INTO "tab"("b","c")
+			INSERT INTO tab(b,c)
 			SELECT $1,$2
 			WHERE NOT EXISTS (SELECT 1 FROM upd)
-			RETURNING "b","c"
+			RETURNING b,c
 		)
 	SELECT * FROM ins UNION ALL SELECT * FROM upd
 	`
@@ -39,15 +39,15 @@ func TestUpsertSQLReturning(t *testing.T) {
 	expected := `
 	WITH
 		upd AS (
-			UPDATE "tab"
-			SET "b" = $1, "c" = $2
+			UPDATE tab
+			SET b = $1, c = $2
 			WHERE (d=$3)
-			RETURNING "f","g"
+			RETURNING f,g
 		), ins AS (
-			INSERT INTO "tab"("b","c")
+			INSERT INTO tab(b,c)
 			SELECT $1,$2
 			WHERE NOT EXISTS (SELECT 1 FROM upd)
-			RETURNING "f","g"
+			RETURNING f,g
 		)
 	SELECT * FROM ins UNION ALL SELECT * FROM upd
 	`
@@ -72,15 +72,15 @@ func TestUpsertSQLRecord(t *testing.T) {
 	expected := `
 	WITH
 		upd AS (
-			UPDATE "tab"
-			SET "b" = $1, "c" = $2
+			UPDATE tab
+			SET b = $1, c = $2
 			WHERE (d=$3)
-			RETURNING "f","g"
+			RETURNING f,g
 		), ins AS (
-			INSERT INTO "tab"("b","c")
+			INSERT INTO tab(b,c)
 			SELECT $1,$2
 			WHERE NOT EXISTS (SELECT 1 FROM upd)
-			RETURNING "f","g"
+			RETURNING f,g
 		)
 	SELECT * FROM ins UNION ALL SELECT * FROM upd
 	`

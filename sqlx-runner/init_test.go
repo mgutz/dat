@@ -9,9 +9,9 @@ import (
 
 	"github.com/mgutz/logxi/v1"
 
-	"gopkg.in/mgutz/dat.v1"
-	"gopkg.in/mgutz/dat.v1/kvs"
-	"gopkg.in/mgutz/dat.v1/postgres"
+	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/kvs"
+	"gopkg.in/mgutz/dat.v2/postgres"
 )
 
 var testDB *DB

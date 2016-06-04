@@ -3,7 +3,7 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1"
+	"gopkg.in/mgutz/dat.v2"
 )
 
 // These benchmarks compare the time to excute an interpolated SQL

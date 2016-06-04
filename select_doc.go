@@ -142,7 +142,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		Dialect.WriteIdentifier(buf, sub.alias)
+		writeIdentifier(buf, sub.alias)
 	}
 
 	for _, sub := range b.subQueriesOne {
@@ -153,7 +153,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		Dialect.WriteIdentifier(buf, sub.alias)
+		writeIdentifier(buf, sub.alias)
 	}
 
 	if b.innerSQL != nil {
