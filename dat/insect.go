@@ -21,13 +21,14 @@ import "reflect"
 type InsectBuilder struct {
 	Execer
 
-	isInterpolated bool
-	table          string
 	cols           []string
+	err            error
 	isBlacklist    bool
-	vals           []interface{}
+	isInterpolated bool
 	record         interface{}
 	returnings     []string
+	table          string
+	vals           []interface{}
 	whereFragments []*whereFragment
 }
 
@@ -80,23 +81,28 @@ func (b *InsectBuilder) Returning(columns ...string) *InsectBuilder {
 
 // ToSQL serialized the InsectBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *InsectBuilder) ToSQL() (string, []interface{}) {
+func (b *InsectBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return NewDatSQLErr(b.err)
+	}
+	var err error
+
 	if len(b.table) == 0 {
-		panic("no table specified")
+		return NewDatSQLError("no table specified")
 	}
 	lenCols := len(b.cols)
 	if lenCols == 0 {
-		panic("no columns specified")
+		return NewDatSQLError("no columns specified")
 	}
 	if len(b.vals) == 0 && b.record == nil {
-		panic("no values or records specified")
+		return NewDatSQLError("no values or records specified")
 	}
 
 	if b.record == nil && b.cols[0] == "*" {
-		panic(`"*" can only be used in conjunction with Record`)
+		return NewDatSQLError(`"*" can only be used in conjunction with Record`)
 	}
 	if b.record == nil && b.isBlacklist {
-		panic(`Blacklist can only be used in conjunction with Record`)
+		return NewDatSQLError(`Blacklist can only be used in conjunction with Record`)
 	}
 
 	// reflect fields removing blacklisted columns
@@ -114,7 +120,11 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}) {
 	if len(b.whereFragments) == 0 && b.record == nil {
 		whereAdded = true
 		for i, column := range b.cols {
-			b.whereFragments = append(b.whereFragments, newWhereFragment(column+"=$1", b.vals[i:i+1]))
+			fragment, err := newWhereFragment(column+"=$1", b.vals[i:i+1])
+			if err != nil {
+				return NewDatSQLErr(err)
+			}
+			b.whereFragments = append(b.whereFragments, fragment)
 		}
 	}
 
@@ -141,10 +151,9 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}) {
 	*/
 	if b.record != nil {
 		ind := reflect.Indirect(reflect.ValueOf(b.record))
-		var err error
 		b.vals, err = valuesFor(ind.Type(), ind, b.cols)
 		if err != nil {
-			panic(err.Error())
+			return NewDatSQLErr(err)
 		}
 	}
 
@@ -158,7 +167,10 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}) {
 	sb := NewSelectBuilder(b.returnings...).
 		From(b.table)
 	sb.whereFragments = b.whereFragments
-	selectSQL, args = sb.ToSQL()
+	selectSQL, args, err = sb.ToSQL()
+	if err != nil {
+		return NewDatSQLErr(err)
+	}
 	buf.WriteString(selectSQL)
 
 	buf.WriteString("), ins AS (")
@@ -181,12 +193,17 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}) {
 
 	buf.WriteString(") SELECT * FROM ins UNION ALL SELECT * FROM sel")
 
-	return buf.String(), args
+	return buf.String(), args, nil
 }
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *InsectBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *InsectBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+		return b
+	}
+	b.whereFragments = append(b.whereFragments, fragment)
 	return b
 }

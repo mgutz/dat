@@ -19,6 +19,7 @@ type SelectBuilder struct {
 	offsetCount     uint64
 	offsetValid     bool
 	scope           Scope
+	err             error
 }
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
@@ -82,7 +83,12 @@ func (b *SelectBuilder) Scope(sql string, args ...interface{}) *SelectBuilder {
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *SelectBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+		return b
+	}
+	b.whereFragments = append(b.whereFragments, fragment)
 	return b
 }
 
@@ -94,13 +100,23 @@ func (b *SelectBuilder) GroupBy(group string) *SelectBuilder {
 
 // Having appends a HAVING clause to the statement
 func (b *SelectBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.havingFragments = append(b.havingFragments, fragment)
+	}
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
 func (b *SelectBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
-	b.orderBys = append(b.orderBys, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.orderBys = append(b.orderBys, fragment)
+	}
 	return b
 }
 
@@ -128,12 +144,16 @@ func (b *SelectBuilder) Paginate(page, perPage uint64) *SelectBuilder {
 
 // ToSQL serialized the SelectBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *SelectBuilder) ToSQL() (string, []interface{}) {
+func (b *SelectBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return NewDatSQLErr(b.err)
+	}
+
 	if len(b.columns) == 0 {
-		panic("no columns specified")
+		return NewDatSQLError("no columns specified")
 	}
 	if len(b.table) == 0 {
-		panic("no table specified")
+		return NewDatSQLError("no table specified")
 	}
 
 	buf := bufPool.Get()
@@ -174,7 +194,11 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 		sql, where = splitWhere(sql)
 		buf.WriteString(sql)
 		if where != "" {
-			fragment := newWhereFragment(where, args2)
+			fragment, err := newWhereFragment(where, args2)
+			if err != nil {
+				return NewDatSQLErr(err)
+
+			}
 			b.whereFragments = append(b.whereFragments, fragment)
 		}
 	}
@@ -223,5 +247,5 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}) {
 		}
 	}
 
-	return buf.String(), args
+	return buf.String(), args, nil
 }

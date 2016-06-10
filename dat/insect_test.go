@@ -14,7 +14,8 @@ func stripWS(s string) string {
 }
 
 func TestInsectSqlSimple(t *testing.T) {
-	sql, args := Insect("tab").Columns("b", "c").Values(1, 2).ToSQL()
+	sql, args, err := Insect("tab").Columns("b", "c").Values(1, 2).ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 		WITH
@@ -32,11 +33,12 @@ func TestInsectSqlSimple(t *testing.T) {
 }
 
 func TestInsectSqlWhere(t *testing.T) {
-	sql, args := Insect("tab").
+	sql, args, err := Insect("tab").
 		Columns("b", "c").
 		Values(1, 2).
 		Where("d = $1", 3).
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 	WITH
@@ -54,12 +56,13 @@ func TestInsectSqlWhere(t *testing.T) {
 }
 
 func TestInsectSqlReturning(t *testing.T) {
-	sql, args := Insect("tab").
+	sql, args, err := Insect("tab").
 		Columns("b", "c").
 		Values(1, 2).
 		Where("d = $1", 3).
 		Returning("id", "f", "g").
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 	WITH
@@ -86,12 +89,13 @@ func TestInsectSqlRecord(t *testing.T) {
 		Embedded
 	}{1, 2, Embedded{4}}
 
-	sql, args := Insect("tab").
+	sql, args, err := Insect("tab").
 		Columns("b", "c", "d").
 		Record(rec).
 		Where("d = $1", 3).
 		Returning("id", "f", "g").
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 	WITH

@@ -2,15 +2,12 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 
 	_ "github.com/lib/pq"
 	do "gopkg.in/godo.v2"
 )
 
 func tasks(p *do.Project) {
-	numCPU := runtime.NumCPU()
-
 	do.Env = `
 	DAT_DRIVER=postgres
 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
@@ -21,8 +18,8 @@ func tasks(p *do.Project) {
 	p.Task("createdb", nil, createdb).Description("Creates test database")
 
 	p.Task("test", nil, func(c *do.Context) {
-		c.Run(`GOMAXPROCS={{.numCPU}} go test -race`, do.M{"numCPU": numCPU})
-		c.Run(`GOMAXPROCS={{.numCPU}} go test -race`, do.M{"$in": "sqlx-runner", "numCPU": numCPU})
+		c.Run(`go test -race`, do.M{"$in": "dat"})
+		c.Run(`go test -race`, do.M{"$in": "sqlx-runner"})
 	}).Src("**/*.go").
 		Desc("test with -race flag")
 
@@ -55,7 +52,7 @@ func tasks(p *do.Project) {
 	p.Task("bench", nil, func(c *do.Context) {
 		// Bash("go test -bench . -benchmem 2>/dev/null | column -t")
 		// Bash("go test -bench . -benchmem 2>/dev/null | column -t", In{"sqlx-runner"})
-		c.Bash("go test -bench . -benchmem")
+		c.Bash("go test -bench . -benchmem", do.M{"$in": "dat"})
 		c.Bash("go test -bench . -benchmem", do.M{"$in": "sqlx-runner"})
 	})
 	p.Task("bench2", nil, func(c *do.Context) {

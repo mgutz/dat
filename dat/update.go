@@ -20,6 +20,7 @@ type UpdateBuilder struct {
 	offsetValid    bool
 	returnings     []string
 	scope          Scope
+	err            error
 }
 
 type setClause struct {
@@ -53,14 +54,16 @@ func (b *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 // SetBlacklist creates SET clause(s) using a record and blacklist of columns
 func (b *UpdateBuilder) SetBlacklist(rec interface{}, blacklist ...string) *UpdateBuilder {
 	if len(blacklist) == 0 {
-		panic("SetBlacklist requires a list of columns names")
+		b.err = NewError("UpdateBuilder.SetBlacklist requires a list of columns names")
+		return b
 	}
 
 	columns := reflectExcludeColumns(rec, blacklist)
 	ind := reflect.Indirect(reflect.ValueOf(rec))
 	vals, err := valuesFor(ind.Type(), ind, columns)
 	if err != nil {
-		panic(err)
+		b.err = err
+		return b
 	}
 
 	for i, val := range vals {
@@ -83,7 +86,8 @@ func (b *UpdateBuilder) SetWhitelist(rec interface{}, whitelist ...string) *Upda
 	ind := reflect.Indirect(reflect.ValueOf(rec))
 	vals, err := valuesFor(ind.Type(), ind, columns)
 	if err != nil {
-		panic(err)
+		b.err = err
+		return b
 	}
 
 	for i, val := range vals {
@@ -109,7 +113,12 @@ func (b *UpdateBuilder) Scope(sql string, args ...interface{}) *UpdateBuilder {
 
 // Where appends a WHERE clause to the statement
 func (b *UpdateBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *UpdateBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.whereFragments = append(b.whereFragments, fragment)
+	}
 	return b
 }
 
@@ -141,12 +150,15 @@ func (b *UpdateBuilder) Returning(columns ...string) *UpdateBuilder {
 
 // ToSQL serialized the UpdateBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
+func (b *UpdateBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return "", nil, b.err
+	}
 	if len(b.table) == 0 {
-		panic("no table specified")
+		return "", nil, NewError("no table specified")
 	}
 	if len(b.setClauses) == 0 {
-		panic("no set clauses specified")
+		return "", nil, NewError("no set clauses specified")
 	}
 
 	buf := bufPool.Get()
@@ -195,8 +207,11 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 	} else {
-		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
-		writeScopeCondition(buf, whereFragment, &args, &placeholderStartPos)
+		fragment, err := newWhereFragment(b.scope.ToSQL(b.table))
+		if err != nil {
+			return NewDatSQLErr(err)
+		}
+		writeScopeCondition(buf, fragment, &args, &placeholderStartPos)
 	}
 
 	// Ordering and limiting
@@ -230,5 +245,5 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 		writeIdentifier(buf, c)
 	}
 
-	return buf.String(), args
+	return buf.String(), args, nil
 }

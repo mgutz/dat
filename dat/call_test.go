@@ -7,13 +7,15 @@ import (
 )
 
 func TestCallSql(t *testing.T) {
-	sql, args := Call("foo", 1, "two").ToSQL()
+	sql, args, err := Call("foo", 1, "two").ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo($1,$2)", sql)
 	assert.Exactly(t, []interface{}{1, "two"}, args)
 }
 
 func TestCallNoArgsSql(t *testing.T) {
-	sql, args := Call("foo").ToSQL()
+	sql, args, err := Call("foo").ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo()", sql)
 	assert.Nil(t, args)
 }

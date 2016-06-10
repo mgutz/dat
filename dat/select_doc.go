@@ -12,6 +12,7 @@ type SelectDocBuilder struct {
 	subQueriesOne []*subInfo
 	innerSQL      *Expression
 	isParent      bool
+	err           error
 }
 
 // NewSelectDocBuilder creates an instance of SelectDocBuilder.
@@ -30,13 +31,21 @@ func (b *SelectDocBuilder) InnerSQL(sql string, a ...interface{}) *SelectDocBuil
 func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
-		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+		b.err = NewError("SelectDocBuilder.Many: sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *SelectDocBuilder:
 		t.isParent = false
-		sql, args := t.ToSQL()
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
 		b.subQueries = append(b.subQueries, &subInfo{Expr(sql, args...), column})
 	case Builder:
-		sql, args := t.ToSQL()
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
 		b.subQueries = append(b.subQueries, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueries = append(b.subQueries, &subInfo{Expr(t, a...), column})
@@ -48,13 +57,21 @@ func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...in
 func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
-		panic("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+		b.err = NewError("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *SelectDocBuilder:
 		t.isParent = false
-		sql, args := t.ToSQL()
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
 		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
 	case Builder:
-		sql, args := t.ToSQL()
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
 		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t, a...), column})
@@ -64,12 +81,16 @@ func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...int
 
 // ToSQL serialized the SelectBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
+func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return NewDatSQLErr(b.err)
+	}
+
 	if len(b.columns) == 0 {
-		panic("no columns specified")
+		return NewDatSQLError("no columns specified")
 	}
 	if len(b.table) == 0 && b.innerSQL == nil {
-		panic("no table specified")
+		return NewDatSQLError("no table specified")
 	}
 
 	buf := bufPool.Get()
@@ -168,7 +189,10 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 			sql, where = splitWhere(sql)
 			buf.WriteString(sql)
 			if where != "" {
-				fragment := newWhereFragment(where, args2)
+				fragment, err := newWhereFragment(where, args2)
+				if err != nil {
+					return NewDatSQLErr(err)
+				}
 				b.whereFragments = append(b.whereFragments, fragment)
 			}
 		}
@@ -231,7 +255,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}) {
 	if b.isParent {
 		buf.WriteString(`) as dat__item`)
 	}
-	return buf.String(), args
+	return buf.String(), args, nil
 }
 
 //// Copied form SelectBuilder. Need to return an instance of SelectDocBuilder.
@@ -288,7 +312,12 @@ func (b *SelectDocBuilder) Scope(sql string, args ...interface{}) *SelectDocBuil
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *SelectDocBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.whereFragments = append(b.whereFragments, fragment)
+	}
 	return b
 }
 
@@ -300,13 +329,23 @@ func (b *SelectDocBuilder) GroupBy(group string) *SelectDocBuilder {
 
 // Having appends a HAVING clause to the statement
 func (b *SelectDocBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.havingFragments = append(b.havingFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.havingFragments = append(b.havingFragments, fragment)
+	}
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
 func (b *SelectDocBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	b.orderBys = append(b.orderBys, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.orderBys = append(b.orderBys, fragment)
+	}
 	return b
 }
 

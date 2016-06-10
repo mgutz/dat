@@ -22,7 +22,7 @@ type Interpolator interface {
 
 // Value implements a valuer for compatibility
 func (u UnsafeString) Value() (driver.Value, error) {
-	panic("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")
+	return nil, NewError("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")
 }
 
 // DEFAULT SQL value

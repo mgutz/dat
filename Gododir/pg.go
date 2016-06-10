@@ -11,7 +11,7 @@ import (
 	"github.com/mgutz/str"
 	do "gopkg.in/godo.v2"
 	"gopkg.in/godo.v2/util"
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 	"gopkg.in/mgutz/dat.v2/sqlx-runner"
 )
 

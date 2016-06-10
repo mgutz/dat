@@ -9,7 +9,7 @@ import (
 
 	"github.com/mgutz/logxi/v1"
 
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 	"gopkg.in/mgutz/dat.v2/kvs"
 	"gopkg.in/mgutz/dat.v2/postgres"
 )

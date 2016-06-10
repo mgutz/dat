@@ -14,7 +14,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	guid "github.com/satori/go.uuid"
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 	"gopkg.in/mgutz/dat.v2/kvs"
 )
 
@@ -212,7 +212,7 @@ func (ex *Execer) queryScalar(destinations ...interface{}) error {
 // QueryScan executes the query in builder and loads the resulting data into
 // one or more destinations.
 //
-// Returns ErrNotFound if no value was found, and it was therefore not set.
+// Returns sql.ErrNoRows if no value was found, and it was therefore not set.
 func (ex *Execer) queryScalarFn(destinations []interface{}) error {
 	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
@@ -248,7 +248,7 @@ func (ex *Execer) queryScalarFn(destinations []interface{}) error {
 		return logSQLError(err, "queryScalarFn.20: iterating through rows", fullSQL, args)
 	}
 
-	return dat.ErrNotFound
+	return sql.ErrNoRows
 }
 
 func (ex *Execer) querySlice(dest interface{}) error {
@@ -275,7 +275,7 @@ func (ex *Execer) querySlice(dest interface{}) error {
 // QuerySlice executes the query in builder and loads the resulting data into a
 // slice of primitive values
 //
-// Returns ErrNotFound if no value was found, and it was therefore not set.
+// Returns sql.ErrNoRows if no value was found, and it was therefore not set.
 func (ex *Execer) querySliceFn(dest interface{}) error {
 	// Validate the dest and reflection values we need
 
@@ -284,7 +284,7 @@ func (ex *Execer) querySliceFn(dest interface{}) error {
 	kindOfDest := valueOfDest.Kind()
 
 	if kindOfDest != reflect.Ptr {
-		panic("invalid type passed to LoadValues. Need a pointer to a slice")
+		return dat.NewError("invalid type passed to LoadValues. Need a pointer to a slice")
 	}
 
 	// This must a slice
@@ -292,7 +292,7 @@ func (ex *Execer) querySliceFn(dest interface{}) error {
 	kindOfDest = valueOfDest.Kind()
 
 	if kindOfDest != reflect.Slice {
-		panic("invalid type passed to LoadValues. Need a pointer to a slice")
+		return dat.NewError("invalid type passed to LoadValues. Need a pointer to a slice")
 	}
 
 	recordType := valueOfDest.Type().Elem()
@@ -371,7 +371,7 @@ func (ex *Execer) queryStruct(dest interface{}) error {
 // QueryStruct executes the query in builder and loads the resulting data into
 // a struct dest must be a pointer to a struct
 //
-// Returns ErrNotFound if nothing was found
+// Returns sql.ErrNoRows if nothing was found
 func (ex *Execer) queryStructFn(dest interface{}) error {
 	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
@@ -450,7 +450,7 @@ func (ex *Execer) queryStructsFn(dest interface{}) error {
 // queryJSONStruct executes the query in builder and loads the resulting data into
 // a struct, using json.Unmarshal().
 //
-// Returns ErrNotFound if nothing was found
+// Returns sql.ErrNoRows if nothing was found
 func (ex *Execer) queryJSONStruct(dest interface{}) error {
 	blob, err := ex.queryJSONBlob(true)
 	if err != nil {
@@ -487,7 +487,7 @@ func (ex *Execer) queryJSONBlob(single bool) ([]byte, error) {
 // queryJSONBlob executes the query in builder and loads the resulting data
 // into a blob. If a single item is to be returned, set single to true.
 //
-// Returns ErrNotFound if nothing was found
+// Returns sql.ErrNoRows if nothing was found
 func (ex *Execer) queryJSONBlobFn(single bool) ([]byte, error) {
 	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
@@ -558,7 +558,7 @@ func (ex *Execer) queryJSONBlobFn(single bool) ([]byte, error) {
 // queryJSON executes the query in builder and loads the resulting data into
 // a struct, using json.Unmarshal().
 //
-// Returns ErrNotFound if nothing was found
+// Returns sql.ErrNoRows if nothing was found
 func (ex *Execer) queryJSONStructs(dest interface{}) error {
 	blob, err := ex.queryJSONBlob(false)
 	if err != nil {
@@ -676,7 +676,7 @@ func (ex *Execer) queryJSON() ([]byte, error) {
 // queryJSON executes the query in builder and loads the resulting JSON into
 // a bytes slice compatible.
 //
-// Returns ErrNotFound if nothing was found
+// Returns sql.ErrNoRows if nothing was found
 func (ex *Execer) queryJSONFn() ([]byte, error) {
 	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
@@ -701,7 +701,7 @@ func (ex *Execer) queryJSONFn() ([]byte, error) {
 // queryObject executes the query in builder and loads the resulting data into
 // an object agreeable with json.Unmarshal.
 //
-// Returns ErrNotFound if nothing was found
+// Returns sql.ErrNoRows if nothing was found
 func (ex *Execer) queryObject(dest interface{}) error {
 	blob, err := ex.queryJSON()
 	if err != nil {

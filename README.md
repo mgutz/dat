@@ -257,7 +257,7 @@ type Group struct {
 
 g := &Group{Realm: &Realm{"11"}, GroupUUID: "22"}
 
-sql, args := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
+sql, args, err := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
 expected := `
     INSERT INTO groups ("group_uuid", "realm_uuid")
     VALUES ($1, $2)
@@ -371,7 +371,7 @@ _, err := b.Exec()
 Inserts if not exists or select in one-trip to database
 
 ```go
-sql, args := DB.
+sql, args, err := DB.
     Insect("tab").
     Columns("b", "c").
     Values(1, 2).
@@ -434,7 +434,7 @@ err = DB.
 Upsert - Update or Insert
 
 ```go
-sql, args := DB.
+sql, args, err := DB.
     Upsert("tab").
     Columns("b", "c").
     Values(1, 2).

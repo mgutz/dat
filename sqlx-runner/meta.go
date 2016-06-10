@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"hash/fnv"
 
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 )
 
 // MustCreateMetaTable creates the dat__meta table or panics.
@@ -83,7 +83,7 @@ func (db *DB) MustRegisterFunction(name string, version string, body string) {
 	err = tx.
 		SQL(`SELECT id FROM dat__meta WHERE kind = 'function' AND version = $1 AND name = $2`, crc, name).
 		QueryScalar(&metaID)
-	if err != nil && err != sql.ErrNoRows && err != dat.ErrNotFound {
+	if err != nil && err != sql.ErrNoRows {
 		logger.Fatal("Could not get metadata for function", "err", err)
 	}
 

@@ -20,7 +20,7 @@ func NewCallBuilder(sproc string, args ...interface{}) *CallBuilder {
 
 // ToSQL serializes CallBuilder to a SQL string returning
 // valid SQL with placeholders an a slice of query arguments.
-func (b *CallBuilder) ToSQL() (string, []interface{}) {
+func (b *CallBuilder) ToSQL() (string, []interface{}, error) {
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 
@@ -30,8 +30,8 @@ func (b *CallBuilder) ToSQL() (string, []interface{}) {
 	length := len(b.args)
 	if length > 0 {
 		buildPlaceholders(buf, 1, length)
-		return buf.String(), b.args
+		return buf.String(), b.args, nil
 	}
 	buf.WriteString("()")
-	return buf.String(), nil
+	return buf.String(), nil, nil
 }

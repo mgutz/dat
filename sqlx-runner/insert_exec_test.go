@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 	"gopkg.in/mgutz/dat.v2/common"
 	"gopkg.in/mgutz/dat.v2/postgres"
 	"gopkg.in/stretchr/testify.v1/assert"

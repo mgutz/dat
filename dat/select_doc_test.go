@@ -10,7 +10,8 @@ import (
 )
 
 func TestSelectDocSQLNoDocs(t *testing.T) {
-	sql, args := SelectDoc("b", "c").From("a").Where("d=$1", 4).ToSQL()
+	sql, args, err := SelectDoc("b", "c").From("a").Where("d=$1", 4).ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 		SELECT row_to_json(dat__item.*)
@@ -26,12 +27,13 @@ func TestSelectDocSQLNoDocs(t *testing.T) {
 }
 
 func TestSelectDocSQLDocs(t *testing.T) {
-	sql, args := SelectDoc("b", "c").
+	sql, args, err := SelectDoc("b", "c").
 		Many("f", `SELECT g, h FROM f WHERE id= $1`, 4).
 		Many("x", `SELECT id, y, z FROM x`).
 		From("a").
 		Where("d=$1", 4).
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 	SELECT row_to_json(dat__item.*)
@@ -50,7 +52,7 @@ func TestSelectDocSQLDocs(t *testing.T) {
 }
 
 func TestSelectDocSQLInnerSQL(t *testing.T) {
-	sql, args := SelectDoc("b", "c").
+	sql, args, err := SelectDoc("b", "c").
 		Many("f", `SELECT g, h FROM f WHERE id= $1`, 4).
 		Many("x", `SELECT id, y, z FROM x`).
 		InnerSQL(`
@@ -58,6 +60,8 @@ func TestSelectDocSQLInnerSQL(t *testing.T) {
 			WHERE d = $1
 		`, 4).
 		ToSQL()
+
+	assert.NoError(t, err)
 
 	expected := `
 	SELECT row_to_json(dat__item.*)
@@ -78,7 +82,7 @@ func TestSelectDocSQLInnerSQL(t *testing.T) {
 func TestSelectDocScope(t *testing.T) {
 	now := NullTimeFrom(time.Now())
 
-	sql, args := SelectDoc("e", "f").
+	sql, args, err := SelectDoc("e", "f").
 		From("matches m").
 		Scope(`
 			WHERE m.game_id = $1
@@ -88,6 +92,7 @@ func TestSelectDocScope(t *testing.T) {
 				)
 		`, 100, 1, 2, now).
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 		SELECT row_to_json(dat__item.*)
@@ -112,11 +117,12 @@ func TestDocScopeWhere(t *testing.T) {
 		WHERE
 			p.state = $1
 	`
-	sql, args := SelectDoc("u.*, p.*").
+	sql, args, err := SelectDoc("u.*, p.*").
 		From(`users u`).
 		Scope(published, "published").
 		Where(`u.id = $1`, 1).
 		ToSQL()
+	assert.NoError(t, err)
 	sql = str.Clean(sql)
 	expected := `
 		SELECT row_to_json(dat__item.*)
@@ -137,12 +143,13 @@ func TestDocDistinctOn(t *testing.T) {
 		WHERE
 			p.state = $1
 	`
-	sql, args := SelectDoc("u.*, p.*").
+	sql, args, err := SelectDoc("u.*, p.*").
 		DistinctOn("aa", "bb").
 		From(`users u`).
 		Scope(published, "published").
 		Where(`u.id = $1`, 1).
 		ToSQL()
+	assert.NoError(t, err)
 	expected := `
 		SELECT row_to_json(dat__item.*)
 		FROM (
@@ -163,11 +170,12 @@ func TestNestedSelecDocWhere(t *testing.T) {
 		From("users u").
 		Where("u.id = $1", 1)
 
-	sql, args := SelectDoc("id").
+	sql, args, err := SelectDoc("id").
 		One("user", user).
 		From(`games`).
 		Where(`id = $1`, 10).
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 		SELECT row_to_json(dat__item.*)
@@ -195,10 +203,11 @@ func TestNestedSelecDocWhere(t *testing.T) {
 }
 
 func TestSelectDocColumns(t *testing.T) {
-	sql, args := SelectDoc("id, user_name").
+	sql, args, err := SelectDoc("id, user_name").
 		From("users").
 		Columns("created_at").
 		ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, stripWS(`
 		SELECT row_to_json(dat__item.*)
 		FROM (
@@ -209,11 +218,12 @@ func TestSelectDocColumns(t *testing.T) {
 }
 
 func TestSelectDocFor(t *testing.T) {
-	sql, args := SelectDoc("id, user_name").
+	sql, args,err := SelectDoc("id, user_name").
 		From("users").
 		Columns("created_at").
 		For("UPDATE").
 		ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, stripWS(`
 		SELECT row_to_json(dat__item.*)
 		FROM (

@@ -15,7 +15,7 @@ func BenchmarkInterpolate(b *testing.B) {
 	argEq1 := Eq{"f": 2, "x": "hi"}
 	argEq2 := map[string]interface{}{"g": 3}
 	argEq3 := Eq{"h": []int{1, 2, 3}}
-	sq, args := Select("a", "b", "z", "y", "x").
+	sq, args, _ := Select("a", "b", "z", "y", "x").
 		Distinct().
 		From("c").
 		Where("d = $1 OR e = $2", 1, "wat").

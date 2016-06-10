@@ -6,13 +6,14 @@ import "reflect"
 type UpsertBuilder struct {
 	Execer
 
-	isInterpolated bool
-	table          string
 	cols           []string
+	err            error
 	isBlacklist    bool
-	vals           []interface{}
+	isInterpolated bool
 	record         interface{}
 	returnings     []string
+	table          string
+	vals           []interface{}
 	whereFragments []*whereFragment
 }
 
@@ -65,27 +66,30 @@ func (b *UpsertBuilder) Returning(columns ...string) *UpsertBuilder {
 
 // ToSQL serialized the UpsertBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *UpsertBuilder) ToSQL() (string, []interface{}) {
+func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return NewDatSQLErr(b.err)
+	}
 	if len(b.table) == 0 {
-		panic("no table specified")
+		return NewDatSQLError("no table specified")
 	}
 	lenCols := len(b.cols)
 	if lenCols == 0 {
-		panic("no columns specified")
+		return NewDatSQLError("no columns specified")
 	}
 	if len(b.vals) == 0 && b.record == nil {
-		panic("no values or records specified")
+		return NewDatSQLError("no values or records specified")
 	}
 
 	if b.record == nil && b.cols[0] == "*" {
-		panic(`"*" can only be used in conjunction with Record`)
+		return NewDatSQLError(`"*" can only be used in conjunction with Record`)
 	}
 	if b.record == nil && b.isBlacklist {
-		panic(`Blacklist can only be used in conjunction with Record`)
+		return NewDatSQLError(`Blacklist can only be used in conjunction with Record`)
 	}
 	// build where clause from columns and values
 	if len(b.whereFragments) == 0 {
-		panic("where clause required for upsert")
+		return NewDatSQLError("where clause required for upsert")
 	}
 
 	// reflect fields removing blacklisted columns
@@ -142,7 +146,7 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}) {
 		var err error
 		b.vals, err = valuesFor(ind.Type(), ind, b.cols)
 		if err != nil {
-			panic(err.Error())
+			return NewDatSQLErr(err)
 		}
 	}
 
@@ -181,7 +185,10 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}) {
 	}
 	ub.whereFragments = b.whereFragments
 	ub.returnings = b.returnings
-	updateSQL, args := ub.ToSQL()
+	updateSQL, args, err := ub.ToSQL()
+	if err != nil {
+		return NewDatSQLErr(err)
+	}
 	buf.WriteString(updateSQL)
 
 	buf.WriteString("), ins AS (")
@@ -199,12 +206,17 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}) {
 
 	buf.WriteString(") SELECT * FROM ins UNION ALL SELECT * FROM upd")
 
-	return buf.String(), args
+	return buf.String(), args, nil
 }
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *UpsertBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *UpsertBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.whereFragments = append(b.whereFragments, fragment)
+	}
 	return b
 }

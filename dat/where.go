@@ -18,20 +18,20 @@ type whereFragment struct {
 	EqualityMap map[string]interface{}
 }
 
-func newWhereFragment(whereSQLOrMap interface{}, args []interface{}) *whereFragment {
+func newWhereFragment(whereSQLOrMap interface{}, args []interface{}) (*whereFragment, error) {
 	switch pred := whereSQLOrMap.(type) {
 	case Expression:
-		return &whereFragment{Condition: pred.Sql, Values: pred.Args}
+		return &whereFragment{Condition: pred.Sql, Values: pred.Args}, nil
 	case *Expression:
-		return &whereFragment{Condition: pred.Sql, Values: pred.Args}
+		return &whereFragment{Condition: pred.Sql, Values: pred.Args}, nil
 	case string:
-		return &whereFragment{Condition: pred, Values: args}
+		return &whereFragment{Condition: pred, Values: args}, nil
 	case map[string]interface{}:
-		return &whereFragment{EqualityMap: pred}
+		return &whereFragment{EqualityMap: pred}, nil
 	case Eq:
-		return &whereFragment{EqualityMap: map[string]interface{}(pred)}
+		return &whereFragment{EqualityMap: map[string]interface{}(pred)}, nil
 	default:
-		panic("Invalid argument passed to Where. Pass a string or an Eq map.")
+		return nil, NewError("Invalid argument passed to Where. Pass a string or an Eq map.")
 	}
 }
 
@@ -72,16 +72,16 @@ func writeScopeCondition(buf common.BufferWriter, f *whereFragment, args *[]inte
 	}
 }
 
-func writeAndFragmentsToSQL(buf common.BufferWriter, fragments []*whereFragment, args *[]interface{}, pos *int64) {
-	writeFragmentsToSQL(" AND ", true, buf, fragments, args, pos)
+func writeAndFragmentsToSQL(buf common.BufferWriter, fragments []*whereFragment, args *[]interface{}, pos *int64) error {
+	return writeFragmentsToSQL(" AND ", true, buf, fragments, args, pos)
 }
 
-func writeCommaFragmentsToSQL(buf common.BufferWriter, fragments []*whereFragment, args *[]interface{}, pos *int64) {
-	writeFragmentsToSQL(", ", false, buf, fragments, args, pos)
+func writeCommaFragmentsToSQL(buf common.BufferWriter, fragments []*whereFragment, args *[]interface{}, pos *int64) error {
+	return writeFragmentsToSQL(", ", false, buf, fragments, args, pos)
 }
 
 // Invariant: only called when len(fragments) > 0
-func writeFragmentsToSQL(delimiter string, addParens bool, buf common.BufferWriter, fragments []*whereFragment, args *[]interface{}, pos *int64) {
+func writeFragmentsToSQL(delimiter string, addParens bool, buf common.BufferWriter, fragments []*whereFragment, args *[]interface{}, pos *int64) error {
 	hasConditions := false
 	for _, f := range fragments {
 		if f.Condition != "" {
@@ -109,9 +109,11 @@ func writeFragmentsToSQL(delimiter string, addParens bool, buf common.BufferWrit
 		} else if f.EqualityMap != nil {
 			hasConditions = writeEqualityMapToSQL(buf, f.EqualityMap, args, hasConditions, pos)
 		} else {
-			panic("invalid equality map")
+			return NewError("invalid equality map")
 		}
 	}
+
+	return nil
 }
 
 func writeEqualityMapToSQL(buf common.BufferWriter, eq map[string]interface{}, args *[]interface{}, anyConditions bool, pos *int64) bool {

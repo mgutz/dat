@@ -1,12 +1,27 @@
-## v1.next
 
-Timeouts per query. If a timeout occurs, then the query will be cancelled through
-`pg_cancel_backend`
 
-```go
-err := DB.Select("SELECT pg_sleep(1)").Timeout(1 * time.Millisecond).Exec()
-err ==  dat.ErrTimedout
-```
+## v2
+
+Changed:
+
+*   `dat` package name changed from `gopkg.in/mgutz/dat.v1` to `gopkg.in/mgutz/dat.v2/dat`
+*   `ToSQL() (sql, []interface{})` => `ToSQL() (sql, []interface{}, error)`
+
+Removed:
+
+*  `dat.ErrNotfound` in favor of `sql.ErrNoRows`
+*  `CallBuilder` for calling sprocs
+*  *most* `panic` calls
+
+Added:
+
+*   Timeouts per query. If a timeout occurs, then the query will be cancelled through
+    `pg_cancel_backend`
+
+    ```go
+    err := DB.Select("SELECT pg_sleep(1)").Timeout(1 * time.Millisecond).Exec()
+    err ==  dat.ErrTimedout
+    ```
 
 
 ## v1.1.0

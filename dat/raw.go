@@ -15,6 +15,6 @@ func NewRawBuilder(sql string, args ...interface{}) *RawBuilder {
 }
 
 // ToSQL implements builder interface
-func (b *RawBuilder) ToSQL() (string, []interface{}) {
-	return b.sql, b.args
+func (b *RawBuilder) ToSQL() (string, []interface{}, error) {
+	return b.sql, b.args, nil
 }

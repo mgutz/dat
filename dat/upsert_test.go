@@ -7,13 +7,13 @@ import (
 )
 
 func TestUpsertSQLMissingWhere(t *testing.T) {
-	assert.Panics(t, func() {
-		Upsert("tab").Columns("b", "c").Values(1, 2).ToSQL()
-	})
+	_, _, err := Upsert("tab").Columns("b", "c").Values(1, 2).ToSQL()
+	assert.Error(t, err)
 }
 
 func TestUpsertSQLWhere(t *testing.T) {
-	sql, args := Upsert("tab").Columns("b", "c").Values(1, 2).Where("d=$1", 4).ToSQL()
+	sql, args, err := Upsert("tab").Columns("b", "c").Values(1, 2).Where("d=$1", 4).ToSQL()
+	assert.NoError(t, err)
 	expected := `
 	WITH
 		upd AS (
@@ -35,7 +35,8 @@ func TestUpsertSQLWhere(t *testing.T) {
 }
 
 func TestUpsertSQLReturning(t *testing.T) {
-	sql, args := Upsert("tab").Columns("b", "c").Values(1, 2).Where("d=$1", 4).Returning("f", "g").ToSQL()
+	sql, args, err := Upsert("tab").Columns("b", "c").Values(1, 2).Where("d=$1", 4).Returning("f", "g").ToSQL()
+	assert.NoError(t, err)
 	expected := `
 	WITH
 		upd AS (
@@ -62,12 +63,13 @@ func TestUpsertSQLRecord(t *testing.T) {
 		C int `db:"c"`
 	}{1, 2}
 
-	sql, args := Upsert("tab").
+	sql, args, err := Upsert("tab").
 		Columns("b", "c").
 		Record(rec).
 		Where("d=$1", 4).
 		Returning("f", "g").
 		ToSQL()
+	assert.NoError(t, err)
 
 	expected := `
 	WITH

@@ -8,6 +8,7 @@ type DeleteBuilder struct {
 	whereFragments []*whereFragment
 	isInterpolated bool
 	scope          Scope
+	err            error
 }
 
 // NewDeleteBuilder creates a new DeleteBuilder for the given table.
@@ -36,15 +37,24 @@ func (b *DeleteBuilder) Scope(sql string, args ...interface{}) *DeleteBuilder {
 // Where appends a WHERE clause to the statement whereSQLOrMap can be a
 // string or map. If it's a string, args wil replaces any places holders
 func (b *DeleteBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *DeleteBuilder {
-	b.whereFragments = append(b.whereFragments, newWhereFragment(whereSQLOrMap, args))
+	fragment, err := newWhereFragment(whereSQLOrMap, args)
+	if err != nil {
+		b.err = err
+	} else {
+		b.whereFragments = append(b.whereFragments, fragment)
+	}
 	return b
 }
 
 // ToSQL serialized the DeleteBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
+func (b *DeleteBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return NewDatSQLErr(b.err)
+	}
+
 	if len(b.table) == 0 {
-		panic("no table specified")
+		return NewDatSQLError("no table specified")
 	}
 
 	buf := bufPool.Get()
@@ -64,9 +74,12 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}) {
 			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
 		}
 	} else {
-		whereFragment := newWhereFragment(b.scope.ToSQL(b.table))
+		whereFragment, err := newWhereFragment(b.scope.ToSQL(b.table))
+		if err != nil {
+			return NewDatSQLErr(err)
+		}
 		writeScopeCondition(buf, whereFragment, &args, &placeholderStartPos)
 	}
 
-	return buf.String(), args
+	return buf.String(), args, nil
 }

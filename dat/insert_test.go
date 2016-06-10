@@ -36,66 +36,67 @@ func BenchmarkInsertRecordsSql(b *testing.B) {
 }
 
 func TestInsertSingleToSql(t *testing.T) {
-	sql, args := InsertInto("a").Columns("b", "c").Values(1, 2).ToSQL()
+	sql, args, err := InsertInto("a").Columns("b", "c").Values(1, 2).ToSQL()
+	assert.NoError(t, err)
 
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2)", "b", "c"))
 	assert.Equal(t, args, []interface{}{1, 2})
 }
 
 func TestDefaultValue(t *testing.T) {
-	sql, args := InsertInto("a").Columns("b", "c").Values(1, DEFAULT).ToSQL()
-
+	sql, args, err := InsertInto("a").Columns("b", "c").Values(1, DEFAULT).ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2)", "b", "c"))
 	assert.Equal(t, args, []interface{}{1, DEFAULT})
 }
 
 func TestInsertMultipleToSql(t *testing.T) {
-	sql, args := InsertInto("a").Columns("b", "c").Values(1, 2).Values(3, 4).ToSQL()
-
+	sql, args, err := InsertInto("a").Columns("b", "c").Values(1, 2).Values(3, 4).ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4)", "b", "c"))
 	assert.Equal(t, args, []interface{}{1, 2, 3, 4})
 }
 
 func TestInsertRecordsToSql(t *testing.T) {
 	objs := []someRecord{{1, 88, false}, {2, 99, true}}
-	sql, args := InsertInto("a").Columns("something_id", "user_id", "other").Record(objs[0]).Record(objs[1]).ToSQL()
-
+	sql, args, err := InsertInto("a").Columns("something_id", "user_id", "other").Record(objs[0]).Record(objs[1]).ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3),($4,$5,$6)", "something_id", "user_id", "other"))
 	checkSliceEqual(t, args, []interface{}{1, 88, false, 2, 99, true})
 }
 
 func TestInsertWhitelist(t *testing.T) {
 	objs := []someRecord{{1, 88, false}, {2, 99, true}}
-	sql, args := InsertInto("a").
+	sql, args, err := InsertInto("a").
 		Whitelist("*").
 		Record(objs[0]).
 		Record(objs[1]).
 		ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3),($4,$5,$6)", "something_id", "user_id", "other"))
 	checkSliceEqual(t, []interface{}{1, 88, false, 2, 99, true}, args)
 
-	assert.Panics(t, func() {
-		InsertInto("a").Whitelist("*").Values("foo").ToSQL()
-	}, `must use "*" in conjunction with Record`)
+	_, _, err = InsertInto("a").Whitelist("*").Values("foo").ToSQL()
+	assert.Equal(t, `"*" can only be used in conjunction with Record`, err.Error())
 }
 
 func TestInsertBlacklist(t *testing.T) {
 	objs := []someRecord{{1, 88, false}, {2, 99, true}}
-	sql, args := InsertInto("a").
+	sql, args, err := InsertInto("a").
 		Blacklist("something_id").
 		Record(objs[0]).
 		Record(objs[1]).
 		ToSQL()
+	assert.NoError(t, err)
 	// order is not guaranteed
 	//assert.Equal(t, sql, `INSERT INTO a ("user_id","other") VALUES ($1,$2),($3,$4)`)
 	assert.True(t, strings.Contains(sql, `user_id`))
 	assert.True(t, strings.Contains(sql, `other`))
 	checkSliceEqual(t, args, []interface{}{88, false, 99, true})
 
-	assert.Panics(t, func() {
-		// does not have any columns or record
-		InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()
-	})
+	// does not have any columns or record
+	_, _, err = InsertInto("a").Blacklist("something_id").Values("foo").ToSQL()
+	assert.Error(t, err)
 }
 
 func TestInsertDuplicateColumns(t *testing.T) {
@@ -111,7 +112,8 @@ func TestInsertDuplicateColumns(t *testing.T) {
 	b := B{}
 	b.Status = "open"
 	b.A.Status = "closed"
-	sql, args := InsertInto("a").Columns("status").Record(&b).ToSQL()
+	sql, args, err := InsertInto("a").Columns("status").Record(&b).ToSQL()
+	assert.NoError(t, err)
 	assert.Equal(t, sql, `INSERT INTO a (status) VALUES ($1)`)
 	assert.Equal(t, args, []interface{}{"open"})
 }

@@ -93,21 +93,11 @@ func (pd *Postgres) WriteStringLiteral(buf common.BufferWriter, val string) {
 
 // WriteIdentifier writes escaped identifier.
 func (pd *Postgres) WriteIdentifier(buf common.BufferWriter, ident string) {
-	if ident == "" {
-		panic("Identifier is empty string")
-	}
-	if ident == "*" {
-		buf.WriteString(ident)
-		return
-	}
-
-	buf.WriteRune('"')
-	if strings.Contains(ident, ".") {
-		buf.WriteString(strings.Replace(ident, ".", `"."`, -1))
-	} else {
-		buf.WriteString(ident)
-	}
-	buf.WriteRune('"')
+	// problem: dat is a loose SQL builder. `ident` could have
+	// value like "public.table tbl". It would be time consuming, not to
+	// mention, error prone to parse an identifier and quote it properly.
+	// Not worth it. The user must quote strings properly.
+	buf.WriteString(ident)
 }
 
 // WriteFormattedTime formats t into a format postgres understands.

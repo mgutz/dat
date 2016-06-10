@@ -35,7 +35,7 @@ package dat
 func generateTasks(p *do.Project) {
 	p.Task("builder-boilerplate", nil, func(c *do.Context) {
 		context := do.M{
-			"builders": []string{"CallBuilder", "DeleteBuilder", "InsectBuilder",
+			"builders": []string{"DeleteBuilder", "InsectBuilder",
 				"InsertBuilder", "RawBuilder", "SelectBuilder", "SelectDocBuilder",
 				"UpdateBuilder", "UpsertBuilder"},
 		}

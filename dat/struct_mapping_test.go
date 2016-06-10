@@ -17,7 +17,8 @@ func TestEmbeddedStructMapping(t *testing.T) {
 
 	g := &Group{Realm: &Realm{"11"}, GroupUUID: "22"}
 
-	sql, args := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
+	sql, args, err := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
+	assert.NoError(t, err)
 	expected := `
 		INSERT INTO groups (group_uuid, realm_uuid)
 		VALUES ($1, $2)
@@ -37,8 +38,7 @@ func TestEmbeddedStructInvalidColumns(t *testing.T) {
 
 	g := &Group{Realm: &Realm{"11"}, GroupUUID: "22"}
 
-	assert.Panics(t, func() {
-		// realm_uuid must be explicitly defined
-		InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
-	})
+	// realm_uuid must be explicitly defined
+	_, _, err := InsertInto("groups").Columns("group_uuid", "realm_uuid").Record(g).ToSQL()
+	assert.Error(t, err)
 }

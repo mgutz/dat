@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 )
 
 // Queryable is an object that can be queried.
@@ -14,12 +14,12 @@ type Queryable struct {
 }
 
 // WrapSqlxExt converts a sqlx.Ext to a *Queryable
-func WrapSqlxExt(e sqlx.Ext) *Queryable {
+func WrapSqlxExt(e sqlx.Ext) (*Queryable, error) {
 	switch e := e.(type) {
 	default:
-		panic(fmt.Sprintf("unexpected type %T", e))
+		return nil, dat.NewError(fmt.Sprintf("unexpected type %T", e))
 	case database:
-		return &Queryable{e}
+		return &Queryable{e}, nil
 	}
 }
 

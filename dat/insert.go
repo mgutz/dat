@@ -2,6 +2,7 @@ package dat
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
 )
 
@@ -16,6 +17,7 @@ type InsertBuilder struct {
 	vals           [][]interface{}
 	records        []interface{}
 	returnings     []string
+	err            error
 }
 
 // NewInsertBuilder creates a new InsertBuilder for the given table.
@@ -59,6 +61,10 @@ func (b *InsertBuilder) Record(record interface{}) *InsertBuilder {
 	return b
 }
 
+func (b *InsertBuilder) OnConflict() *InsertBuilder {
+	return b
+}
+
 // Returning sets the columns for the RETURNING clause
 func (b *InsertBuilder) Returning(columns ...string) *InsertBuilder {
 	b.returnings = columns
@@ -75,32 +81,36 @@ func (b *InsertBuilder) Pair(column string, value interface{}) *InsertBuilder {
 	} else if lenVals == 1 {
 		b.vals[0] = append(b.vals[0], value)
 	} else {
-		panic("pair only allows you to specify 1 record to insert")
+		b.err = errors.New("pair only allows you to specify 1 record to insert")
 	}
 	return b
 }
 
 // ToSQL serialized the InsertBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
-func (b *InsertBuilder) ToSQL() (string, []interface{}) {
+func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
+	if b.err != nil {
+		return "", nil, b.err
+	}
+
 	if len(b.table) == 0 {
-		panic("no table specified")
+		return "", nil, NewError("no table specified")
 	}
 	lenCols := len(b.cols)
 	lenRecords := len(b.records)
 	if lenCols == 0 {
-		panic("no columns specified")
+		return "", nil, NewError("no columns specified")
 	}
 	if len(b.vals) == 0 && lenRecords == 0 {
-		panic("no values or records specified")
+		return "", nil, NewError("no values or records specified")
 	}
 
 	if lenRecords == 0 && b.cols[0] == "*" {
-		panic(`"*" can only be used in conjunction with Record`)
+		return "", nil, NewError(`"*" can only be used in conjunction with Record`)
 	}
 
 	if lenRecords == 0 && b.isBlacklist {
-		panic(`Blacklist can only be used in conjunction with Record`)
+		return "", nil, NewError("Blacklist can only be used in conjunction with Record")
 	}
 
 	// reflect fields removing blacklisted columns
@@ -151,7 +161,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		ind := reflect.Indirect(reflect.ValueOf(rec))
 		vals, err := valuesFor(ind.Type(), ind, b.cols)
 		if err != nil {
-			panic(err.Error())
+			return "", nil, err
 		}
 		buildPlaceholders(&sql, start, len(vals))
 		for _, v := range vals {
@@ -170,5 +180,5 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}) {
 		writeIdentifier(&sql, c)
 	}
 
-	return sql.String(), args
+	return sql.String(), args, nil
 }

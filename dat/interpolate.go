@@ -282,7 +282,10 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 }
 
 func interpolate(builder Builder) (string, []interface{}, error) {
-	sql, args := builder.ToSQL()
+	sql, args, err := builder.ToSQL()
+	if err != nil {
+		return "", nil, err
+	}
 	if builder.IsInterpolated() {
 		return Interpolate(sql, args)
 	}

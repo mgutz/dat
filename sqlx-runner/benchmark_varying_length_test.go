@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 )
 
 // These benchmarks compare the total cost of interpolating the SQL then
@@ -90,7 +90,7 @@ func benchmarkVaryingLengthDatN(b *testing.B, maxBytes int, maxText int) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	sql, args := builder.ToSQL()
+	sql, args, _ := builder.ToSQL()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -111,7 +111,7 @@ func benchmarkVaryingLengthSQLN(b *testing.B, maxBytes int, maxText int) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	sql, args := builder.ToSQL()
+	sql, args, _ := builder.ToSQL()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -128,7 +128,7 @@ func benchmarkVaryingLengthSqlxN(b *testing.B, maxBytes int, maxText int) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	sql, args := builder.ToSQL()
+	sql, args, _ := builder.ToSQL()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

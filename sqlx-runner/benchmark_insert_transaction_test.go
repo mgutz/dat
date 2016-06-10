@@ -3,7 +3,7 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v2"
+	"gopkg.in/mgutz/dat.v2/dat"
 )
 
 // These benchmarks compare the total cost of interpolating the SQL then
@@ -49,7 +49,7 @@ func benchmarkTransactedDatN(b *testing.B, rows int, argc int) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	sql, args := builder.ToSQL()
+	sql, args, _ := builder.ToSQL()
 
 	tx, err := testDB.Begin()
 	if err != nil {
@@ -77,7 +77,7 @@ func benchmarkTransactedSQLN(b *testing.B, rows int, argc int) {
 		b.Fatal(err)
 	}
 
-	sql, args := builder.ToSQL()
+	sql, args, _ := builder.ToSQL()
 
 	tx, err := testDB.Begin()
 	if err != nil {
@@ -101,7 +101,7 @@ func benchmarkTransactedSQLxN(b *testing.B, rows int, argc int) {
 		b.Fatal(err)
 	}
 
-	sql, args := builder.ToSQL()
+	sql, args, _ := builder.ToSQL()
 
 	tx, err := testDB.DB.Beginx()
 	if err != nil {
