@@ -1,5 +1,7 @@
 package dat
 
+import "github.com/pkg/errors"
+
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
 	Execer
@@ -85,7 +87,8 @@ func (b *SelectBuilder) Scope(sql string, args ...interface{}) *SelectBuilder {
 func (b *SelectBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
 	fragment, err := newWhereFragment(whereSQLOrMap, args)
 	if err != nil {
-		b.err = err
+		//b.err = err
+		b.err = errors.Wrap(err, "Invalid Where clause")
 		return b
 	}
 	b.whereFragments = append(b.whereFragments, fragment)
@@ -150,10 +153,10 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}, error) {
 	}
 
 	if len(b.columns) == 0 {
-		return NewDatSQLError("no columns specified")
+		return NewDatSQLErr(errors.New("no columns specified"))
 	}
 	if len(b.table) == 0 {
-		return NewDatSQLError("no table specified")
+		return NewDatSQLErr(errors.New("no table specified"))
 	}
 
 	buf := bufPool.Get()

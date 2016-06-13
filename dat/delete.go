@@ -1,5 +1,7 @@
 package dat
 
+import "github.com/pkg/errors"
+
 // DeleteBuilder contains the clauses for a DELETE statement
 type DeleteBuilder struct {
 	Execer
@@ -54,7 +56,7 @@ func (b *DeleteBuilder) ToSQL() (string, []interface{}, error) {
 	}
 
 	if len(b.table) == 0 {
-		return NewDatSQLError("no table specified")
+		return NewDatSQLErr(errors.New("no table specified"))
 	}
 
 	buf := bufPool.Get()

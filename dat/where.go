@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"gopkg.in/mgutz/dat.v2/common"
 )
 
@@ -31,7 +32,7 @@ func newWhereFragment(whereSQLOrMap interface{}, args []interface{}) (*whereFrag
 	case Eq:
 		return &whereFragment{EqualityMap: map[string]interface{}(pred)}, nil
 	default:
-		return nil, NewError("Invalid argument passed to Where. Pass a string or an Eq map.")
+		return nil, errors.New("Invalid argument passed to Where. Pass a string or an Eq map.")
 	}
 }
 

@@ -1,6 +1,10 @@
 package dat
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/pkg/errors"
+)
 
 // InsectBuilder inserts or selects an existing row when executed.
 //
@@ -88,21 +92,21 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}, error) {
 	var err error
 
 	if len(b.table) == 0 {
-		return NewDatSQLError("no table specified")
+		return NewDatSQLErr(errors.New("no table specified"))
 	}
 	lenCols := len(b.cols)
 	if lenCols == 0 {
-		return NewDatSQLError("no columns specified")
+		return NewDatSQLErr(errors.New("no columns specified"))
 	}
 	if len(b.vals) == 0 && b.record == nil {
-		return NewDatSQLError("no values or records specified")
+		return NewDatSQLErr(errors.New("no values or records specified"))
 	}
 
 	if b.record == nil && b.cols[0] == "*" {
-		return NewDatSQLError(`"*" can only be used in conjunction with Record`)
+		return NewDatSQLErr(errors.New(`"*" can only be used in conjunction with Record`))
 	}
 	if b.record == nil && b.isBlacklist {
-		return NewDatSQLError(`Blacklist can only be used in conjunction with Record`)
+		return NewDatSQLErr(errors.New(`Blacklist can only be used in conjunction with Record`))
 	}
 
 	// reflect fields removing blacklisted columns

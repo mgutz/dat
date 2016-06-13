@@ -34,10 +34,6 @@ func NewError(msg string) error {
 	return &Error{Message: msg}
 }
 
-func NewDatSQLError(msg string) (string, []interface{}, error) {
-	return "", nil, NewError(msg)
-}
-
 func NewDatSQLErr(err error) (string, []interface{}, error) {
 	return "", nil, err
 }

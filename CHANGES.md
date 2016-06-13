@@ -6,11 +6,11 @@ Changed:
 
 *   `dat` package name changed from `gopkg.in/mgutz/dat.v1` to `gopkg.in/mgutz/dat.v2/dat`
 *   `ToSQL() (sql, []interface{})` => `ToSQL() (sql, []interface{}, error)`
+*   favor `github.com/pkg/errors` instead of `errors` package
 
 Removed:
 
 *  `dat.ErrNotfound` in favor of `sql.ErrNoRows`
-*  `CallBuilder` for calling sprocs
 *  *most* `panic` calls
 
 Added:

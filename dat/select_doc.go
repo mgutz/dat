@@ -1,5 +1,7 @@
 package dat
 
+import "github.com/pkg/errors"
+
 type subInfo struct {
 	*Expression
 	alias string
@@ -87,10 +89,10 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 	}
 
 	if len(b.columns) == 0 {
-		return NewDatSQLError("no columns specified")
+		return NewDatSQLErr(errors.New("no columns specified"))
 	}
 	if len(b.table) == 0 && b.innerSQL == nil {
-		return NewDatSQLError("no table specified")
+		return NewDatSQLErr(errors.New("no table specified"))
 	}
 
 	buf := bufPool.Get()

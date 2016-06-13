@@ -2,8 +2,9 @@ package dat
 
 import (
 	"bytes"
-	"errors"
 	"reflect"
+
+	"github.com/pkg/errors"
 )
 
 // InsertBuilder contains the clauses for an INSERT statement

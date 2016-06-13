@@ -1,6 +1,10 @@
 package dat
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/pkg/errors"
+)
 
 // UpsertBuilder contains the clauses for an INSERT statement
 type UpsertBuilder struct {
@@ -71,25 +75,25 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 		return NewDatSQLErr(b.err)
 	}
 	if len(b.table) == 0 {
-		return NewDatSQLError("no table specified")
+		return NewDatSQLErr(errors.New("no table specified"))
 	}
 	lenCols := len(b.cols)
 	if lenCols == 0 {
-		return NewDatSQLError("no columns specified")
+		return NewDatSQLErr(errors.New("no columns specified"))
 	}
 	if len(b.vals) == 0 && b.record == nil {
-		return NewDatSQLError("no values or records specified")
+		return NewDatSQLErr(errors.New("no values or records specified"))
 	}
 
 	if b.record == nil && b.cols[0] == "*" {
-		return NewDatSQLError(`"*" can only be used in conjunction with Record`)
+		return NewDatSQLErr(errors.New(`"*" can only be used in conjunction with Record`))
 	}
 	if b.record == nil && b.isBlacklist {
-		return NewDatSQLError(`Blacklist can only be used in conjunction with Record`)
+		return NewDatSQLErr(errors.New(`Blacklist can only be used in conjunction with Record`))
 	}
 	// build where clause from columns and values
 	if len(b.whereFragments) == 0 {
-		return NewDatSQLError("where clause required for upsert")
+		return NewDatSQLErr(errors.New("where clause required for upsert"))
 	}
 
 	// reflect fields removing blacklisted columns

@@ -1,10 +1,11 @@
 package runner
 
 import (
-	"errors"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/mgutz/dat.v2/dat"

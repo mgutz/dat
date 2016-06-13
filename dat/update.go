@@ -3,6 +3,8 @@ package dat
 import (
 	"reflect"
 	"strconv"
+
+	"github.com/pkg/errors"
 )
 
 // UpdateBuilder contains the clauses for an UPDATE statement
@@ -54,7 +56,7 @@ func (b *UpdateBuilder) SetMap(clauses map[string]interface{}) *UpdateBuilder {
 // SetBlacklist creates SET clause(s) using a record and blacklist of columns
 func (b *UpdateBuilder) SetBlacklist(rec interface{}, blacklist ...string) *UpdateBuilder {
 	if len(blacklist) == 0 {
-		b.err = NewError("UpdateBuilder.SetBlacklist requires a list of columns names")
+		b.err = errors.New("UpdateBuilder.SetBlacklist requires a list of columns names")
 		return b
 	}
 
@@ -152,13 +154,13 @@ func (b *UpdateBuilder) Returning(columns ...string) *UpdateBuilder {
 // It returns the string with placeholders and a slice of query arguments
 func (b *UpdateBuilder) ToSQL() (string, []interface{}, error) {
 	if b.err != nil {
-		return "", nil, b.err
+		return NewDatSQLErr(b.err)
 	}
 	if len(b.table) == 0 {
-		return "", nil, NewError("no table specified")
+		return NewDatSQLErr(errors.New("no table specified"))
 	}
 	if len(b.setClauses) == 0 {
-		return "", nil, NewError("no set clauses specified")
+		return NewDatSQLErr(errors.New("no set clauses specified"))
 	}
 
 	buf := bufPool.Get()

@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"errors"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/lib/pq"
 )
