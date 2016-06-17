@@ -112,6 +112,22 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			writePlaceholder(buf, newPlaceholderIndex)
 		}
 
+		valueOfV := reflect.ValueOf(v)
+		kindOfV := valueOfV.Kind()
+
+		// check for nil pointers
+		if kindOfV == reflect.Ptr {
+			if valueOfV.IsNil() {
+				buf.WriteString("NULL")
+				return nil
+			}
+		}
+
+		if v == nil {
+			buf.WriteString("NULL")
+			return nil
+		}
+
 		if val, ok := v.(UnsafeString); ok {
 			buf.WriteString(string(val))
 			return nil
@@ -130,17 +146,11 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 				return err
 			}
 			v = val
+			valueOfV = reflect.ValueOf(v)
+			kindOfV = valueOfV.Kind()
 		}
 
-		valueOfV := reflect.ValueOf(v)
-		kindOfV := valueOfV.Kind()
-
-		if v == nil {
-			buf.WriteString("NULL")
-			return nil
-		}
-
-		// Dereference pointer values
+		// dereference pointer values
 		if kindOfV == reflect.Ptr {
 			if valueOfV.IsNil() {
 				buf.WriteString("NULL")
