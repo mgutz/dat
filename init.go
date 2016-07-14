@@ -55,3 +55,13 @@ func init() {
 
 	logger = log.New("dat")
 }
+
+// Returns logger
+func Logger() log.Logger {
+	return logger
+}
+
+// Sets logger
+func SetLogger(l log.Logger) {
+	logger = l
+}

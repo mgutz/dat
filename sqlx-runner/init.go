@@ -51,3 +51,13 @@ func MustPing(db *sql.DB) {
 
 	panic("Could not ping database!")
 }
+
+// Returns logger
+func Logger() log.Logger {
+	return logger
+}
+
+// Sets logger
+func SetLogger(l log.Logger) {
+	logger = l
+}
