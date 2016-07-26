@@ -16,6 +16,9 @@ var logger log.Logger
 // LogQueriesThreshold is the threshold for logging "slow" queries
 var LogQueriesThreshold time.Duration
 
+// LogErrNoRows if set tells the runner to log no row errors. Defaults to false.
+var LogErrNoRows bool
+
 func init() {
 	dat.Dialect = postgres.New()
 	logger = log.New("dat:sqlx")

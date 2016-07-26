@@ -308,6 +308,10 @@ To trace all SQL, set environment variable
 LOGXI=dat* yourapp
 ```
 
+To log `sql.ErrNoRows` like `dat.v1`
+
+    runner.LogErrNoRows = true
+
 ## CRUD
 
 ### Create
