@@ -61,7 +61,10 @@ func logSQLError(err error, msg string, statement string, args []interface{}) er
 				return dat.ErrTimedout
 			}
 		}
-	} else if err == sql.ErrNoRows {
+	} else if err == sql.ErrNoRows || err == dat.ErrNotFound {
+		if !LogErrNoRows {
+			return err
+		}
 		if dat.Strict {
 			return logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 		}
