@@ -56,7 +56,7 @@ func BenchmarkSelectFullSql(b *testing.B) {
 }
 
 func TestSelectBasicToSql(t *testing.T) {
-	sql, args,err := Select("a", "b").From("c").Where("id = $1", 1).ToSQL()
+	sql, args, err := Select("a", "b").From("c").Where("id = $1", 1).ToSQL()
 	assert.NoError(t, err)
 
 	assert.Equal(t, sql, "SELECT a, b FROM c WHERE (id = $1)")
@@ -93,7 +93,7 @@ func TestSelectPaginateOrderDirToSql(t *testing.T) {
 	assert.Equal(t, sql, "SELECT a, b FROM c WHERE (d = $1) ORDER BY id DESC LIMIT 20 OFFSET 0")
 	assert.Equal(t, args, []interface{}{1})
 
-	sql, args,err = Select("a", "b").
+	sql, args, err = Select("a", "b").
 		From("c").
 		Where("d = $1", 1).
 		Paginate(3, 30).
@@ -105,7 +105,7 @@ func TestSelectPaginateOrderDirToSql(t *testing.T) {
 }
 
 func TestSelectNoWhereSql(t *testing.T) {
-	sql, args,err := Select("a", "b").From("c").ToSQL()
+	sql, args, err := Select("a", "b").From("c").ToSQL()
 	assert.NoError(t, err)
 
 	assert.Equal(t, sql, "SELECT a, b FROM c")
@@ -120,7 +120,7 @@ func TestSelectMultiHavingSql(t *testing.T) {
 }
 
 func TestSelectMultiOrderSql(t *testing.T) {
-	sql, args,err := Select("a", "b").From("c").OrderBy("name ASC").OrderBy("id DESC").ToSQL()
+	sql, args, err := Select("a", "b").From("c").OrderBy("name ASC").OrderBy("id DESC").ToSQL()
 	assert.NoError(t, err)
 	assert.Equal(t, sql, "SELECT a, b FROM c ORDER BY name ASC, id DESC")
 	assert.Equal(t, args, []interface{}(nil))
@@ -168,7 +168,7 @@ func TestSelectWhereMapSql(t *testing.T) {
 	assert.Equal(t, sql, quoteSQL("SELECT a FROM b WHERE (%s IS NULL)", "a"))
 	assert.Equal(t, args, []interface{}(nil))
 
-	sql, args,err = Select("a").From("b").
+	sql, args, err = Select("a").From("b").
 		Where(map[string]interface{}{"a": []int(nil)}).
 		Where(map[string]interface{}{"b": false}).
 		ToSQL()
@@ -179,7 +179,7 @@ func TestSelectWhereMapSql(t *testing.T) {
 }
 
 func TestSelectWhereEqSql(t *testing.T) {
-	sql, args,err := Select("a").From("b").Where(Eq{"a": 1, "b": []int64{1, 2, 3}}).ToSQL()
+	sql, args, err := Select("a").From("b").Where(Eq{"a": 1, "b": []int64{1, 2, 3}}).ToSQL()
 	assert.NoError(t, err)
 	if sql == quoteSQL("SELECT a FROM b WHERE (%s = $1) AND (%s IN $2)", "a", "b") {
 		assert.Equal(t, args, []interface{}{1, []int64{1, 2, 3}})
@@ -198,7 +198,7 @@ func TestSelectWhereExprSql(t *testing.T) {
 }
 
 func TestRawSql(t *testing.T) {
-	sql, args,err := SQL("SELECT * FROM users WHERE x = 1").ToSQL()
+	sql, args, err := SQL("SELECT * FROM users WHERE x = 1").ToSQL()
 	assert.NoError(t, err)
 	assert.Equal(t, sql, "SELECT * FROM users WHERE x = 1")
 	assert.Equal(t, args, []interface{}(nil))
@@ -225,7 +225,7 @@ func TestSelectVarieties(t *testing.T) {
 
 func TestSelectScope(t *testing.T) {
 	scope := NewScope("WHERE :TABLE.id = :id and name = :name", M{"id": 1, "name": "foo"})
-	sql, args,err := Select("a").From("b").ScopeMap(scope, M{"name": "mario"}).ToSQL()
+	sql, args, err := Select("a").From("b").ScopeMap(scope, M{"name": "mario"}).ToSQL()
 	assert.NoError(t, err)
 	assert.Equal(t, `SELECT a FROM b WHERE ( b.id = $1 and name = $2)`, sql)
 	assert.Exactly(t, args, []interface{}{1, "mario"})
@@ -252,7 +252,7 @@ func TestScopeWhere(t *testing.T) {
 			p.state = $1
 	`
 
-	sql, args,err := Select("u.*, p.*").
+	sql, args, err := Select("u.*, p.*").
 		From(`users u`).
 		Scope(published, "published").
 		Where(`u.id = $1`, 1).
@@ -268,7 +268,7 @@ func TestScopeJoinOnly(t *testing.T) {
 		INNER JOIN posts p on (p.author_id = u.id)
 	`
 
-	sql, args,err := Select("u.*, p.*").
+	sql, args, err := Select("u.*, p.*").
 		From(`users u`).
 		Scope(published).
 		Where(`u.id = $1`, 1).
@@ -284,7 +284,7 @@ func TestDistinctOn(t *testing.T) {
 		INNER JOIN posts p on (p.author_id = u.id)
 	`
 
-	sql, args,err := Select("u.*, p.*").
+	sql, args, err := Select("u.*, p.*").
 		DistinctOn("foo", "bar").
 		From(`users u`).
 		Scope(published).
@@ -300,7 +300,7 @@ func TestDistinctOn(t *testing.T) {
 }
 
 func TestSelectColumns(t *testing.T) {
-	sql, args,err := Select("id, user_name").
+	sql, args, err := Select("id, user_name").
 		From("users").
 		Columns("created_at").
 		ToSQL()
