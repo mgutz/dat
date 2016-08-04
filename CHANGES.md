@@ -2,18 +2,18 @@
 
 ## v2
 
-Changed:
+Changed
 
 *   `dat` package name changed from `gopkg.in/mgutz/dat.v1` to `gopkg.in/mgutz/dat.v2/dat`
 *   `ToSQL() (sql, []interface{})` => `ToSQL() (sql, []interface{}, error)`
 *   favor `github.com/pkg/errors` instead of `errors` package
 
-Removed:
+Removed
 
-*  `dat.ErrNotfound` in favor of `sql.ErrNoRows`
+*  `dat.ErrNotfound` (use `sql.ErrNoRows` instead)
 *  *most* `panic` calls
 
-Added:
+Added
 
 *   Timeouts per query. If a timeout occurs, then the query will be cancelled through
     `pg_cancel_backend`
@@ -22,6 +22,10 @@ Added:
     err := DB.Select("SELECT pg_sleep(1)").Timeout(1 * time.Millisecond).Exec()
     err ==  dat.ErrTimedout
     ```
+
+*   `runner.LogErrNoRows`. In `dat.v1` queries which returned empty result were logged
+    as errors. To use the old behavior set `runner.LogErrNoRows = true` in an initialization
+    function.
 
 
 ## v1.1.0

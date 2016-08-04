@@ -147,6 +147,7 @@ func init() {
 
     // Log any query over 10ms as warnings. (optional)
     runner.LogQueriesThreshold = 10 * time.Millisecond
+    runner.LogErrNoRows = false
 
     DB = runner.NewDB(db, "postgres")
 }
