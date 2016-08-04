@@ -109,31 +109,36 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}, error) {
 		return NewDatSQLErr(errors.New(`Blacklist can only be used in conjunction with Record`))
 	}
 
+	cols := b.cols
+	vals := b.vals
+	returnings := b.returnings
+	whereFragments := b.whereFragments
+
 	// reflect fields removing blacklisted columns
 	if b.record != nil && b.isBlacklist {
-		b.cols = reflectExcludeColumns(b.record, b.cols)
+		cols = reflectExcludeColumns(b.record, cols)
 	}
 	// reflect all fields
-	if b.record != nil && b.cols[0] == "*" {
-		b.cols = reflectColumns(b.record)
+	if b.record != nil && cols[0] == "*" {
+		cols = reflectColumns(b.record)
 	}
 
 	whereAdded := false
 
 	// build where clause from columns and values
-	if len(b.whereFragments) == 0 && b.record == nil {
+	if len(whereFragments) == 0 && b.record == nil {
 		whereAdded = true
-		for i, column := range b.cols {
-			fragment, err := newWhereFragment(column+"=$1", b.vals[i:i+1])
+		for i, column := range cols {
+			fragment, err := newWhereFragment(column+"=$1", vals[i:i+1])
 			if err != nil {
 				return NewDatSQLErr(err)
 			}
-			b.whereFragments = append(b.whereFragments, fragment)
+			whereFragments = append(whereFragments, fragment)
 		}
 	}
 
-	if len(b.returnings) == 0 {
-		b.returnings = b.cols
+	if len(returnings) == 0 {
+		returnings = cols
 	}
 
 	/*
@@ -155,7 +160,7 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}, error) {
 	*/
 	if b.record != nil {
 		ind := reflect.Indirect(reflect.ValueOf(b.record))
-		b.vals, err = valuesFor(ind.Type(), ind, b.cols)
+		vals, err = valuesFor(ind.Type(), ind, cols)
 		if err != nil {
 			return NewDatSQLErr(err)
 		}
@@ -168,9 +173,9 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}, error) {
 
 	buf.WriteString("WITH sel AS (")
 
-	sb := NewSelectBuilder(b.returnings...).
+	sb := NewSelectBuilder(returnings...).
 		From(b.table)
-	sb.whereFragments = b.whereFragments
+	sb.whereFragments = whereFragments
 	selectSQL, args, err = sb.ToSQL()
 	if err != nil {
 		return NewDatSQLErr(err)
@@ -182,18 +187,18 @@ func (b *InsectBuilder) ToSQL() (string, []interface{}, error) {
 	buf.WriteString(" INSERT INTO ")
 	writeIdentifier(buf, b.table)
 	buf.WriteString("(")
-	writeIdentifiers(buf, b.cols, ",")
+	writeIdentifiers(buf, cols, ",")
 	buf.WriteString(") SELECT ")
 
 	if whereAdded {
 		writePlaceholders(buf, len(args), ",", 1)
 	} else {
-		writePlaceholders(buf, len(b.vals), ",", len(args)+1)
-		args = append(args, b.vals...)
+		writePlaceholders(buf, len(vals), ",", len(args)+1)
+		args = append(args, vals...)
 	}
 
 	buf.WriteString(" WHERE NOT EXISTS (SELECT 1 FROM sel) RETURNING ")
-	writeIdentifiers(buf, b.returnings, ",")
+	writeIdentifiers(buf, returnings, ",")
 
 	buf.WriteString(") SELECT * FROM ins UNION ALL SELECT * FROM sel")
 

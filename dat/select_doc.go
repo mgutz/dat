@@ -178,7 +178,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS ")
 		writeIdentifier(buf, sub.alias)
 	}
-
+	whereFragments := b.whereFragments
 	if b.innerSQL != nil {
 		b.innerSQL.WriteRelativeArgs(buf, &args, &placeholderStartPos)
 	} else {
@@ -195,19 +195,19 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 				if err != nil {
 					return NewDatSQLErr(err)
 				}
-				b.whereFragments = append(b.whereFragments, fragment)
+				whereFragments = append(whereFragments, fragment)
 			}
 		}
 
-		if len(b.whereFragments) > 0 {
+		if len(whereFragments) > 0 {
 			buf.WriteString(" WHERE ")
-			writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
+			writeAndFragmentsToSQL(buf, whereFragments, &args, &placeholderStartPos)
 		}
 
 		// if b.scope == nil {
-		// 	if len(b.whereFragments) > 0 {
+		// 	if len(whereFragments) > 0 {
 		// 		buf.WriteString(" WHERE ")
-		// 		writeWhereFragmentsToSql(buf, b.whereFragments, &args, &placeholderStartPos)
+		// 		writeWhereFragmentsToSql(buf, whereFragments, &args, &placeholderStartPos)
 		// 	}
 		// } else {
 		// 	whereFragment := newWhereFragment(b.scope.ToSQL(b.table))

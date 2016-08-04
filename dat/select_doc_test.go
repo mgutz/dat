@@ -218,7 +218,7 @@ func TestSelectDocColumns(t *testing.T) {
 }
 
 func TestSelectDocFor(t *testing.T) {
-	sql, args,err := SelectDoc("id, user_name").
+	sql, args, err := SelectDoc("id, user_name").
 		From("users").
 		Columns("created_at").
 		For("UPDATE").

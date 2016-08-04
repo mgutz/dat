@@ -62,13 +62,12 @@ func TestUpsertSQLRecord(t *testing.T) {
 		B int `db:"b"`
 		C int `db:"c"`
 	}{1, 2}
-
-	sql, args, err := Upsert("tab").
+	us := Upsert("tab").
 		Columns("b", "c").
 		Record(rec).
 		Where("d=$1", 4).
-		Returning("f", "g").
-		ToSQL()
+		Returning("f", "g")
+	sql, args, err := us.ToSQL()
 	assert.NoError(t, err)
 
 	expected := `
@@ -89,4 +88,38 @@ func TestUpsertSQLRecord(t *testing.T) {
 
 	assert.Equal(t, stripWS(expected), stripWS(sql))
 	assert.Equal(t, []interface{}{1, 2, 4}, args)
+}
+
+func TestUpsertSQLBlacklistRecord(t *testing.T) {
+	var rec = struct {
+		B int `db:"b"`
+		C int `db:"c"`
+	}{1, 2}
+	us := Upsert("tab").
+		Blacklist("c").
+		Record(rec).
+		Where("d=$1", 4).
+		Returning("f", "g")
+	us.ToSQL()
+	sql, args, err := us.ToSQL()
+	assert.NoError(t, err)
+
+	expected := `
+	WITH
+		upd AS (
+			UPDATE tab
+			SET b = $1
+			WHERE (d=$2)
+			RETURNING f,g
+		), ins AS (
+			INSERT INTO tab(b)
+			SELECT $1
+			WHERE NOT EXISTS (SELECT 1 FROM upd)
+			RETURNING f,g
+		)
+	SELECT * FROM ins UNION ALL SELECT * FROM upd
+	`
+
+	assert.Equal(t, stripWS(expected), stripWS(sql))
+	assert.Equal(t, []interface{}{1, 4}, args)
 }

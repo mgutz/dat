@@ -191,6 +191,7 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}, error) {
 	buf.WriteString(b.table)
 
 	var placeholderStartPos int64 = 1
+	whereFragments := b.whereFragments
 	if b.scope != nil {
 		var where string
 		sql, args2 := b.scope.ToSQL(b.table)
@@ -202,13 +203,13 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}, error) {
 				return NewDatSQLErr(err)
 
 			}
-			b.whereFragments = append(b.whereFragments, fragment)
+			whereFragments = append(whereFragments, fragment)
 		}
 	}
 
-	if len(b.whereFragments) > 0 {
+	if len(whereFragments) > 0 {
 		buf.WriteString(" WHERE ")
-		writeAndFragmentsToSQL(buf, b.whereFragments, &args, &placeholderStartPos)
+		writeAndFragmentsToSQL(buf, whereFragments, &args, &placeholderStartPos)
 	}
 
 	if len(b.groupBys) > 0 {

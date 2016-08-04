@@ -114,13 +114,15 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 		return "", nil, NewError("Blacklist can only be used in conjunction with Record")
 	}
 
+	cols := b.cols
+
 	// reflect fields removing blacklisted columns
 	if lenRecords > 0 && b.isBlacklist {
-		b.cols = reflectExcludeColumns(b.records[0], b.cols)
+		cols = reflectExcludeColumns(b.records[0], cols)
 	}
 	// reflect all fields
-	if lenRecords > 0 && b.cols[0] == "*" {
-		b.cols = reflectColumns(b.records[0])
+	if lenRecords > 0 && cols[0] == "*" {
+		cols = reflectColumns(b.records[0])
 	}
 
 	var sql bytes.Buffer
@@ -130,7 +132,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 	sql.WriteString(b.table)
 	sql.WriteString(" (")
 
-	for i, c := range b.cols {
+	for i, c := range cols {
 		if i > 0 {
 			sql.WriteRune(',')
 		}
@@ -160,7 +162,7 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 		}
 
 		ind := reflect.Indirect(reflect.ValueOf(rec))
-		vals, err := valuesFor(ind.Type(), ind, b.cols)
+		vals, err := valuesFor(ind.Type(), ind, cols)
 		if err != nil {
 			return "", nil, err
 		}

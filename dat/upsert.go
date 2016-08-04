@@ -77,6 +77,7 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 	if len(b.table) == 0 {
 		return NewDatSQLErr(errors.New("no table specified"))
 	}
+
 	lenCols := len(b.cols)
 	if lenCols == 0 {
 		return NewDatSQLErr(errors.New("no columns specified"))
@@ -84,7 +85,6 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 	if len(b.vals) == 0 && b.record == nil {
 		return NewDatSQLErr(errors.New("no values or records specified"))
 	}
-
 	if b.record == nil && b.cols[0] == "*" {
 		return NewDatSQLErr(errors.New(`"*" can only be used in conjunction with Record`))
 	}
@@ -95,18 +95,21 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 	if len(b.whereFragments) == 0 {
 		return NewDatSQLErr(errors.New("where clause required for upsert"))
 	}
+	cols := b.cols
+	returnings := b.returnings
+	vals := b.vals
 
 	// reflect fields removing blacklisted columns
 	if b.record != nil && b.isBlacklist {
-		b.cols = reflectExcludeColumns(b.record, b.cols)
+		cols = reflectExcludeColumns(b.record, cols)
 	}
 	// reflect all fields
-	if b.record != nil && b.cols[0] == "*" {
-		b.cols = reflectColumns(b.record)
+	if b.record != nil && cols[0] == "*" {
+		cols = reflectColumns(b.record)
 	}
 
-	if len(b.returnings) == 0 {
-		b.returnings = b.cols
+	if len(returnings) == 0 {
+		returnings = cols
 	}
 
 	/*
@@ -148,7 +151,7 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 	if b.record != nil {
 		ind := reflect.Indirect(reflect.ValueOf(b.record))
 		var err error
-		b.vals, err = valuesFor(ind.Type(), ind, b.cols)
+		vals, err = valuesFor(ind.Type(), ind, cols)
 		if err != nil {
 			return NewDatSQLErr(err)
 		}
@@ -184,11 +187,11 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 	buf.WriteString("WITH upd AS ( ")
 
 	ub := NewUpdateBuilder(b.table)
-	for i, col := range b.cols {
-		ub.Set(col, b.vals[i])
+	for i, col := range cols {
+		ub.Set(col, vals[i])
 	}
 	ub.whereFragments = b.whereFragments
-	ub.returnings = b.returnings
+	ub.returnings = returnings
 	updateSQL, args, err := ub.ToSQL()
 	if err != nil {
 		return NewDatSQLErr(err)
@@ -200,13 +203,13 @@ func (b *UpsertBuilder) ToSQL() (string, []interface{}, error) {
 	buf.WriteString(" INSERT INTO ")
 	writeIdentifier(buf, b.table)
 	buf.WriteString("(")
-	writeIdentifiers(buf, b.cols, ",")
+	writeIdentifiers(buf, cols, ",")
 	buf.WriteString(") SELECT ")
 
-	writePlaceholders(buf, len(b.vals), ",", 1)
+	writePlaceholders(buf, len(vals), ",", 1)
 
 	buf.WriteString(" WHERE NOT EXISTS (SELECT 1 FROM upd) RETURNING ")
-	writeIdentifiers(buf, b.returnings, ",")
+	writeIdentifiers(buf, returnings, ",")
 
 	buf.WriteString(") SELECT * FROM ins UNION ALL SELECT * FROM upd")
 
