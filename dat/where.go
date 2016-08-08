@@ -22,9 +22,9 @@ type whereFragment struct {
 func newWhereFragment(whereSQLOrMap interface{}, args []interface{}) (*whereFragment, error) {
 	switch pred := whereSQLOrMap.(type) {
 	case Expression:
-		return &whereFragment{Condition: pred.Sql, Values: pred.Args}, nil
+		return &whereFragment{Condition: pred.SQL, Values: pred.Args}, nil
 	case *Expression:
-		return &whereFragment{Condition: pred.Sql, Values: pred.Args}, nil
+		return &whereFragment{Condition: pred.SQL, Values: pred.Args}, nil
 	case string:
 		return &whereFragment{Condition: pred, Values: args}, nil
 	case map[string]interface{}:

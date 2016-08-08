@@ -48,7 +48,7 @@ func pgSetVersion(db *DB) {
 		SQL("SHOW server_version_num").
 		QueryScalar(&db.Version)
 	if err != nil {
-		logger.Fatal("Could not query Postgres version")
+		Logger.Fatal("Could not query Postgres version")
 		return
 	}
 }
@@ -74,11 +74,11 @@ func NewDB(db *sql.DB, driverName string) *DB {
 func NewDBFromString(driver string, connectionString string) *DB {
 	db, err := sql.Open(driver, connectionString)
 	if err != nil {
-		logger.Fatal("Database error ", "err", err)
+		Logger.Fatal("Database error ", "err", err)
 	}
 	err = db.Ping()
 	if err != nil {
-		logger.Fatal("Could not ping database", "err", err)
+		Logger.Fatal("Could not ping database", "err", err)
 	}
 	return NewDB(db, driver)
 }

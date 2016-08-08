@@ -10,8 +10,8 @@ Changed
 
 Removed
 
-*  `dat.ErrNotfound` (use `sql.ErrNoRows` instead)
-*  *most* `panic` calls
+*  `dat.ErrNotfound` custom error removed. Use `sql.ErrNoRows`.
+*  *most* `panic` calls were removed in favor of error values.
 
 Added
 
@@ -20,12 +20,16 @@ Added
 
     ```go
     err := DB.Select("SELECT pg_sleep(1)").Timeout(1 * time.Millisecond).Exec()
-    err ==  dat.ErrTimedout
+    err ==  dat.ErrTimedOut
     ```
 
-*   `runner.LogErrNoRows`. In `dat.v1` queries which returned empty result were logged
-    as errors. To use the old behavior set `runner.LogErrNoRows = true` in an initialization
-    function.
+*   `sql.ErrNoRows` is no longer logged as an error. In `dat.v1` queries which returned empty
+    result were logged as errors. To use the old behavior set `runner.LogErrNoRows = true` in
+    an initialization function.
+
+*   Added `OnConflict()` method
+
+*   Expose `runner.Logger`
 
 
 ## v1.1.0

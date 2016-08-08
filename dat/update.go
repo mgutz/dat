@@ -183,7 +183,7 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}, error) {
 			start := placeholderStartPos
 			buf.WriteString(" = ")
 			// map relative $1, $2 placeholders to absolute
-			remapPlaceholders(buf, e.Sql, start)
+			remapPlaceholders(buf, e.SQL, start)
 			args = append(args, e.Args...)
 			placeholderStartPos += int64(len(e.Args))
 		} else {

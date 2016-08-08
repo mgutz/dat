@@ -81,7 +81,7 @@ func (ex *Execer) Cancel() error {
 
 	_, err := ex.execSQL(q, nil)
 	if err != nil {
-		logger.Error("While trying to cancel a query", err)
+		Logger.Error("While trying to cancel a query", err)
 	}
 	return dat.ErrTimedout
 }

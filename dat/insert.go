@@ -15,6 +15,7 @@ type InsertBuilder struct {
 	table          string
 	cols           []string
 	isBlacklist    bool
+	onConflict     string
 	vals           [][]interface{}
 	records        []interface{}
 	returnings     []string
@@ -62,7 +63,9 @@ func (b *InsertBuilder) Record(record interface{}) *InsertBuilder {
 	return b
 }
 
-func (b *InsertBuilder) OnConflict() *InsertBuilder {
+// OnConflict sets ON CONFLICT clause
+func (b *InsertBuilder) OnConflict(targetAction string) *InsertBuilder {
+	b.onConflict = targetAction
 	return b
 }
 
@@ -171,6 +174,11 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 			args = append(args, v)
 			start++
 		}
+	}
+
+	if b.onConflict != "" {
+		sql.WriteString(" ON CONFLICT ")
+		sql.WriteString(b.onConflict)
 	}
 
 	// Go thru the returning clauses

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -240,4 +241,34 @@ func TestInsertBytes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Exactly(t, b, image)
 	dat.EnableInterpolation = false
+}
+
+func TestInsertOnConflict(t *testing.T) {
+	if testDB.Version >= 90500 {
+		dat.EnableInterpolation = true
+
+		// ensure error when inserting conflicting value
+		_, err := testDB.
+			InsertInto("people").
+			Columns("id", "name").
+			Values(1, "test").
+			Returning("id").
+			Exec()
+		assert.Error(t, err)
+
+		// should pass with on clict resolver
+		var id int64
+		err = testDB.
+			InsertInto("people").
+			Columns("id", "name").
+			Values(1, "test").
+			OnConflict("(id) DO NOTHING").
+			Returning("id").
+			QueryScalar(&id)
+		assert.Exactly(t, err, sql.ErrNoRows)
+
+		dat.EnableInterpolation = false
+	} else {
+		fmt.Println("ON CONFLICT not supported in Postgres version=", testDB.Version)
+	}
 }

@@ -79,7 +79,7 @@ func (q *Queryable) ExecBuilder(b dat.Builder) error {
 // statements executed, or the index at which an error occurred.
 func (q *Queryable) ExecMulti(commands ...*dat.Expression) (int, error) {
 	for i, cmd := range commands {
-		_, err := q.runner.Exec(cmd.Sql, cmd.Args...)
+		_, err := q.runner.Exec(cmd.SQL, cmd.Args...)
 		if err != nil {
 			return i, err
 		}

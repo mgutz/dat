@@ -117,3 +117,15 @@ func TestInsertDuplicateColumns(t *testing.T) {
 	assert.Equal(t, sql, `INSERT INTO a (status) VALUES ($1)`)
 	assert.Equal(t, args, []interface{}{"open"})
 }
+
+func TestInsertOnConflict(t *testing.T) {
+	sql, args, err := InsertInto("a").
+		Columns("id", "c").
+		Values(1, 2).
+		Values(3, 4).
+		OnConflict("(id) DO NOTHING").
+		ToSQL()
+	assert.NoError(t, err)
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4) ON CONFLICT (id) DO NOTHING", "id", "c"))
+	assert.Equal(t, args, []interface{}{1, 2, 3, 4})
+}

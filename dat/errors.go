@@ -26,14 +26,18 @@ type Error struct {
 	Message string
 }
 
+// Error returns the enclosed error message.
 func (de *Error) Error() string {
 	return de.Message
 }
 
+// NewError creates a new dat Error.
 func NewError(msg string) error {
 	return &Error{Message: msg}
 }
 
+// NewDatSQLErr is a shortcut for returning an error when building SQL. Should not
+// be used by end users.
 func NewDatSQLErr(err error) (string, []interface{}, error) {
 	return "", nil, err
 }

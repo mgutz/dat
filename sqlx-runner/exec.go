@@ -67,34 +67,34 @@ func logSQLError(err error, msg string, statement string, args []interface{}) er
 			return err
 		}
 		if dat.Strict {
-			return logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+			return Logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 		}
-		if logger.IsDebug() {
-			logger.Debug(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+		if Logger.IsDebug() {
+			Logger.Debug(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 		}
 		return err
 	}
 
-	return logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
+	return Logger.Error(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 }
 
 func logExecutionTime(start time.Time, sql string, args []interface{}) {
 	logged := false
-	if logger.IsWarn() {
+	if Logger.IsWarn() {
 		elapsed := time.Since(start)
 		if LogQueriesThreshold > 0 && elapsed.Nanoseconds() > LogQueriesThreshold.Nanoseconds() {
 			if len(args) > 0 {
-				logger.Warn("SLOW query", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql, "args", toOutputStr(args))
+				Logger.Warn("SLOW query", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql, "args", toOutputStr(args))
 			} else {
-				logger.Warn("SLOW query", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
+				Logger.Warn("SLOW query", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
 			}
 			logged = true
 		}
 	}
 
-	if logger.IsInfo() && !logged {
+	if Logger.IsInfo() && !logged {
 		elapsed := time.Since(start)
-		logger.Info("Query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
+		Logger.Info("Query time", "elapsed", fmt.Sprintf("%s", elapsed), "sql", sql)
 	}
 }
 
@@ -125,7 +125,7 @@ func (ex *Execer) exec() (sql.Result, error) {
 func (ex *Execer) execFn() (sql.Result, error) {
 	fullSQL, args, err := ex.Interpolate()
 	if err != nil {
-		return nil, logger.Error("execFn.10", "err", err, "sql", fullSQL)
+		return nil, Logger.Error("execFn.10", "err", err, "sql", fullSQL)
 	}
 	defer logExecutionTime(time.Now(), fullSQL, args)
 
@@ -228,7 +228,7 @@ func (ex *Execer) queryScalarFn(destinations []interface{}) error {
 			return nil
 		}
 		// log it and fallthrough to let the query continue
-		logger.Warn("queryScalarFn.10: Could not unmarshal cache data. Continuing with query")
+		Logger.Warn("queryScalarFn.10: Could not unmarshal cache data. Continuing with query")
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
@@ -316,7 +316,7 @@ func (ex *Execer) querySliceFn(dest interface{}) error {
 			return nil
 		}
 		// log it and fallthrough to let the query continue
-		logger.Warn("querySlice.2: Could not unmarshal cache data. Continuing with query")
+		Logger.Warn("querySlice.2: Could not unmarshal cache data. Continuing with query")
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
@@ -387,7 +387,7 @@ func (ex *Execer) queryStructFn(dest interface{}) error {
 			return nil
 		}
 		// log it and fallthrough to let the query continue
-		logger.Warn("queryStruct.2: Could not unmarshal queryStruct cache data. Continuing with query")
+		Logger.Warn("queryStruct.2: Could not unmarshal queryStruct cache data. Continuing with query")
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
@@ -429,7 +429,7 @@ func (ex *Execer) queryStructs(dest interface{}) error {
 func (ex *Execer) queryStructsFn(dest interface{}) error {
 	fullSQL, args, blob, err := ex.cacheOrSQL()
 	if err != nil {
-		logger.Error("queryStructs.1: Could not convert to SQL", "err", err)
+		Logger.Error("queryStructs.1: Could not convert to SQL", "err", err)
 		return err
 	}
 	if blob != nil {
@@ -438,7 +438,7 @@ func (ex *Execer) queryStructsFn(dest interface{}) error {
 			return nil
 		}
 		// log it and let the query continue
-		logger.Warn("queryStructs.2: Could not unmarshal queryStruct cache data. Continuing with query", "err", err)
+		Logger.Warn("queryStructs.2: Could not unmarshal queryStruct cache data. Continuing with query", "err", err)
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
@@ -516,7 +516,7 @@ func (ex *Execer) queryJSONBlobFn(single bool) ([]byte, error) {
 			if i == 1 {
 				if dat.Strict {
 					logSQLError(errors.New("Multiple results returned"), "Expected single result", fullSQL, args)
-					logger.Fatal("Expected single result, got many")
+					Logger.Fatal("Expected single result, got many")
 				} else {
 					break
 				}
@@ -583,7 +583,7 @@ func (ex *Execer) cacheOrSQL() (string, []interface{}, []byte, error) {
 		v, err := Cache.Get(ex.cacheID)
 		//logger.Warn("DBG cacheOrSQL.1 getting by id", "id", execer.cacheID, "v", v, "err", err)
 		if err != nil && err != kvs.ErrNotFound {
-			logger.Error("Unable to read cache key. Continuing with query", "key", ex.cacheID, "err", err)
+			Logger.Error("Unable to read cache key. Continuing with query", "key", ex.cacheID, "err", err)
 		} else if v != "" {
 			//logger.Warn("DBG cacheOrSQL.11 HIT", "v", v)
 			return "", nil, []byte(v), nil
@@ -633,10 +633,10 @@ func (ex *Execer) setCache(data interface{}, dataType int) {
 	case dtStruct:
 		b, err := json.Marshal(data)
 		if err != nil {
-			logger.Warn("Could not marshal data, clearing", "key", ex.cacheID, "err", err)
+			Logger.Warn("Could not marshal data, clearing", "key", ex.cacheID, "err", err)
 			err = Cache.Del(ex.cacheID)
 			if err != nil {
-				logger.Error("Could not delete cache key", "key", ex.cacheID, "err", err)
+				Logger.Error("Could not delete cache key", "key", ex.cacheID, "err", err)
 			}
 			return
 		}
@@ -650,7 +650,7 @@ func (ex *Execer) setCache(data interface{}, dataType int) {
 	//logger.Warn("DBG setting cache", "key", execer.cacheID, "data", string(b), "ttl", execer.cacheTTL)
 	err := Cache.Set(ex.cacheID, s, ex.cacheTTL)
 	if err != nil {
-		logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
+		Logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
 	}
 }
 

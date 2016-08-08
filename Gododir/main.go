@@ -10,7 +10,7 @@ import (
 func tasks(p *do.Project) {
 	do.Env = `
 	DAT_DRIVER=postgres
-	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
+	DAT_DSN="dbname=dat_test user=dat password=!test host=localhost sslmode=disable"
 	`
 	generateTasks(p)
 	p.Use("pg", pgTasks)
@@ -77,7 +77,7 @@ func tasks(p *do.Project) {
 	})
 
 	p.Task("lint", nil, func(c *do.Context) {
-		c.Bash("gometalinter --deadline=2m -D gotype -D dupl ./...")
+		c.Bash("gometalinter --deadline=2m --exclude=vendor --vendored-linters -D gotype -D dupl ./...")
 	})
 
 	p.Task("mocks", nil, func(c *do.Context) {

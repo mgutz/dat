@@ -11,7 +11,8 @@ import (
 	"gopkg.in/mgutz/dat.v2/postgres"
 )
 
-var logger log.Logger
+// Logger is the internal logger interface
+var Logger log.Logger
 
 // LogQueriesThreshold is the threshold for logging "slow" queries
 var LogQueriesThreshold time.Duration
@@ -19,13 +20,13 @@ var LogQueriesThreshold time.Duration
 // LogErrNoRows if set tells the runner to log no row errors. Defaults to false.
 var LogErrNoRows bool
 
-func init() {
-	dat.Dialect = postgres.New()
-	logger = log.New("dat:sqlx")
-}
-
 // Cache caches query results.
 var Cache kvs.KeyValueStore
+
+func init() {
+	dat.Dialect = postgres.New()
+	Logger = log.New("dat:sqlx")
+}
 
 // SetCache sets this runner's cache. The default cache is in-memory
 // based. See cache.MemoryKeyValueStore.
@@ -44,7 +45,7 @@ func MustPing(db *sql.DB) {
 	// so operations that take a while to fail could run in quick succession.
 	for range ticker.C {
 		if err = db.Ping(); err != nil {
-			logger.Info("pinging database...", err.Error())
+			Logger.Info("pinging database...", err.Error())
 			continue
 		}
 

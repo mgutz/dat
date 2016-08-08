@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 
 	tx, err := db.Begin()
 	if err != nil {
-		logger.Fatal("Could not create session")
+		Logger.Fatal("Could not create session")
 	}
 	defer tx.AutoRollback()
 
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 		dat.Expr(createMeta),
 	)
 	if err != nil {
-		logger.Fatal("Could not execute Multi SQL")
+		Logger.Fatal("Could not execute Multi SQL")
 		panic(err)
 	}
 	tx.Commit()
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS dat__meta (
 func (db *DB) MustRegisterFunction(name string, version string, body string) {
 	tx, err := db.Begin()
 	if err != nil {
-		logger.Fatal("Could not register function", "err", err, "name", name)
+		Logger.Fatal("Could not register function", "err", err, "name", name)
 	}
 	defer tx.AutoRollback()
 
@@ -84,11 +84,11 @@ func (db *DB) MustRegisterFunction(name string, version string, body string) {
 		SQL(`SELECT id FROM dat__meta WHERE kind = 'function' AND version = $1 AND name = $2`, crc, name).
 		QueryScalar(&metaID)
 	if err != nil && err != sql.ErrNoRows {
-		logger.Fatal("Could not get metadata for function", "err", err)
+		Logger.Fatal("Could not get metadata for function", "err", err)
 	}
 
 	if metaID == 0 {
-		logger.Debug("Adding function", "name", name)
+		Logger.Debug("Adding function", "name", name)
 		commands := []*dat.Expression{
 			dat.Expr(`
 				INSERT INTO dat__meta (kind, version, name)
@@ -106,7 +106,7 @@ func (db *DB) MustRegisterFunction(name string, version string, body string) {
 
 		_, err := tx.ExecMulti(commands...)
 		if err != nil {
-			logger.Fatal("Could not insert function", "err", err)
+			Logger.Fatal("Could not insert function", "err", err)
 		}
 	}
 	tx.Commit()
