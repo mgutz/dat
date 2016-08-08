@@ -19,7 +19,7 @@ func NewCallBuilder(sproc string, args ...interface{}) *CallBuilder {
 }
 
 // ToSQL serializes CallBuilder to a SQL string returning
-// valid SQL with placeholders an a slice of query arguments.
+// valid SQL with placeholders and a slice of query arguments.
 func (b *CallBuilder) ToSQL() (string, []interface{}, error) {
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
