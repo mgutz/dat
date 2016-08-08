@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"gopkg.in/mgutz/dat.v2/common"
+	"gopkg.in/mgutz/dat.v3/common"
 )
 
 // Eq is a map column -> value pairs which must be matched in a query

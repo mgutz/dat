@@ -4,7 +4,7 @@
 
 Changed
 
-*   `dat` package name changed from `gopkg.in/mgutz/dat.v1` to `gopkg.in/mgutz/dat.v2/dat`
+*   `dat` package name changed from `gopkg.in/mgutz/dat.v1` to `gopkg.in/mgutz/dat.v3/dat`
 *   `ToSQL() (sql, []interface{})` => `ToSQL() (sql, []interface{}, error)`
 *   favor `github.com/pkg/errors` instead of `errors` package
 

@@ -1,4 +1,4 @@
-package: gopkg.in/mgutz/dat.v2
+package: gopkg.in/mgutz/dat.v3
 import:
 - package: github.com/cenkalti/backoff
 - package: github.com/garyburd/redigo

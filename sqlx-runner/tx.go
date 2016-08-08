@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/jmoiron/sqlx"
-	"gopkg.in/mgutz/dat.v2/dat"
+	"gopkg.in/mgutz/dat.v3/dat"
 )
 
 const (
