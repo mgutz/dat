@@ -2,8 +2,9 @@ package dat
 
 import (
 	"fmt"
-	"github.com/mgutz/str"
 	"reflect"
+
+	"github.com/mgutz/str"
 
 	"gopkg.in/mgutz/dat.v2/reflectx"
 )
@@ -31,11 +32,12 @@ func valuesFor(recordType reflect.Type, record reflect.Value, columns []string) 
 }
 
 func reflectColumns(v interface{}) []string {
-	cols := []string{}
-	for _, name := range reflectFields(v).DeclaredNames {
-		cols = append(cols, name)
-	}
-	return cols
+	// TODO this returns a copy for safety but it could be optimized
+	// to return DeclaredNames
+	declaredNames := reflectFields(v).DeclaredNames
+	names := make([]string, len(declaredNames))
+	copy(names, declaredNames)
+	return names
 }
 
 func reflectExcludeColumns(v interface{}, blacklist []string) []string {

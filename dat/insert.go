@@ -63,7 +63,8 @@ func (b *InsertBuilder) Record(record interface{}) *InsertBuilder {
 	return b
 }
 
-// OnConflict sets ON CONFLICT clause
+// OnConflict sets ON CONFLICT clause. Only supported on Postgres 9.5+. Unfortunately,
+// this dat package is just a builder and version cannot be checked.
 func (b *InsertBuilder) OnConflict(targetAction string) *InsertBuilder {
 	b.onConflict = targetAction
 	return b
