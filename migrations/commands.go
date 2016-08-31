@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"fmt"
 	"os/exec"
 	"strconv"
 
@@ -90,6 +91,7 @@ func Add(migration *Migration) error {
 }
 
 // Console launches psql console.
+// TODO this aint working
 func Console() error {
 	cmd := exec.Command("psql",
 		"-U", _userOptions.User,
@@ -99,8 +101,11 @@ func Console() error {
 	if _userOptions.Password != "" {
 		cmd.Env = append(cmd.Env, "PGPASSWORD=", _userOptions.Password)
 	}
-	cmd.Run()
-
+	err := cmd.Run()
+	if err != nil {
+		fmt.Println("ERR", err)
+		return err
+	}
 	return nil
 }
 
