@@ -3,3 +3,4 @@ trace.log
 *.test
 godobin*
 vendor/
+npm-debug.log

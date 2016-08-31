@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-// BufferWriter a common interface between bytes.Buffer and bufio.Writer
+// BufferWriter is a common interface between bytes.Buffer and bufio.Writer
 type BufferWriter interface {
 	Write(p []byte) (nn int, err error)
 	WriteRune(r rune) (n int, err error)
@@ -33,7 +33,7 @@ func (bp *BufferPool) Get() *bytes.Buffer {
 	return bp.Pool.Get().(*bytes.Buffer)
 }
 
-// Put reurns a buffer which was previously checked out.
+// Put returns a buffer which was previously checked out.
 func (bp *BufferPool) Put(b *bytes.Buffer) {
 	b.Reset()
 	bp.Pool.Put(b)

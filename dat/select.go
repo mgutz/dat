@@ -242,7 +242,6 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}, error) {
 		writeUint64(buf, b.offsetCount)
 	}
 
-	// add FOR clause
 	if len(b.fors) > 0 {
 		buf.WriteString(" FOR")
 		for _, s := range b.fors {

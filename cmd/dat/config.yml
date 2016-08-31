@@ -1,0 +1,18 @@
+database: dat_testdb
+user: postgres
+password: password
+host: localhost
+port: 5432
+
+
+uc, err := new UConfig()
+
+uc.Use(IniArgs(filename))
+uc.Use(JSONArgs(filename))
+uc.Use(YAMLArgs(filename))
+uc.Use(EnvArgs)  // __ is the namespace separator
+uc.Use(CLIArgs(argv, "__"))  // __ is the namespace separator
+uc.Parse(&destination)
+
+uc.Unparsed[]
+uc.PassthroughOptions string

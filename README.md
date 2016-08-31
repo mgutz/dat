@@ -807,10 +807,10 @@ the lib/pq layer
 "INSERT INTO (a, b, c, d) VALUES (1, 2, 3, 4)"
 ```
 
-Interpolation provides these benefits:
+Interpolation provides
 
 *   Performance improvements
-*   Debugging/tracing is simpler with interpolated SQL
+*   Debugging/tracing with interpolated SQL
 *   May use safe SQL constants like `dat.NOW` and `dat.DEFAULT`
 *   Expand placeholders with slice values `$1 => (1, 2, 3)`
 

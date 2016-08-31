@@ -1,6 +1,6 @@
 package dat
 
-// Builder interface is used to tie SQL generators to executors.
+// Builder ties SQL generators to executors.
 type Builder interface {
 	// ToSQL builds the SQL and arguments from builder.
 	ToSQL() (string, []interface{}, error)
