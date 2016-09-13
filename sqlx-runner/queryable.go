@@ -3,6 +3,9 @@ package runner
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
+
+	"github.com/pkg/errors"
 
 	"github.com/jmoiron/sqlx"
 	"gopkg.in/mgutz/dat.v3/dat"
@@ -21,6 +24,32 @@ func WrapSqlxExt(e sqlx.Ext) (*Queryable, error) {
 	case database:
 		return &Queryable{e}, nil
 	}
+}
+
+// SplitEx splits a string using a regex
+// Idea from http://stackoverflow.com/a/14765076
+func splitEx(text string, reg *regexp.Regexp) []string {
+	indexes := reg.FindAllStringIndex(text, -1)
+	laststart := 0
+	result := make([]string, len(indexes)+1)
+	for i, element := range indexes {
+		result[i] = text[laststart:element[0]]
+		laststart = element[1]
+	}
+	result[len(indexes)] = text[laststart:len(text)]
+	return result
+}
+
+// ExecScript executes a script with multiple statements delimited by a separator ('GO')
+func (q *Queryable) ExecScript(script string, args ...interface{}) error {
+	statements := splitEx(script, reScriptSeparator)
+	for _, sql := range statements {
+		_, err := q.runner.Exec(sql, args...)
+		if err != nil {
+			return errors.Wrap(err, "SQL: "+sql)
+		}
+	}
+	return nil
 }
 
 // Call creates a new CallBuilder for the given sproc and args.

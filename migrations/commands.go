@@ -109,8 +109,93 @@ func Console() error {
 	return nil
 }
 
+func table(name string) dat.UnsafeString {
+	return dat.UnsafeString(name)
+}
+
 // CreateUserDB creates user database. Super user database options must be valid.
-func CreateUserDB() error {
+func CreateUserDB(superOptions *DBOptions, userOptions *DBOptions) error {
+	// kills all existing connections then (re)creates the database specified in user options
+	statements := `	
+	# kill all connections first
+	# NOTE: pid is procpid in PostgreSQL < 9.2
+	"""
+	select pg_terminate_backend(pid)
+	from pg_stat_activity
+	where datname='#{config.database}'
+		and pid <> pg_backend_pid()
+	"""
+	GO
+	"drop database if exists #{config.database};"
+	GO
+	"drop user if exists #{config.user};"
+	GO
+	"create user #{config.user} password '#{config.password}' SUPERUSER CREATEROLE;"
+	GO
+	"create database #{config.database} owner #{config.user};"
+`
+
+	/*
+		  createDatabase: (defaultUser, argv) ->
+		    self = @
+		    config = @config
+		    using = @using
+
+		    doCreate = (err, result) ->
+		      {user, password, host, port} = result
+		      password = null if password.trim().length == 0
+
+		      statements = [
+		          # kill all connections first
+		          # NOTE: pid is procpid in PostgreSQL < 9.2
+		          """
+		            select pg_terminate_backend(pid)
+		            from pg_stat_activity
+		            where datname='#{config.database}'
+		              and pid <> pg_backend_pid()
+		          """
+		          "drop database if exists #{config.database};"
+		          "drop user if exists #{config.user};"
+		          "create user #{config.user} password '#{config.password}' SUPERUSER CREATEROLE;"
+		          "create database #{config.database} owner #{config.user};"
+		      ]
+
+		      rootConfig =
+		        user: user
+		        password: password
+		        host: config.host
+		        port: config.port
+		        database: "postgres"
+		      RootDb = Postgres.define(rootConfig)
+		      store = new RootDb()
+
+		      execRootSql = (sql, cb) ->
+		        console.log 'SQL', sql
+		        store.sql(sql).exec cb
+
+		      Async.forEachSeries statements, execRootSql, (err) ->
+		        if (err)
+		          console.error err
+		          console.error "Verify migrations/config.js has the correct host and port"
+		          process.exit 1
+		        else
+		          console.log """Created
+		\tdatabase: #{config.database}
+		\tuser: #{config.user}
+		\tpassword: #{config.password}
+		\thost: #{config.host}
+		\tport: #{config.port}
+		"""
+		          console.log "OK"
+		          process.exit 0
+
+		    if argv.user
+		      @argvSuperUser argv, doCreate
+		    else
+		      @promptSuperUser defaultUser, doCreate
+
+
+	*/
 	return nil
 }
 

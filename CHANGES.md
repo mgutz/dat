@@ -31,6 +31,15 @@ Added
 
 *   Expose `runner.Logger`
 
+*   ```go
+    err := DB.ExecScript(`
+    drop if exists foo;
+    GO
+    create table foo;
+    GO
+    `)
+    ```
+
 
 ## v1.1.0
 

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"regexp"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -23,6 +24,9 @@ var LogErrNoRows bool
 // Cache caches query results.
 var Cache kvs.KeyValueStore
 
+// Statement separator for scripts having multiple statements.
+var reScriptSeparator = regexp.MustCompile(`(?mis)^GO$`)
+
 func init() {
 	dat.Dialect = postgres.New()
 	Logger = log.New("dat:sqlx")
@@ -32,6 +36,11 @@ func init() {
 // based. See cache.MemoryKeyValueStore.
 func SetCache(store kvs.KeyValueStore) {
 	Cache = store
+}
+
+// SetScriptSeparator sets the separator used when executing a script
+func SetScriptSeparator(pattern string) {
+	reScriptSeparator = regexp.MustCompile(pattern)
 }
 
 // MustPing pings a database with an exponential backoff. The
