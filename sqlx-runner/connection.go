@@ -10,6 +10,7 @@ type Connection interface {
 	Exec(cmd string, args ...interface{}) (*dat.Result, error)
 	ExecBuilder(b dat.Builder) error
 	ExecMulti(commands ...*dat.Expression) (int, error)
+	ExecScript(script string, args ...interface{}) error
 	InsertInto(table string) *dat.InsertBuilder
 	Insect(table string) *dat.InsectBuilder
 	Select(columns ...string) *dat.SelectBuilder

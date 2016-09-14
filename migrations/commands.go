@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"gopkg.in/mgutz/dat.v3/dat"
+	runner "gopkg.in/mgutz/dat.v3/sqlx-runner"
 )
 
 // Migration is an entry in the migrations table.
@@ -20,7 +21,7 @@ type Migration struct {
 type Sproc struct {
 	Name      string       `db:"name"`
 	CRC       string       `db:"crc"`
-	CreatedAT dat.NullTime `db:"created_at"`
+	CreatedAt dat.NullTime `db:"created_at"`
 }
 
 // SQLError is a standardized error from SQL Server
@@ -44,23 +45,43 @@ type Postgres struct {
 	host string
 }
 
-// Bootstrap bootstraps user's database with metadata tables
-func (pg *Postgres) Bootstrap(namespace string) error {
+// Add adds a migration to the database.
+func Add(migration *Migration) error {
 	q := `
-create table if not exists $1__migrations (
+INSERT INTO $1__migrations(version, up, down)
+VALUES($2, $3, $4)
+	`
+	mustUserDB().SQL(q, _namespace, migration.Version, migration.Up, migration.Down)
+	return nil
+}
+
+// AddMigration adds a migration to the database.
+func AddMigration(conn runner.Connection, version string, upScript string, downScript string) error {
+	q := `
+INSERT INTO $1__migrations (version, up, down)
+VALUES ($2, $3, $4)
+	`
+	_, err := conn.SQL(q, _namespace, version, upScript, downScript).Exec()
+	return err
+}
+
+// Bootstrap bootstraps user's database with metadata tables
+func (pg *Postgres) Bootstrap(conn runner.Connection, namespace string) error {
+	q := `
+CREATE TABLE IF NOT EXISTS $1__migrations (
   version varchar(256) not null primary key,
   up text,
   down text,
   created_at timestamp default current_timestamp
 );
 
-create table if not exists $1__sprocs (
+CREATE TABLE IF NOT EXISTS $1__sprocs (
   name text primary key,
   crc text not null,
   created_at timestamp default current_timestamp
 );
 
-CREATE OR REPLACE FUNCTION $1__delfunc(_name text) returns void AS $$
+CREATE OR REPLACE FUNCTION $1__delfunc(_name text) RETURNS VOID AS $$
 BEGIN
     EXECUTE (
        SELECT string_agg(format('DROP FUNCTION %s(%s);'
@@ -76,18 +97,8 @@ EXCEPTION WHEN OTHERS THEN
 END $$ LANGUAGE plpgsql;
 `
 	// should this be the user database
-	_, err := mustSuperDB().SQL(q, _namespace).Exec()
+	_, err := conn.SQL(q, _namespace).Exec()
 	return err
-}
-
-// Add adds a migration to the database.
-func Add(migration *Migration) error {
-	q := `
-		INSERT INTO $1__migrations(version, up, down)
-		VALUES($2, $3, $4)
-	`
-	mustUserDB().SQL(q, _namespace, migration.Version, migration.Up, migration.Down)
-	return nil
 }
 
 // Console launches psql console.
@@ -109,122 +120,118 @@ func Console() error {
 	return nil
 }
 
-func table(name string) dat.UnsafeString {
+func unquoted(name string) dat.UnsafeString {
 	return dat.UnsafeString(name)
 }
 
 // CreateUserDB creates user database. Super user database options must be valid.
-func CreateUserDB(superOptions *DBOptions, userOptions *DBOptions) error {
-	// kills all existing connections then (re)creates the database specified in user options
-	statements := `	
-	# kill all connections first
-	# NOTE: pid is procpid in PostgreSQL < 9.2
-	"""
-	select pg_terminate_backend(pid)
-	from pg_stat_activity
-	where datname='#{config.database}'
-		and pid <> pg_backend_pid()
-	"""
-	GO
-	"drop database if exists #{config.database};"
-	GO
-	"drop user if exists #{config.user};"
-	GO
-	"create user #{config.user} password '#{config.password}' SUPERUSER CREATEROLE;"
-	GO
-	"create database #{config.database} owner #{config.user};"
+func CreateUserDB(conn runner.Connection) error {
+	script := `
+DROP USER IF EXISTS $2;
+GO
+CREATE USER $2 PASSWORD $3 SUPERUSER CREATEROLE;
+GO
+CREATE DATABASE $1 OWNER $2;
 `
-
-	/*
-		  createDatabase: (defaultUser, argv) ->
-		    self = @
-		    config = @config
-		    using = @using
-
-		    doCreate = (err, result) ->
-		      {user, password, host, port} = result
-		      password = null if password.trim().length == 0
-
-		      statements = [
-		          # kill all connections first
-		          # NOTE: pid is procpid in PostgreSQL < 9.2
-		          """
-		            select pg_terminate_backend(pid)
-		            from pg_stat_activity
-		            where datname='#{config.database}'
-		              and pid <> pg_backend_pid()
-		          """
-		          "drop database if exists #{config.database};"
-		          "drop user if exists #{config.user};"
-		          "create user #{config.user} password '#{config.password}' SUPERUSER CREATEROLE;"
-		          "create database #{config.database} owner #{config.user};"
-		      ]
-
-		      rootConfig =
-		        user: user
-		        password: password
-		        host: config.host
-		        port: config.port
-		        database: "postgres"
-		      RootDb = Postgres.define(rootConfig)
-		      store = new RootDb()
-
-		      execRootSql = (sql, cb) ->
-		        console.log 'SQL', sql
-		        store.sql(sql).exec cb
-
-		      Async.forEachSeries statements, execRootSql, (err) ->
-		        if (err)
-		          console.error err
-		          console.error "Verify migrations/config.js has the correct host and port"
-		          process.exit 1
-		        else
-		          console.log """Created
-		\tdatabase: #{config.database}
-		\tuser: #{config.user}
-		\tpassword: #{config.password}
-		\thost: #{config.host}
-		\tport: #{config.port}
-		"""
-		          console.log "OK"
-		          process.exit 0
-
-		    if argv.user
-		      @argvSuperUser argv, doCreate
-		    else
-		      @promptSuperUser defaultUser, doCreate
-
-
-	*/
-	return nil
+	err := DropUserDB(conn)
+	if err != nil {
+		return err
+	}
+	return conn.ExecScript(
+		script,
+		unquoted(_userOptions.DBName),
+		unquoted(_userOptions.User),
+		_userOptions.Password,
+	)
 }
 
 // DropUserDB drops user database.
-func DropUserDB() error {
-	return nil
-}
-
-// ExecFileCLI executes a file through `psql` command line utility.
-func ExecFileCLI(filename string) error {
-	return nil
-}
-
-// ExecFileDriver executes a file through `dat` which supports batch separator.
-func ExecFileDriver() error {
-	return nil
+func DropUserDB(conn runner.Connection) error {
+	script := `
+# kill all connections first
+# NOTE: pid is procpid in PostgreSQL < 9.2
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname=$1
+	and pid <> pg_backend_pid()
+GO
+DROP DATABASE IF EXISTS $2;
+GO
+	`
+	return conn.ExecScript(
+		script,
+		_userOptions.DBName,
+		unquoted(_userOptions.DBName),
+	)
 }
 
 // FetchMigrations fetches all migrations from the database sorted by created_at desc
-func FetchMigrations() ([]*Migration, error) {
-	return nil, nil
+func FetchMigrations(conn runner.Connection) ([]*Migration, error) {
+	var migrations []*Migration
+	q := `
+SELECT *
+FROM $1__migrations
+ORDER BY VERSION DESC;
+	`
+	err := conn.SQL(q, _namespace).QueryStructs(&migrations)
+	return migrations, err
 }
 
-// RegisterSproc registers a stored procedure and logs it dat__sprocs
-func RegisterSproc() error {
-	return nil
+// GetSproc gets registered stored procedure metadata.
+func GetSproc(conn runner.Connection, name string) ([]*Sproc, error) {
+	q := `
+SELECT name, crc
+FROM $1__sprocs
+WHERE name = $2
+
+UNION ALL
+
+SELECT  proname AS name, '0' AS crc
+FROM    pg_catalog.pg_namespace n
+JOIN    pg_catalog.pg_proc p ON pronamespace = n.oid
+WHERE	nspname = 'public'
+	AND proname NOT IN (
+		SELECT name
+		FROM $1__sprocs
+		WHERE name = $2
+	)
+`
+
+	var sprocs []*Sproc
+	err := conn.SQL(q, _namespace, name).QueryStructs(&sprocs)
+	return sprocs, err
+}
+
+// Last retrieves the last migration
+func Last(conn runner.Connection, version string) (*Migration, error) {
+	q := `
+SELECT *
+FROM $1__migrations
+ORDER BY VERSION DESC
+LIMIT 1;
+	`
+	var migration *Migration
+	err := conn.SQL(q, _namespace).QueryStruct(&migration)
+	return migration, err
+}
+
+// RegisterSproc registers a stored procedure into dat__sprocs.
+func RegisterSproc(conn runner.Connection, name string, crc string) error {
+	q := `
+DELETE FROM $1__sprocs WHERE name = $2;
+INSERT INTO $1__sprocs WHERE (name, crc) VALUES ($2, $3);
+	`
+	_, err := conn.SQL(q, _namespace, name, crc).Exec()
+	return err
 }
 
 // Remove removes a migration from the database
-func Remove(version string) error {
-	return nil
+func Remove(conn runner.Connection, version string) error {
+	q := `
+DELETE
+FROM $1__migrations
+WHERE version = $2
+	`
+	_, err := conn.SQL(q, _namespace, version).Exec()
+	return err
 }

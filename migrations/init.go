@@ -16,11 +16,8 @@ var _superOptions *DBOptions
 var _userDB *runner.DB
 var _userOptions *DBOptions
 
-var _batchSeparator string
-
-// Init intializes this package with connection information for a user
-// and maybe super user depending on the action.
-func Init(inUserOptions *DBOptions, inSuperOptions *DBOptions, inBatchSeparator string, namespace string) error {
+// SetNamespace sets the namespace used to prefix tables in the database.
+func SetNamespace(namespace string) {
 	if namespace == "" {
 		_namespace = dat.UnsafeString("dat")
 	} else {
@@ -28,8 +25,11 @@ func Init(inUserOptions *DBOptions, inSuperOptions *DBOptions, inBatchSeparator 
 		// programmatically.
 		_namespace = dat.UnsafeString(namespace)
 	}
+}
 
-	_batchSeparator = inBatchSeparator
+// Init intializes this package with connection information for a user
+// and maybe super user depending on the action. This MUST be called!!
+func Init(inUserOptions *DBOptions, inSuperOptions *DBOptions) error {
 	_superOptions = inSuperOptions
 	_userOptions = inUserOptions
 	return nil
@@ -65,6 +65,10 @@ func initDB(options *DBOptions) (*runner.DB, error) {
 }
 
 func mustSuperDB() *runner.DB {
+	if _superOptions == nil {
+		panic("_superOptions was not initialized. Was Init called?")
+	}
+
 	var err error
 	if _superDB != nil {
 		_superDB, err = initDB(_superOptions)
@@ -78,6 +82,10 @@ func mustSuperDB() *runner.DB {
 
 // getUserDB lazily gets the user database (may not yet be created)
 func mustUserDB() *runner.DB {
+	if _userOptions == nil {
+		panic("_userOptions was not initialized. Was Init called?")
+	}
+
 	var err error
 	if _userDB != nil {
 		_userDB, err = initDB(_superOptions)
