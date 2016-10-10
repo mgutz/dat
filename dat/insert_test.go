@@ -123,9 +123,39 @@ func TestInsertOnConflict(t *testing.T) {
 		Columns("id", "c").
 		Values(1, 2).
 		Values(3, 4).
-		OnConflict("(id) DO NOTHING").
+		OnConflict("(id)", "NOTHING").
 		ToSQL()
 	assert.NoError(t, err)
 	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s) VALUES ($1,$2),($3,$4) ON CONFLICT (id) DO NOTHING", "id", "c"))
 	assert.Equal(t, args, []interface{}{1, 2, 3, 4})
+}
+
+func TestInsertOnConflictUpdate(t *testing.T) {
+	ib := InsertInto("a").
+		Columns("id", "b", "c").
+		Values(1, 2, 3)
+	sql, args, err := ib.OnConflictUpdate("(id)", "*").
+		ToSQL()
+	assert.NoError(t, err)
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3) ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id,b = EXCLUDED.b,c = EXCLUDED.c", "id", "b", "c"))
+	assert.Equal(t, args, []interface{}{1, 2, 3})
+	sql, _, err = ib.OnConflictUpdate("(id)", "b", ).
+		ToSQL()
+	assert.NoError(t, err)
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3) ON CONFLICT (id) DO UPDATE SET b = EXCLUDED.b", "id", "b", "c"))
+
+	_, _, err = ib.OnConflictUpdate("(id)", "b", "e").
+		ToSQL()
+	assert.Equal(t, `column "e" is not in insert columns`, err.Error())
+}
+
+func TestInsertOnConflictUpdateExclude(t *testing.T) {
+	ib := InsertInto("a").
+		Columns("id", "b", "c").
+		Values(1, 2, 3)
+	sql, args, err := ib.OnConflictUpdateExclude("(id)", "id").
+		ToSQL()
+	assert.NoError(t, err)
+	assert.Equal(t, sql, quoteSQL("INSERT INTO a (%s,%s,%s) VALUES ($1,$2,$3) ON CONFLICT (id) DO UPDATE SET b = EXCLUDED.b,c = EXCLUDED.c", "id", "b", "c"))
+	assert.Equal(t, args, []interface{}{1, 2, 3})
 }

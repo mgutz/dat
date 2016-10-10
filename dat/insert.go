@@ -5,6 +5,8 @@ import (
 	"reflect"
 
 	"github.com/pkg/errors"
+	"github.com/mgutz/str"
+	"fmt"
 )
 
 // InsertBuilder contains the clauses for an INSERT statement
@@ -14,12 +16,19 @@ type InsertBuilder struct {
 	isInterpolated bool
 	table          string
 	cols           []string
+	conflict       *ConflictAction
 	isBlacklist    bool
-	onConflict     string
 	vals           [][]interface{}
 	records        []interface{}
 	returnings     []string
 	err            error
+}
+
+type ConflictAction struct {
+	Target         string
+	Action         string
+	UpdateExcludes []string
+	UpdateColumns  []string
 }
 
 // NewInsertBuilder creates a new InsertBuilder for the given table.
@@ -65,8 +74,27 @@ func (b *InsertBuilder) Record(record interface{}) *InsertBuilder {
 
 // OnConflict sets ON CONFLICT clause. Only supported on Postgres 9.5+. Unfortunately,
 // this dat package is just a builder and version cannot be checked.
-func (b *InsertBuilder) OnConflict(targetAction string) *InsertBuilder {
-	b.onConflict = targetAction
+func (b *InsertBuilder) OnConflict(target string, action string) *InsertBuilder {
+	b.conflict = &ConflictAction{
+		Target: target,
+		Action: action,
+	}
+	return b
+}
+
+func (b *InsertBuilder) OnConflictUpdate(target string, columns ...string) *InsertBuilder {
+	b.conflict = &ConflictAction{
+		Target:        target,
+		UpdateColumns: columns,
+	}
+	return b
+}
+
+func (b *InsertBuilder) OnConflictUpdateExclude(target string, excludeColumns ...string) *InsertBuilder {
+	b.conflict = &ConflictAction{
+		Target:         target,
+		UpdateExcludes: excludeColumns,
+	}
 	return b
 }
 
@@ -177,11 +205,48 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 		}
 	}
 
-	if b.onConflict != "" {
+	if b.conflict != nil {
 		sql.WriteString(" ON CONFLICT ")
-		sql.WriteString(b.onConflict)
+		sql.WriteString(b.conflict.Target)
+		sql.WriteString(" DO ")
+		var updateColumns []string
+		if b.conflict.Action != "" {
+			sql.WriteString(b.conflict.Action)
+		} else if len(b.conflict.UpdateColumns) > 0 {
+			if b.conflict.UpdateColumns[0] == "*" {
+				updateColumns = cols
+			} else {
+				for _, c := range b.conflict.UpdateColumns {
+					if !str.SliceContains(cols, c) {
+						return "", nil, fmt.Errorf(`column "%s" is not in insert columns`, c)
+					}
+					updateColumns = append(updateColumns, c)
+				}
+			}
+		} else if len(b.conflict.UpdateExcludes) > 0 {
+			for _, c := range cols {
+				if str.SliceContains(b.conflict.UpdateExcludes, c) {
+					continue
+				}
+				updateColumns = append(updateColumns, c)
+			}
+		} else {
+			sql.WriteString("NOTHING")
+		}
+		if len(updateColumns) > 0 {
+			sql.WriteString("UPDATE SET ")
+			first := true
+			for _, c := range updateColumns {
+				if !first {
+					sql.WriteRune(',')
+				}
+				sql.WriteString(c)
+				sql.WriteString(" = EXCLUDED.")
+				sql.WriteString(c)
+				first = false
+			}
+		}
 	}
-
 	// Go thru the returning clauses
 	for i, c := range b.returnings {
 		if i == 0 {
