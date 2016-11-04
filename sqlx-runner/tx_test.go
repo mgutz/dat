@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/stretchr/testify.v1/assert"
 
-	"github.com/mgutz/logxi/v1"
+	"github.com/syreclabs/logxi/v1"
 )
 
 func TestTransactionReal(t *testing.T) {
