@@ -253,6 +253,14 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			}
 
 			digitsStr := digits.String()
+			// can be empty $ is followed by a non-digit
+			if digitsStr == "" {
+				buf.WriteRune('$')
+				buf.WriteRune(r)
+				accumulateDigits = false
+				continue
+			}
+
 			pos := 0
 			if len(digitsStr) > 2 {
 				pos, _ = strconv.Atoi(digitsStr)
@@ -270,11 +278,12 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			accumulateDigits = false
 		}
 
-		if r == '$' {
+		if r == '$' && i < lenSQL-1 {
 			digits.Reset()
 			accumulateDigits = true
 			continue
 		}
+
 		buf.WriteRune(r)
 	}
 

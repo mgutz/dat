@@ -211,3 +211,13 @@ func TestInterpolateValidNullTime(t *testing.T) {
 
 	assert.Equal(t, "SELECT * FROM foo WHERE valid = '"+valid.Time.Format(time.RFC3339Nano)+"'", sql)
 }
+
+func TestInterpolateNonPlaceholdersA(t *testing.T) {
+	sql, _, err := Interpolate("$ $$ $aa $1 $", []interface{}{"value"})
+	assert.NoError(t, err)
+	assert.Equal(t, "$ $$ $aa 'value' $", sql)
+
+	sql, _, err = Interpolate("$ $1$ $aa $1", []interface{}{"value"})
+	assert.NoError(t, err)
+	assert.Equal(t, "$ 'value'$ $aa 'value'", sql)
+}
