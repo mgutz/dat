@@ -15,6 +15,9 @@ var Strict = false
 // EnableInterpolation enables or disable interpolation
 var EnableInterpolation = false
 
+// SkipVersionDetection prevents automatic version detection
+var SkipVersionDetection = false
+
 // maxLookup is the max lookup index for predefined lookup tables
 const maxLookup = 100
 
