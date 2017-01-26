@@ -1,6 +1,7 @@
 package dat
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -55,4 +56,25 @@ func TestInvalidNullTime(t *testing.T) {
 	assert.False(t, n.Valid)
 	var when time.Time
 	assert.Equal(t, n.Time, when)
+}
+
+func TestNullMarshalling(t *testing.T) {
+	type nully struct {
+		Int  NullInt64  `json:"int"`
+		Intp *NullInt64 `json:"intp"`
+		Intv NullInt64  `json:"intv"`
+
+		Time  NullTime  `json:"time"`
+		Timep *NullTime `json:"timep"`
+	}
+
+	a := nully{Intv: NullInt64From(100)}
+
+	b, err := json.Marshal(a)
+	if err != nil {
+		t.Error("Expected struct with null fields to marshal")
+	}
+	if string(b) != `{"int":null,"intp":null,"intv":100,"time":null,"timep":null}` {
+		t.Error("Expected nulltime to defaul to null", string(b))
+	}
 }
