@@ -58,6 +58,22 @@ func TestInvalidNullTime(t *testing.T) {
 	assert.Equal(t, n.Time, when)
 }
 
+func TestJSONFromString(t *testing.T) {
+	type foo struct {
+		Jason   JSON `json:"jason"`
+		NoValue JSON `json:"noValue"`
+	}
+
+	j := foo{Jason: JSONFromString(`{"fruit":"apple"}`)}
+	b, err := json.Marshal(j)
+	if err != nil {
+		t.Error("Expected struct with JSON string fields to marshal", err)
+	}
+	if string(b) != `{"jason":{"fruit":"apple"},"noValue":null}` {
+		t.Error("Expected JSON to defaul to null", string(b))
+	}
+}
+
 func TestNullMarshalling(t *testing.T) {
 	type nully struct {
 		Int  NullInt64  `json:"int"`
@@ -66,15 +82,18 @@ func TestNullMarshalling(t *testing.T) {
 
 		Time  NullTime  `json:"time"`
 		Timep *NullTime `json:"timep"`
+
+		Jason  JSON  `json:"jason"`
+		Jasonp *JSON `json:"jasonp"`
 	}
 
 	a := nully{Intv: NullInt64From(100)}
 
 	b, err := json.Marshal(a)
 	if err != nil {
-		t.Error("Expected struct with null fields to marshal")
+		t.Error("Expected struct with null fields to marshal", err)
 	}
-	if string(b) != `{"int":null,"intp":null,"intv":100,"time":null,"timep":null}` {
-		t.Error("Expected nulltime to defaul to null", string(b))
+	if string(b) != `{"int":null,"intp":null,"intv":100,"time":null,"timep":null,"jason":null,"jasonp":null}` {
+		t.Error("Expected nulltypes to defaul to null", string(b), err)
 	}
 }

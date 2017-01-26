@@ -81,6 +81,11 @@ func NullBoolFrom(v bool) NullBool {
 	return NullBool{sql.NullBool{Bool: v, Valid: true}}
 }
 
+// JSONFromString creates a JSON type from JSON encoded string.
+func JSONFromString(encoded string) JSON {
+	return []byte(encoded)
+}
+
 var nullString = []byte("null")
 
 // MarshalJSON correctly serializes a NullString to JSON
@@ -208,9 +213,12 @@ func NewJSON(any interface{}) (*JSON, error) {
 	return &j, nil
 }
 
-// MarshalJSON returns the *j as the JSON encoding of j.
-func (j *JSON) MarshalJSON() ([]byte, error) {
-	return *j, nil
+// MarshalJSON returns the j as the JSON encoding of j.
+func (j JSON) MarshalJSON() ([]byte, error) {
+	if j == nil {
+		return nullString, nil
+	}
+	return j, nil
 }
 
 // UnmarshalJSON sets *j to a copy of data
