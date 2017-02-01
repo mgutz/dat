@@ -503,7 +503,6 @@ result, err := DB.
 result, err = DB.
     DeleteFrom("posts").
     Where("id = $1", otherPost.ID).
-    Limit(1).
     Exec()
 ```
 
