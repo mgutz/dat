@@ -20,6 +20,11 @@ type Interpolator interface {
 	Interpolate() (string, error)
 }
 
+// Expressioner is an interface that returns raw SQL with possible arguments.
+type Expressioner interface {
+	Expression() (string, []interface{}, error)
+}
+
 // Value implements a valuer for compatibility
 func (u UnsafeString) Value() (driver.Value, error) {
 	panic("UnsafeStrings and its constants NOW, DEFAULT ... are disabled when EnableInterpolation==false")
