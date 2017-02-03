@@ -11,14 +11,19 @@ import (
 	"github.com/lib/pq"
 )
 
-// UnsafeString is interpolated as an unescaped and unquoted value and should
-// only be used to create constants.
-type UnsafeString string
+// Expressioner is an interface that returns raw SQL with optional placeholders and arguments.
+type Expressioner interface {
+	Expression() (string, []interface{}, error)
+}
 
 // Interpolator is the interface for types which interpolate.
 type Interpolator interface {
 	Interpolate() (string, error)
 }
+
+// UnsafeString is interpolated as an unescaped and unquoted value and should
+// only be used to create constants.
+type UnsafeString string
 
 // Value implements a valuer for compatibility
 func (u UnsafeString) Value() (driver.Value, error) {

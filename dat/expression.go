@@ -19,3 +19,8 @@ func (exp *Expression) WriteRelativeArgs(buf common.BufferWriter, args *[]interf
 	*args = append(*args, exp.Args...)
 	*pos += int64(len(exp.Args))
 }
+
+// Expression implements Expressioner interface (used in Interpolate).
+func (exp *Expression) Expression() (string, []interface{}, error) {
+	return Interpolate(exp.Sql, exp.Args)
+}

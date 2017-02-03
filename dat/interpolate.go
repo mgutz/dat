@@ -104,9 +104,9 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 
 		// mark any arguments not handled with a new placeholder
 		// and the arg to the new arguments slice
-		var passthroughArg = func() {
+		var passthroughArg = func(values ...interface{}) {
 			newPlaceholderIndex++
-			newArgs = append(newArgs, v)
+			newArgs = append(newArgs, values...)
 			writePlaceholder(buf, newPlaceholderIndex)
 		}
 
@@ -120,7 +120,24 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 				return nil
 			}
 
-			passthroughArg()
+			passthroughArg(v)
+			return nil
+		} else if valuer, ok := v.(Expressioner); ok {
+			valueOfV := reflect.ValueOf(v)
+			if valueOfV.IsNil() {
+				buf.WriteString("NULL")
+				return nil
+			}
+
+			s, args, err := valuer.Expression()
+			if err != nil {
+				return err
+			}
+
+			buf.WriteString(s)
+			if len(args) > 0 {
+				passthroughArg(args...)
+			}
 			return nil
 		} else if valuer, ok := v.(Interpolator); ok {
 			valueOfV := reflect.ValueOf(v)
@@ -233,7 +250,7 @@ func Interpolate(sql string, vals []interface{}) (string, []interface{}, error) 
 			}
 			buf.WriteRune(')')
 		} else {
-			passthroughArg()
+			passthroughArg(v)
 		}
 
 		return nil
