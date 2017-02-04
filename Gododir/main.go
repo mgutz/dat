@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	_ "github.com/lib/pq"
 	do "gopkg.in/godo.v2"
 )
 
@@ -13,7 +12,7 @@ func tasks(p *do.Project) {
 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
 	`
 	generateTasks(p)
-	p.Use("pg", pgTasks)
+	//p.Use("pg", pgTasks)
 
 	p.Task("createdb", nil, createdb).Description("Creates test database")
 

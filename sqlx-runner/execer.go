@@ -126,7 +126,7 @@ func (ex *Execer) QuerySlice(dest interface{}) error {
 
 // QueryStruct executes builders' query and scans the result row into dest.
 func (ex *Execer) QueryStruct(dest interface{}) error {
-	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
+	if ex.builder.CanJSON() {
 		err := ex.queryJSONStruct(dest)
 		return err
 	}
@@ -135,7 +135,7 @@ func (ex *Execer) QueryStruct(dest interface{}) error {
 
 // QueryStructs executes builders' query and scans each row as an item in a slice of structs.
 func (ex *Execer) QueryStructs(dest interface{}) error {
-	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
+	if ex.builder.CanJSON() {
 		err := ex.queryJSONStructs(dest)
 		return err
 	}
@@ -146,7 +146,7 @@ func (ex *Execer) QueryStructs(dest interface{}) error {
 // QueryObject wraps the builder's query within a `to_json` then executes and unmarshals
 // the result into dest.
 func (ex *Execer) QueryObject(dest interface{}) error {
-	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
+	if ex.builder.CanJSON() {
 		b, err := ex.queryJSONBlob(false)
 		if err != nil {
 			return err
@@ -163,7 +163,7 @@ func (ex *Execer) QueryObject(dest interface{}) error {
 // QueryJSON wraps the builder's query within a `to_json` then executes and returns
 // the JSON []byte representation.
 func (ex *Execer) QueryJSON() ([]byte, error) {
-	if _, ok := ex.builder.(*dat.SelectDocBuilder); ok {
+	if ex.builder.CanJSON() {
 		return ex.queryJSONBlob(false)
 	}
 

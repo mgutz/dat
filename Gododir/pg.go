@@ -4,15 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"strings"
 
 	"github.com/mgutz/ansi"
+	runner "github.com/mgutz/dat/sqlx-runner"
 	"github.com/mgutz/str"
 	do "gopkg.in/godo.v2"
 	"gopkg.in/godo.v2/util"
-	"gopkg.in/mgutz/dat.v2/dat"
-	"gopkg.in/mgutz/dat.v2/sqlx-runner"
 )
 
 func mapBytesToString(m map[string]interface{}) {
@@ -129,43 +126,43 @@ func getConnection() *runner.DB {
 	return db
 }
 
-func pgTasks(p *do.Project) {
-	do.Env = `
-	DAT_DRIVER=postgres
-	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
-	`
+// func pgTasks(p *do.Project) {
+// 	do.Env = `
+// 	DAT_DRIVER=postgres
+// 	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
+// 	`
 
-	p.Task("file", nil, func(c *do.Context) {
-		filename := c.Args.Leftover()[0]
-		if !util.FileExists(filename) {
-			util.Error("ERR", "file not found %s", filename)
-			return
-		}
-		b, err := ioutil.ReadFile(filename)
-		if err != nil {
-			panic(err)
-		}
-		parts := strings.Split(string(b), "---\n")
-		if len(parts) != 2 {
-			panic("sql file must have frontmatter")
-		}
-		var args []interface{}
-		err = json.Unmarshal([]byte(parts[0]), &args)
-		if err != nil {
-			panic(err)
-		}
-		sql := parts[1]
-		sql, args, _ = dat.Interpolate(sql, args)
-		querySQL(sql, args)
-	}).Desc("Executes a SQL file with placeholders")
+// 	p.Task("file", nil, func(c *do.Context) {
+// 		filename := c.Args.Leftover()[0]
+// 		if !util.FileExists(filename) {
+// 			util.Error("ERR", "file not found %s", filename)
+// 			return
+// 		}
+// 		b, err := ioutil.ReadFile(filename)
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 		parts := strings.Split(string(b), "---\n")
+// 		if len(parts) != 2 {
+// 			panic("sql file must have frontmatter")
+// 		}
+// 		var args []interface{}
+// 		err = json.Unmarshal([]byte(parts[0]), &args)
+// 		if err != nil {
+// 			panic(err)
+// 		}
+// 		sql := parts[1]
+// 		sql, args, _ = dat.Interpolate(sql, args)
+// 		querySQL(sql, args)
+// 	}).Desc("Executes a SQL file with placeholders")
 
-	p.Task("query", nil, func(c *do.Context) {
-		if len(c.Args.Leftover()) != 1 {
-			fmt.Println(`usage: godo query -- "SELECT * ..." `)
-			return
-		}
-		sql := c.Args.Leftover()[0]
-		querySQL(sql, nil)
+// 	p.Task("query", nil, func(c *do.Context) {
+// 		if len(c.Args.Leftover()) != 1 {
+// 			fmt.Println(`usage: godo query -- "SELECT * ..." `)
+// 			return
+// 		}
+// 		sql := c.Args.Leftover()[0]
+// 		querySQL(sql, nil)
 
-	}).Desc("Executes a query against the database")
-}
+// 	}).Desc("Executes a query against the database")
+// }

@@ -19,6 +19,13 @@ func (b *CallBuilder) SetIsInterpolated(enable bool) *CallBuilder {
 	return b
 }
 
+// CanJSON determines if a builder can output JSON.
+func (b *CallBuilder) CanJSON() bool {
+
+	return false
+
+}
+
 // Interpolate interpolates this builders sql.
 func (b *DeleteBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
@@ -34,6 +41,13 @@ func (b *DeleteBuilder) IsInterpolated() bool {
 func (b *DeleteBuilder) SetIsInterpolated(enable bool) *DeleteBuilder {
 	b.isInterpolated = enable
 	return b
+}
+
+// CanJSON determines if a builder can output JSON.
+func (b *DeleteBuilder) CanJSON() bool {
+
+	return false
+
 }
 
 // Interpolate interpolates this builders sql.
@@ -53,6 +67,13 @@ func (b *InsectBuilder) SetIsInterpolated(enable bool) *InsectBuilder {
 	return b
 }
 
+// CanJSON determines if a builder can output JSON.
+func (b *InsectBuilder) CanJSON() bool {
+
+	return false
+
+}
+
 // Interpolate interpolates this builders sql.
 func (b *InsertBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
@@ -68,6 +89,37 @@ func (b *InsertBuilder) IsInterpolated() bool {
 func (b *InsertBuilder) SetIsInterpolated(enable bool) *InsertBuilder {
 	b.isInterpolated = enable
 	return b
+}
+
+// CanJSON determines if a builder can output JSON.
+func (b *InsertBuilder) CanJSON() bool {
+
+	return false
+
+}
+
+// Interpolate interpolates this builders sql.
+func (b *JSQLBuilder) Interpolate() (string, []interface{}, error) {
+	return interpolate(b)
+}
+
+// IsInterpolated determines if this builder will interpolate when
+// Interpolate() is called.
+func (b *JSQLBuilder) IsInterpolated() bool {
+	return b.isInterpolated
+}
+
+// SetIsInterpolated sets whether this builder should interpolate.
+func (b *JSQLBuilder) SetIsInterpolated(enable bool) *JSQLBuilder {
+	b.isInterpolated = enable
+	return b
+}
+
+// CanJSON determines if a builder can output JSON.
+func (b *JSQLBuilder) CanJSON() bool {
+
+	return true
+
 }
 
 // Interpolate interpolates this builders sql.
@@ -87,6 +139,13 @@ func (b *RawBuilder) SetIsInterpolated(enable bool) *RawBuilder {
 	return b
 }
 
+// CanJSON determines if a builder can output JSON.
+func (b *RawBuilder) CanJSON() bool {
+
+	return false
+
+}
+
 // Interpolate interpolates this builders sql.
 func (b *SelectBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
@@ -102,6 +161,13 @@ func (b *SelectBuilder) IsInterpolated() bool {
 func (b *SelectBuilder) SetIsInterpolated(enable bool) *SelectBuilder {
 	b.isInterpolated = enable
 	return b
+}
+
+// CanJSON determines if a builder can output JSON.
+func (b *SelectBuilder) CanJSON() bool {
+
+	return false
+
 }
 
 // Interpolate interpolates this builders sql.
@@ -121,6 +187,13 @@ func (b *SelectDocBuilder) SetIsInterpolated(enable bool) *SelectDocBuilder {
 	return b
 }
 
+// CanJSON determines if a builder can output JSON.
+func (b *SelectDocBuilder) CanJSON() bool {
+
+	return true
+
+}
+
 // Interpolate interpolates this builders sql.
 func (b *UpdateBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
@@ -138,6 +211,13 @@ func (b *UpdateBuilder) SetIsInterpolated(enable bool) *UpdateBuilder {
 	return b
 }
 
+// CanJSON determines if a builder can output JSON.
+func (b *UpdateBuilder) CanJSON() bool {
+
+	return false
+
+}
+
 // Interpolate interpolates this builders sql.
 func (b *UpsertBuilder) Interpolate() (string, []interface{}, error) {
 	return interpolate(b)
@@ -153,4 +233,11 @@ func (b *UpsertBuilder) IsInterpolated() bool {
 func (b *UpsertBuilder) SetIsInterpolated(enable bool) *UpsertBuilder {
 	b.isInterpolated = enable
 	return b
+}
+
+// CanJSON determines if a builder can output JSON.
+func (b *UpsertBuilder) CanJSON() bool {
+
+	return false
+
 }

@@ -101,6 +101,13 @@ func (q *Queryable) Insect(table string) *dat.InsectBuilder {
 	return b
 }
 
+// JSQL creates a new JSON SQL builder.
+func (q *Queryable) JSQL(sql string, args ...interface{}) *dat.JSQLBuilder {
+	b := dat.NewJSQLBuilder(sql, args...)
+	b.Execer = NewExecer(q.runner, b)
+	return b
+}
+
 // Select creates a new SelectBuilder for the given columns.
 func (q *Queryable) Select(columns ...string) *dat.SelectBuilder {
 	b := dat.NewSelectBuilder(columns...)

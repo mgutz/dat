@@ -12,6 +12,9 @@ type Builder interface {
 	// IsInterpolated determines if this builder will interpolate when
 	// Interpolate() is called.
 	IsInterpolated() bool
+
+	// CanJSON indicates whether this can output JSON
+	CanJSON() bool
 }
 
 // Call creates a new CallBuilder for the given sproc and args.
@@ -59,6 +62,13 @@ func SelectDoc(columns ...string) *SelectDocBuilder {
 // SQL creates a new raw SQL builder.
 func SQL(sql string, args ...interface{}) *RawBuilder {
 	b := NewRawBuilder(sql, args...)
+	b.Execer = nullExecer
+	return b
+}
+
+// JSQL creates a new SelectDocBuilder.
+func JSQL(sql string, args ...interface{}) *JSQLBuilder {
+	b := NewJSQLBuilder(sql, args...)
 	b.Execer = nullExecer
 	return b
 }

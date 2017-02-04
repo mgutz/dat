@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 
+	"text/template"
+
 	do "gopkg.in/godo.v2"
-	"gopkg.in/godo.v2/util"
 )
 
 var builderTemplate = `
@@ -29,21 +31,48 @@ package dat
 		b.isInterpolated = enable
 		return b
 	}
+
+	// CanJSON determines if a builder can output JSON.
+	func (b *{{$builder}}) CanJSON() bool {
+		{{if canJson $builder}}
+		return true
+		{{else}}
+		return false
+		{{end}}
+	}
 {{ end }}
 `
 
 func generateTasks(p *do.Project) {
 	p.Task("builder-boilerplate", nil, func(c *do.Context) {
+		t, err := template.New("t1").
+			Funcs(template.FuncMap{
+				"canJson": func(builder string) bool {
+					switch builder {
+					default:
+						return false
+					case "JSQLBuilder", "SelectDocBuilder":
+						return true
+					}
+				},
+			}).Parse(builderTemplate)
+		c.Check(err, "Could not parse template")
+
 		context := do.M{
-			"builders": []string{"DeleteBuilder", "InsectBuilder",
-				"InsertBuilder", "RawBuilder", "SelectBuilder", "SelectDocBuilder",
-				"UpdateBuilder", "UpsertBuilder"},
+			"builders": []string{
+				"CallBuilder",
+				"DeleteBuilder", "InsectBuilder",
+				"InsertBuilder", "JSQLBuilder", "RawBuilder",
+				"SelectBuilder", "SelectDocBuilder",
+				"UpdateBuilder", "UpsertBuilder",
+			},
 		}
 
-		s, err := util.StrTemplate(builderTemplate, context)
-		c.Check(err, "Unalbe ")
-
-		ioutil.WriteFile("builders_generated.go", []byte(s), 0644)
-		c.Run("go fmt builders_generated.go")
+		var tmpl bytes.Buffer
+		err = t.Execute(&tmpl, context)
+		c.Check(err, "Cannot execute template")
+		s := tmpl.String()
+		ioutil.WriteFile("dat/builders_generated.go", []byte(s), 0644)
+		c.Run("go fmt dat/builders_generated.go")
 	}).Desc("Generates builder boilerplate code")
 }
