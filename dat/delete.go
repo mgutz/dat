@@ -1,5 +1,7 @@
 package dat
 
+import "errors"
+
 // DeleteBuilder contains the clauses for a DELETE statement
 type DeleteBuilder struct {
 	Execer
@@ -13,21 +15,27 @@ type DeleteBuilder struct {
 
 // NewDeleteBuilder creates a new DeleteBuilder for the given table.
 func NewDeleteBuilder(table string) *DeleteBuilder {
+	var err error
 	if table == "" {
-		logger.Error("DeleteFrom requires a table name.")
-		return nil
+		err = errors.New("DeleteFrom requires a table name")
 	}
-	return &DeleteBuilder{table: table, isInterpolated: EnableInterpolation}
+	return &DeleteBuilder{table: table, isInterpolated: EnableInterpolation, err: err}
 }
 
 // ScopeMap uses a predefined scope in place of WHERE.
 func (b *DeleteBuilder) ScopeMap(mapScope *MapScope, m M) *DeleteBuilder {
+	if b.err != nil {
+		return b
+	}
 	b.scope = mapScope.mergeClone(m)
 	return b
 }
 
 // Scope uses a predefined scope in place of WHERE.
 func (b *DeleteBuilder) Scope(sql string, args ...interface{}) *DeleteBuilder {
+	if b.err != nil {
+		return b
+	}
 	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
 		return escapeScopeTable(sql, table), args
 	})
@@ -37,6 +45,9 @@ func (b *DeleteBuilder) Scope(sql string, args ...interface{}) *DeleteBuilder {
 // Where appends a WHERE clause to the statement whereSQLOrMap can be a
 // string or map. If it's a string, args wil replaces any places holders
 func (b *DeleteBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *DeleteBuilder {
+	if b.err != nil {
+		return b
+	}
 	fragment, err := newWhereFragment(whereSQLOrMap, args)
 	if err != nil {
 		b.err = err

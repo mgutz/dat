@@ -1,5 +1,7 @@
 package dat
 
+import "errors"
+
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
 	Execer
@@ -24,19 +26,18 @@ type SelectBuilder struct {
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
 func NewSelectBuilder(columns ...string) *SelectBuilder {
-	if len(columns) == 0 || columns[0] == "" {
-		logger.Error("Select requires 1 or more columns")
-		return nil
-	}
-	return &SelectBuilder{columns: columns, isInterpolated: EnableInterpolation}
+	b := &SelectBuilder{isInterpolated: EnableInterpolation}
+	b.Columns(columns...)
+	return b
 }
 
 // Columns adds additional select columns to the builder.
 func (b *SelectBuilder) Columns(columns ...string) *SelectBuilder {
 	if len(columns) == 0 || columns[0] == "" {
-		logger.Error("Select requires 1 or more columns")
+		b.err = errors.New("Select requires 1 or more columns")
 		return nil
 	}
+
 	b.columns = append(b.columns, columns...)
 	return b
 }

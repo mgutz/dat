@@ -30,14 +30,17 @@ func (de *Error) Error() string {
 	return de.Message
 }
 
+// NewError returns a dat.Error
 func NewError(msg string) error {
 	return &Error{Message: msg}
 }
 
+// NewDatSQLError returns a ToSQL() compatible error from a given msg.
 func NewDatSQLError(msg string) (string, []interface{}, error) {
 	return "", nil, NewError(msg)
 }
 
+// NewDatSQLErr returns a ToSQL() compatible error from an error object.
 func NewDatSQLErr(err error) (string, []interface{}, error) {
 	return "", nil, err
 }

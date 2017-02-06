@@ -61,6 +61,7 @@ func (b *InsertBuilder) Record(record interface{}) *InsertBuilder {
 	return b
 }
 
+// OnConflict ??
 func (b *InsertBuilder) OnConflict() *InsertBuilder {
 	return b
 }

@@ -195,10 +195,10 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 		writeIdentifier(buf, sub.alias)
 	}
 
-	whereFragments := b.whereFragments
 	if b.innerSQL != nil {
 		b.innerSQL.WriteRelativeArgs(buf, &args, &placeholderStartPos)
 	} else {
+		whereFragments := b.whereFragments
 		if b.table != "" {
 			buf.WriteString(" FROM ")
 			buf.WriteString(b.table)
@@ -279,115 +279,90 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 	return buf.String(), args, nil
 }
 
-//// Copied form SelectBuilder. Need to return an instance of SelectDocBuilder.
+//// Override functions from SelectBuilder to return an instance of SelectDocBuilder.
 
 // Columns adds additional select columns to the builder.
 func (b *SelectDocBuilder) Columns(columns ...string) *SelectDocBuilder {
-	if len(columns) == 0 || columns[0] == "" {
-		logger.Error("Select requires 1 or more columns")
-		return nil
-	}
-	b.columns = append(b.columns, columns...)
+	b.SelectBuilder.Columns(columns...)
 	return b
 }
 
 // Distinct marks the statement as a DISTINCT SELECT
 func (b *SelectDocBuilder) Distinct() *SelectDocBuilder {
-	b.isDistinct = true
+	b.SelectBuilder.Distinct()
 	return b
 }
 
 // DistinctOn sets the columns for DISTINCT ON
 func (b *SelectDocBuilder) DistinctOn(columns ...string) *SelectDocBuilder {
-	b.isDistinct = true
-	b.distinctColumns = columns
+	b.SelectBuilder.DistinctOn(columns...)
 	return b
 }
 
 // From sets the table to SELECT FROM
 func (b *SelectDocBuilder) From(from string) *SelectDocBuilder {
-	b.table = from
+	b.SelectBuilder.From(from)
 	return b
 }
 
 // For adds FOR clause to SELECT.
 func (b *SelectDocBuilder) For(options ...string) *SelectDocBuilder {
-	b.fors = options
+	b.SelectBuilder.For(options...)
 	return b
 }
 
 // ScopeMap uses a predefined scope in place of WHERE.
 func (b *SelectDocBuilder) ScopeMap(mapScope *MapScope, m M) *SelectDocBuilder {
-	b.scope = mapScope.mergeClone(m)
+	b.SelectBuilder.ScopeMap(mapScope, m)
 	return b
 }
 
 // Scope uses a predefined scope in place of WHERE.
 func (b *SelectDocBuilder) Scope(sql string, args ...interface{}) *SelectDocBuilder {
-	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
-		return escapeScopeTable(sql, table), args
-	})
+	b.SelectBuilder.Scope(sql, args...)
 	return b
 }
 
 // Where appends a WHERE clause to the statement for the given string and args
 // or map of column/value pairs
 func (b *SelectDocBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	fragment, err := newWhereFragment(whereSQLOrMap, args)
-	if err != nil {
-		b.err = err
-	} else {
-		b.whereFragments = append(b.whereFragments, fragment)
-	}
+	b.SelectBuilder.Where(whereSQLOrMap, args...)
 	return b
 }
 
 // GroupBy appends a column to group the statement
 func (b *SelectDocBuilder) GroupBy(group string) *SelectDocBuilder {
-	b.groupBys = append(b.groupBys, group)
+	b.SelectBuilder.GroupBy(group)
 	return b
 }
 
 // Having appends a HAVING clause to the statement
 func (b *SelectDocBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	fragment, err := newWhereFragment(whereSQLOrMap, args)
-	if err != nil {
-		b.err = err
-	} else {
-		b.havingFragments = append(b.havingFragments, fragment)
-	}
+	b.SelectBuilder.Having(whereSQLOrMap, args...)
 	return b
 }
 
 // OrderBy appends a column to ORDER the statement by
 func (b *SelectDocBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectDocBuilder {
-	fragment, err := newWhereFragment(whereSQLOrMap, args)
-	if err != nil {
-		b.err = err
-	} else {
-		b.orderBys = append(b.orderBys, fragment)
-	}
+	b.SelectBuilder.OrderBy(whereSQLOrMap, args...)
 	return b
 }
 
 // Limit sets a limit for the statement; overrides any existing LIMIT
 func (b *SelectDocBuilder) Limit(limit uint64) *SelectDocBuilder {
-	b.limitCount = limit
-	b.limitValid = true
+	b.SelectBuilder.Limit(limit)
 	return b
 }
 
 // Offset sets an offset for the statement; overrides any existing OFFSET
 func (b *SelectDocBuilder) Offset(offset uint64) *SelectDocBuilder {
-	b.offsetCount = offset
-	b.offsetValid = true
+	b.SelectBuilder.Offset(offset)
 	return b
 }
 
 // Paginate sets LIMIT/OFFSET for the statement based on the given page/perPage
 // Assumes page/perPage are valid. Page and perPage must be >= 1
 func (b *SelectDocBuilder) Paginate(page, perPage uint64) *SelectDocBuilder {
-	b.Limit(perPage)
-	b.Offset((page - 1) * perPage)
+	b.SelectBuilder.Paginate(page, perPage)
 	return b
 }
