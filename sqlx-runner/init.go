@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -16,9 +17,19 @@ var logger logxi.Logger
 // LogQueriesThreshold is the threshold for logging "slow" queries
 var LogQueriesThreshold time.Duration
 
+// LogErrNoRows tells runner to log `sql.ErrNoRows`
+var LogErrNoRows bool
+
 func init() {
 	dat.Dialect = postgres.New()
 	logger = logxi.New("dat:sqlx")
+	logxi.AddIgnoreFilter(func(f logxi.Frame) bool {
+		method := f.Method()
+		if strings.Index(method, "sqlx-runner") > -1 {
+			return true
+		}
+		return false
+	})
 }
 
 // Cache caches query results.

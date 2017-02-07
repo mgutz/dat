@@ -62,10 +62,7 @@ func logSQLError(err error, msg string, statement string, args []interface{}) er
 			}
 		}
 	} else if err == sql.ErrNoRows {
-		if dat.Strict {
-			return logger.Warn(msg, "err", err, "sql", statement, "args", toOutputStr(args))
-		}
-		if logger.IsDebug() {
+		if LogErrNoRows && logger.IsDebug() {
 			logger.Debug(msg, "err", err, "sql", statement, "args", toOutputStr(args))
 		}
 		return err
