@@ -22,4 +22,4 @@ import:
 - package: gopkg.in/stretchr/testify.v1
   subpackages:
   - assert
-
+- package: github.com/mitchellh/go-homedir
