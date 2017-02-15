@@ -2,6 +2,7 @@ package runner
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -34,10 +35,38 @@ func SetCache(store kvs.KeyValueStore) {
 }
 
 // MustPing pings a database with an exponential backoff. The
-// function panics if the database cannot be pinged after 15 minutes
-func MustPing(db *sql.DB) {
+// function panics if the database cannot be pinged after the specified duration.
+// If no duration is specified it defaults to 15 minutes.
+func MustPing(db *sql.DB, timeoutOrNil ...time.Duration) {
+	var timeout time.Duration
+	if len(timeoutOrNil) > 0 {
+		timeout = timeoutOrNil[0]
+	}
+
+	err := pingDB(db, timeout)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+// ShouldPing pings a database with an exponential backoff. The
+// function returns an error if the database cannot be pinged after the specified duration.
+// If no duration is specified it defaults to 15 minutes.
+func ShouldPing(db *sql.DB, timeoutOrNil ...time.Duration) error {
+	var timeout time.Duration
+	if len(timeoutOrNil) > 0 {
+		timeout = timeoutOrNil[0]
+	}
+
+	return pingDB(db, timeout)
+}
+
+func pingDB(db *sql.DB, timeout time.Duration) error {
 	var err error
 	b := backoff.NewExponentialBackOff()
+	if timeout > 0 {
+		b.MaxElapsedTime = timeout
+	}
 	ticker := backoff.NewTicker(b)
 
 	// Ticks will continue to arrive when the previous operation is still running,
@@ -49,8 +78,8 @@ func MustPing(db *sql.DB) {
 		}
 
 		ticker.Stop()
-		return
+		return nil
 	}
 
-	panic("Could not ping database!")
+	return fmt.Errorf("Could not ping database!")
 }
