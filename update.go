@@ -174,15 +174,11 @@ func (b *UpdateBuilder) ToSQL() (string, []interface{}) {
 			placeholderStartPos += int64(len(e.Args))
 		} else {
 			// TOOD
-			if i < maxLookup {
+			if placeholderStartPos < maxLookup {
 				buf.WriteString(equalsPlaceholderTab[placeholderStartPos])
 			} else {
-				if placeholderStartPos < maxLookup {
-					buf.WriteString(equalsPlaceholderTab[placeholderStartPos])
-				} else {
-					buf.WriteString(" = $")
-					buf.WriteString(strconv.FormatInt(placeholderStartPos, 10))
-				}
+				buf.WriteString(" = $")
+				buf.WriteString(strconv.FormatInt(placeholderStartPos, 10))
 			}
 			placeholderStartPos++
 			args = append(args, c.value)

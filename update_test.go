@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"gopkg.in/stretchr/testify.v1/assert"
+	"fmt"
+	"strings"
 )
 
 func BenchmarkUpdateValuesSql(b *testing.B) {
@@ -94,4 +96,22 @@ func TestUpdateWhereExprSql(t *testing.T) {
 	sql, args := Update("a").Set("b", 10).Where(expr).ToSQL()
 	assert.Equal(t, sql, `UPDATE "a" SET "b" = $1 WHERE (id=$2)`)
 	assert.Exactly(t, args, []interface{}{10, 100})
+}
+
+func TestUpdateBeyondMaxLookup(t *testing.T) {
+	sqlBuilder := Update("a")
+	setClauses := []string{}
+	expectedArgs := []interface{}{}
+	for i := 1; i < maxLookup + 1; i++ {
+		sqlBuilder = sqlBuilder.Set("b", i)
+		setClauses = append(setClauses, fmt.Sprintf(" %s = $%d", quoteSQL("%s", "b"), i))
+		expectedArgs = append(expectedArgs, i)
+	}
+	sql, args := sqlBuilder.Where("id = $1", maxLookup + 1).ToSQL()
+	expectedSQL := fmt.Sprintf(`UPDATE "a" SET%s WHERE (id = $%d)`, strings.Join(setClauses, ","), maxLookup + 1)
+	expectedArgs = append(expectedArgs, maxLookup + 1)
+
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, expectedArgs, args)
+
 }
