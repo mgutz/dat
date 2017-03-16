@@ -1,0 +1,18 @@
+
+
+#. Replaces text in files
+function replace-text {
+	# excludes ./vendor
+	find . -path ./vendor -prune -o -name "*.go" -print | xargs sed -i 's|github.com/mgutz/logxi/v1|github.com/mgutz/logxi|g'
+}
+
+#. Links a go/src... project to vendor
+function link {
+    test -z "$1" && {
+        echo usage: link PACKAGE
+        exit 1
+    }
+    local package="$1"
+    rm -rf vendor/$package
+    ln -sfn $HOME/go/src/$package vendor/$package
+}

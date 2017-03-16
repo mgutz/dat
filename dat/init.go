@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/mgutz/logxi/v1"
+	"github.com/mgutz/logxi"
 )
 
-var logger log.Logger
+var logger logxi.Logger
 
 // Strict tells dat to raise errors
 var Strict = false
@@ -53,5 +53,5 @@ func init() {
 		identifierTab[i] = fmt.Sprintf("dat%d", i)
 	}
 
-	logger = log.New("dat")
+	logger = logxi.New("dat")
 }

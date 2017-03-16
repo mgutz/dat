@@ -90,3 +90,16 @@ func NewDBFromSqlx(dbx *sqlx.DB) *DB {
 	pgSetVersion(conn)
 	return conn
 }
+
+// Loose returns a DB clone that can loosely populate a struct. sqlx refers
+// to loose as `Unsafe`, but what it means is error when a result of a query
+// has more columns than a destination struct. In loose mode ignore this error.
+func (db *DB) Loose() *DB {
+	unsafe := db.DB.Unsafe()
+
+	return &DB{
+		DB:        unsafe,
+		Queryable: &Queryable{unsafe},
+		Version:   db.Version,
+	}
+}

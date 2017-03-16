@@ -3,7 +3,7 @@ package dat
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestJSQLBasic(t *testing.T) {

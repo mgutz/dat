@@ -4,8 +4,7 @@ import (
 	"testing"
 
 	"gopkg.in/mgutz/dat.v2/dat"
-
-	"github.com/stretchr/testify/assert"
+	"gopkg.in/stretchr/testify.v1/assert"
 )
 
 func TestJSQLRow(t *testing.T) {
