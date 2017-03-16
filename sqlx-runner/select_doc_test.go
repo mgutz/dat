@@ -321,3 +321,5 @@ func TestSelectDocForObject(t *testing.T) {
 	assert.Equal(t, "A very good day", comments.MustString("[0].comment"))
 	assert.Equal(t, "Yum. Apple pie.", comments.MustString("[1].comment"))
 }
+
+

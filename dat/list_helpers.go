@@ -6,10 +6,10 @@ import (
 
 var bufPool = common.NewBufferPool()
 
-func writeIdentifiers(buf common.BufferWriter, columns []string, join string) {
+func writeIdentifiers(buf common.BufferWriter, columns []string, delimiter string) {
 	for i, column := range columns {
 		if i > 0 {
-			buf.WriteString(join)
+			buf.WriteString(delimiter)
 		}
 		buf.WriteString(column)
 	}
@@ -17,6 +17,12 @@ func writeIdentifiers(buf common.BufferWriter, columns []string, join string) {
 
 func writeIdentifier(buf common.BufferWriter, name string) {
 	buf.WriteString(name)
+}
+
+func writeQuotedIdentifier(buf common.BufferWriter, name string) {
+	buf.WriteRune('"')
+	buf.WriteString(name)
+	buf.WriteRune('"')
 }
 
 func buildPlaceholders(buf common.BufferWriter, start, length int) {

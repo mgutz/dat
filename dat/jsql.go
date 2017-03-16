@@ -152,7 +152,7 @@ func (b *JSQLBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		writeIdentifier(buf, sub.alias)
+		writeQuotedIdentifier(buf, sub.alias)
 		buf.WriteString(", ")
 	}
 
@@ -164,7 +164,7 @@ func (b *JSQLBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		writeIdentifier(buf, sub.alias)
+		writeQuotedIdentifier(buf, sub.alias)
 		buf.WriteString(", ")
 	}
 

@@ -41,8 +41,8 @@ func TestSelectDocSQLDocs(t *testing.T) {
 		SELECT
 			b,
 			c,
-			(SELECT array_agg(dat__f.*) FROM (SELECT g,h FROM f WHERE id=$1) AS dat__f) AS f,
-			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS x
+			(SELECT array_agg(dat__f.*) FROM (SELECT g,h FROM f WHERE id=$1) AS dat__f) AS "f",
+			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS "x"
 		FROM a
 		WHERE (d=$2)
 	) as dat__item
@@ -69,8 +69,8 @@ func TestSelectDocSQLInnerSQL(t *testing.T) {
 		SELECT
 			b,
 			c,
-			(SELECT array_agg(dat__f.*) FROM (SELECT g,h FROM f WHERE id=$1) AS dat__f) AS f,
-			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS x
+			(SELECT array_agg(dat__f.*) FROM (SELECT g,h FROM f WHERE id=$1) AS dat__f) AS "f",
+			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS "x"
 		FROM a
 		WHERE d=$2
 	) as dat__item
@@ -189,11 +189,11 @@ func TestNestedSelecDocWhere(t *testing.T) {
 								SELECT array_agg(dat__comments.*)
 								FROM (SELECT * FROM comments WHERE id = u.id)
 								AS dat__comments
-							) AS comments
+							) AS "comments"
 						FROM users u
 						WHERE (u.id = $1)
 					) AS dat__user
-				) AS user
+				) AS "user"
 			FROM games
 			WHERE (id = $2)
 		) as dat__item

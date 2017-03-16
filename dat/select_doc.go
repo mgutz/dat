@@ -181,7 +181,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		writeIdentifier(buf, sub.alias)
+		writeQuotedIdentifier(buf, sub.alias)
 	}
 
 	for _, sub := range b.subQueriesOne {
@@ -192,7 +192,7 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
-		writeIdentifier(buf, sub.alias)
+		writeQuotedIdentifier(buf, sub.alias)
 	}
 
 	whereFragments := b.whereFragments

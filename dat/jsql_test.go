@@ -33,7 +33,7 @@ func TestJSQLMany(t *testing.T) {
 		SELECT row_to_json(dat__item.*)
 		FROM (
 			SELECT
-				(SELECT array_agg(dat__hobbies.*) FROM (SELECT * FROM hobbies WHERE id = $2) AS dat__hobbies) AS hobbies,
+				(SELECT array_agg(dat__hobbies.*) FROM (SELECT * FROM hobbies WHERE id = $2) AS dat__hobbies) AS "hobbies",
 				name
 			FROM
 				users
