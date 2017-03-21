@@ -29,7 +29,7 @@ imports:
   subpackages:
   - v1
 - name: github.com/mgutz/logxi
-  version: 66c6f0d82a52e2d706bc1a8bf73a1abdc40825c9
+  version: 3753102df44ef6dc2552aea65b9666b593d68663
 - name: github.com/mgutz/minimist
   version: 39eb8cf573ca29344bd7d7e6ba4d7febdebd37a9
 - name: github.com/mgutz/str
