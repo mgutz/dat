@@ -1,13 +1,13 @@
-hash: 5a05f6f0251efcf7bdf147fdf1a112ec9f041e07992205c32e11871838e31aef
-updated: 2016-05-27T21:12:32.287971295-07:00
+hash: e3f29af646fbe700dd82d6f6d7193c0a7a18ad9b6db640b68d36974595e096b5
+updated: 2017-03-27T07:02:57.219253178-07:00
 imports:
 - name: github.com/cenkalti/backoff
   version: c29158af31815ccc31ca29c86c121bc39e00d3d8
 - name: github.com/garyburd/redigo
   version: b8dc90050f24c1a73a52f107f3f575be67b21b7c
   subpackages:
-  - redis
   - internal
+  - redis
 - name: github.com/howeyc/gopass
   version: 66487b23f2880ba32e185121d2cd51a338ea069a
 - name: github.com/jmoiron/sqlx
@@ -19,9 +19,9 @@ imports:
   subpackages:
   - oid
 - name: github.com/mattn/go-colorable
-  version: e8a10ddc7d2a7fe255f6fd7f501070a4cb62c183
+  version: ed8eb9e318d7a84ce5915b495b7d35e0cfe7b5a8
 - name: github.com/mattn/go-isatty
-  version: 56b76bdf51f7708750eac80fa38b952bb9f32639
+  version: 3a115632dcd687f9c8cd01679c83a06a0e21c1f3
 - name: github.com/mgutz/ansi
   version: c286dcecd19ff979eeb73ea444e479b903f2cfcb
 - name: github.com/mgutz/jo
@@ -29,9 +29,7 @@ imports:
   subpackages:
   - v1
 - name: github.com/mgutz/logxi
-  version: 7d364cab682d1b7b9063a3293c9e8c3087194940
-  subpackages:
-  - v1
+  version: 3753102df44ef6dc2552aea65b9666b593d68663
 - name: github.com/mgutz/minimist
   version: 39eb8cf573ca29344bd7d7e6ba4d7febdebd37a9
 - name: github.com/mgutz/str
@@ -40,6 +38,8 @@ imports:
   version: 2a0bcba0661696e339461f5efb2273f4459dd1b9
 - name: github.com/MichaelTJones/walk
   version: 3af09438b0ab0e8f296410bfa646a7e635ea1fc0
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/nozzle/throttler
   version: d9b45f19996c645d38c9266d1f5cf1990e930119
 - name: github.com/pmylund/go-cache
@@ -57,12 +57,20 @@ imports:
 - name: gopkg.in/godo.v2
   version: b5fd2f0bef1ebe832e628cfad18ab1cc707f65a1
   subpackages:
-  - util
   - glob
+  - util
   - watcher
   - watcher/fswatch
 - name: gopkg.in/stretchr/testify.v1
   version: f390dcf405f7b83c997eac1b06768bb9f44dec18
   subpackages:
   - assert
-devImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 2df174808ee097f90d259e432cc04442cf60be21
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib

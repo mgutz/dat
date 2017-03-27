@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/mgutz/logxi/v1"
+	"github.com/mgutz/logxi"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/kvs"
 	"gopkg.in/mgutz/dat.v1/postgres"
 )
 
-var logger log.Logger
+var logger logxi.Logger
 
 // LogQueriesThreshold is the threshold for logging "slow" queries
 var LogQueriesThreshold time.Duration
@@ -21,7 +21,7 @@ var LogErrNoRows bool
 
 func init() {
 	dat.Dialect = postgres.New()
-	logger = log.New("dat:sqlx")
+	logger = logxi.New("dat:sqlx")
 }
 
 // Cache caches query results.

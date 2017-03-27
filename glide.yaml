@@ -10,9 +10,6 @@ import:
 - package: github.com/mgutz/jo
   subpackages:
   - v1
-- package: github.com/mgutz/logxi
-  subpackages:
-  - v1
 - package: github.com/mgutz/str
 - package: github.com/pmylund/go-cache
 - package: github.com/satori/go.uuid
@@ -22,4 +19,4 @@ import:
 - package: gopkg.in/stretchr/testify.v1
   subpackages:
   - assert
-
+- package: github.com/mgutz/logxi

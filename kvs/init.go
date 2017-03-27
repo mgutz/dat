@@ -1,11 +1,9 @@
 package kvs
 
-import (
-	"github.com/mgutz/logxi/v1"
-)
+import "github.com/mgutz/logxi"
 
-var logger log.Logger
+var logger logxi.Logger
 
 func init() {
-	logger = log.New("dat.cache")
+	logger = logxi.New("dat.cache")
 }

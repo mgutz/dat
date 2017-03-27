@@ -2,7 +2,6 @@ package runner
 
 import (
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -138,7 +137,7 @@ func (tx *Tx) AutoCommit() error {
 	if err != nil {
 		tx.state = txErred
 		if dat.Strict {
-			log.Fatalf("Could not commit transaction: %s\n", err.Error())
+			logger.Fatal("Could not commit transaction", "err", err)
 		}
 		tx.popState()
 		return logger.Error("transaction.AutoCommit.commit_error", err)
@@ -163,7 +162,7 @@ func (tx *Tx) AutoRollback() error {
 	if err != nil {
 		tx.state = txErred
 		if dat.Strict {
-			log.Fatalf("Could not rollback transaction: %s\n", err.Error())
+			logger.Fatal("Could not rollback transaction", "err", err)
 		}
 		tx.popState()
 		return logger.Error("transaction.AutoRollback.rollback_error", err)
