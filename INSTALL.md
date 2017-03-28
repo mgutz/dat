@@ -14,7 +14,9 @@ Install [glide](https://github.com/Masterminds/glide)
 If you are not using glide in your project
 
 ```sh
-cd $GOPATH
+cd $GOPATH/src
+# remove dir if it exists
+# rm -rf gopkg.in/mgutz/dat.v1
 git clone -b v1 https://github.com/mgutz/dat gopkg.in/mgutz/dat.v1
 cd gopkg.in/mgutz/dat.v1
 glide install
