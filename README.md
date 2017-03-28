@@ -149,6 +149,9 @@ func init() {
     // Should be disabled in production/release builds.
     dat.Strict = false
 
+    // set this to disable automatic version detection
+    dat.SkipVersionDetection = false
+
     // Log any query over 10ms as warnings. (optional)
     runner.LogQueriesThreshold = 10 * time.Millisecond
 

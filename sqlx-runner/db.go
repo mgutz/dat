@@ -43,6 +43,10 @@ func pgMustNotAllowEscapeSequence(conn *DB) {
 }
 
 func pgSetVersion(db *DB) {
+	if dat.SkipVersionDetection {
+		return
+	}
+
 	err := db.
 		SQL("SHOW server_version_num").
 		QueryScalar(&db.Version)

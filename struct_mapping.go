@@ -2,8 +2,8 @@ package dat
 
 import (
 	"fmt"
-	"reflect"
 	"github.com/mgutz/str"
+	"reflect"
 
 	"gopkg.in/mgutz/dat.v1/reflectx"
 )
