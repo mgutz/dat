@@ -30,6 +30,7 @@ func TestSelectDocSQLDocs(t *testing.T) {
 	sql, args, err := SelectDoc("b", "c").
 		Many("f", `SELECT g, h FROM f WHERE id= $1`, 4).
 		Many("x", `SELECT id, y, z FROM x`).
+		Vector("y", `SELECT id FROM x`).
 		From("a").
 		Where("d=$1", 4).
 		ToSQL()
@@ -42,7 +43,8 @@ func TestSelectDocSQLDocs(t *testing.T) {
 			b,
 			c,
 			(SELECT array_agg(dat__f.*) FROM (SELECT g,h FROM f WHERE id=$1) AS dat__f) AS "f",
-			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS "x"
+			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS "x",
+			(SELECT array_agg(dat__y.dat__scalar) FROM (SELECT id FROM x) AS dat__y (dat__scalar)) AS "y"
 		FROM a
 		WHERE (d=$2)
 	) as dat__item
