@@ -64,7 +64,7 @@ func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...in
 	return b
 }
 
-// Vector loads a sub query resulting in an array of homogenous scalars as an alias.
+// Vector loads a sub query resulting in an array of homogeneous scalars as an alias.
 func (b *SelectDocBuilder) Vector(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:

@@ -70,7 +70,7 @@ func (b *JSQLBuilder) Many(column string, sqlOrBuilder interface{}, a ...interfa
 	return b
 }
 
-// Vector loads a sub query resulting in an array of rows as an alias.
+// Vector loads a sub query resulting in an array of homogeneous scalars as an alias.
 func (b *JSQLBuilder) Vector(column string, sqlOrBuilder interface{}, a ...interface{}) *JSQLBuilder {
 	if b.err != nil {
 		return b
