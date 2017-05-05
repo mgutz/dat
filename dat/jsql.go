@@ -10,13 +10,14 @@ import (
 type JSQLBuilder struct {
 	Execer
 
-	isInterpolated bool
-	args           []interface{}
-	query          string
-	subQueriesMany []*subInfo
-	subQueriesOne  []*subInfo
-	isParent       bool
-	err            error
+	isInterpolated   bool
+	args             []interface{}
+	query            string
+	subQueriesMany   []*subInfo
+	subQueriesOne    []*subInfo
+	subQueriesVector []*subInfo
+	isParent         bool
+	err              error
 }
 
 // NewJSQLBuilder creates an instance of JSQLBuilder.
@@ -65,6 +66,44 @@ func (b *JSQLBuilder) Many(column string, sqlOrBuilder interface{}, a ...interfa
 		b.subQueriesMany = append(b.subQueriesMany, &subInfo{Expr(sql, args...), column})
 	case string:
 		b.subQueriesMany = append(b.subQueriesMany, &subInfo{Expr(t, a...), column})
+	}
+	return b
+}
+
+// Vector loads a sub query resulting in an array of rows as an alias.
+func (b *JSQLBuilder) Vector(column string, sqlOrBuilder interface{}, a ...interface{}) *JSQLBuilder {
+	if b.err != nil {
+		return b
+	}
+
+	switch t := sqlOrBuilder.(type) {
+	default:
+		b.err = NewError("SelectDocBuilder.Many: sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+	case *SelectDocBuilder:
+		t.isParent = false
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
+		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(sql, args...), column})
+	case *JSQLBuilder:
+		t.isParent = false
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
+		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(sql, args...), column})
+	case Builder:
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			b.err = err
+			return b
+		}
+		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(sql, args...), column})
+	case string:
+		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(t, a...), column})
 	}
 	return b
 }
@@ -152,6 +191,18 @@ func (b *JSQLBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
+		writeQuotedIdentifier(buf, sub.alias)
+		buf.WriteString(", ")
+	}
+
+	for _, sub := range b.subQueriesVector {
+		buf.WriteString("(SELECT array_agg(dat__")
+		buf.WriteString(sub.alias)
+		buf.WriteString(".dat__scalar) FROM (")
+		sub.WriteRelativeArgs(buf, &args, &placeholderStartPos)
+		buf.WriteString(") AS dat__")
+		buf.WriteString(sub.alias)
+		buf.WriteString("(dat__scalar)) AS ")
 		writeQuotedIdentifier(buf, sub.alias)
 		buf.WriteString(", ")
 	}
