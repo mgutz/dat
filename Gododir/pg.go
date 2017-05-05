@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	_ "github.com/lib/pq"
+
 	"github.com/mgutz/ansi"
 	"github.com/mgutz/str"
 	do "gopkg.in/godo.v2"
@@ -39,7 +41,7 @@ func createdb(c *do.Context) {
 	user := do.Prompt("superuser: ")
 	password := do.PromptPassword("password: ")
 
-	dsn := str.Template("user={{user}} password={{password}} dbname=postgres host=localhost sslmode=disable", do.M{
+	dsn := str.Template("user={{user}} password={{password}} database=postgres host=localhost sslmode=disable", do.M{
 		"user":     user,
 		"password": password,
 	})
@@ -56,8 +58,8 @@ func createdb(c *do.Context) {
 	}
 	for _, cmd := range commands {
 		sql2 := str.Template(cmd, do.M{
-			"dbname":   "dbr_test",
-			"user":     "dbr",
+			"dbname":   "dat_test",
+			"user":     "dat",
 			"password": "!test",
 		})
 		_, err = db.Exec(sql2)
@@ -72,7 +74,7 @@ func createdb(c *do.Context) {
 		panic(err)
 	}
 
-	dsn = str.Template("user={{user}} password={{password}} dbname=dbr_test host=localhost sslmode=disable", do.M{
+	dsn = str.Template("user={{user}} password={{password}} dbname=dat_test host=localhost sslmode=disable", do.M{
 		"user":     user,
 		"password": password,
 	})

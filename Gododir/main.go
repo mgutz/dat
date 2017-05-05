@@ -9,7 +9,7 @@ import (
 func tasks(p *do.Project) {
 	do.Env = `
 	DAT_DRIVER=postgres
-	DAT_DSN="dbname=dbr_test user=dbr password=!test host=localhost sslmode=disable"
+	DAT_DSN="dbname=dat_test user=dat password=!test host=localhost sslmode=disable"
 	`
 	generateTasks(p)
 	//p.Use("pg", pgTasks)
