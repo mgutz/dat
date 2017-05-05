@@ -25,6 +25,8 @@
     DB.SelectDoc("id", "user_name", "avatar").
         Many("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
         Many("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
+        // Vector returns [3, 4, 9] instead of an array of objects
+        Vector("comment_ids", `SELECT id FROM comments where id = users.id`).
         One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
         From("users").
         Where("id = $1", 4).
