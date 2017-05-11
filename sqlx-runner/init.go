@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/mgutz/logxi"
+	logxi "github.com/mgutz/logxi/v1"
 	"gopkg.in/mgutz/dat.v1"
 	"gopkg.in/mgutz/dat.v1/kvs"
 	"gopkg.in/mgutz/dat.v1/postgres"

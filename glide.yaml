@@ -20,3 +20,5 @@ import:
   subpackages:
   - assert
 - package: github.com/mgutz/logxi
+  subpackages:
+  - v1
