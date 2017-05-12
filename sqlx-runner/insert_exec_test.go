@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/mgutz/dat.v2/common"
-	"gopkg.in/mgutz/dat.v2/dat"
-	"gopkg.in/mgutz/dat.v2/postgres"
+	"github.com/mgutz/dat/common"
+	"github.com/mgutz/dat/dat"
+	"github.com/mgutz/dat/postgres"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 

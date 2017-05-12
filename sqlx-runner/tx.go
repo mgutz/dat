@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"gopkg.in/mgutz/dat.v2/dat"
+	"github.com/mgutz/dat/dat"
 )
 
 const (

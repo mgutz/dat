@@ -1,5 +1,7 @@
 # dat
 
+**DO NOT USE YET! SWITCHING to golang/dep**
+
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
 `dat` (Data Access Toolkit) is a fast, lightweight Postgres library for Go.
@@ -109,7 +111,7 @@
 Get it
 
 ```sh
-go get -u gopkg.in/mgutz/dat.v2/sqlx-runner
+go get -u github.com/mgutz/dat/sqlx-runner
 ```
 
 Use it

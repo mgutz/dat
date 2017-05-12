@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/mgutz/jo"
-	"gopkg.in/mgutz/dat.v2/dat"
+	"github.com/mgutz/dat/dat"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 

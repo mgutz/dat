@@ -3,7 +3,7 @@
 #. Replaces text in files
 function replace-text {
 	# excludes ./vendor
-	find . -path ./vendor -prune -o -name "*.go" -print | xargs sed -i 's|github.com/mgutz/logxi/v1|github.com/mgutz/logxi|g'
+	find . -path ./vendor -prune -o -name "*.go" -print | xargs sed -i 's|gopkg.in/mgutz/dat.v2/|github.com/mgutz/dat/|'
 }
 
 #. Links a go/src... project to vendor

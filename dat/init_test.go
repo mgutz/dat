@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gopkg.in/mgutz/dat.v2/postgres"
+	"github.com/mgutz/dat/postgres"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 

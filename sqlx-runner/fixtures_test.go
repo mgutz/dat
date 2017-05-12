@@ -1,6 +1,6 @@
 package runner
 
-import "gopkg.in/mgutz/dat.v2/dat"
+import "github.com/mgutz/dat/dat"
 
 type Team struct {
 	ID        int64  `db:"id"`
