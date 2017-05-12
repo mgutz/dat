@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/stretchr/testify.v1/assert"
 
-	"github.com/mgutz/jo/v1"
+	"github.com/mgutz/jo"
 )
 
 func TestQueryObject(t *testing.T) {
@@ -20,7 +20,7 @@ func TestQueryObject(t *testing.T) {
 		QueryObject(&people)
 
 	assert.NoError(t, err)
-	assert.Equal(t, len(people.AsSlice(".")), 6)
+	assert.Equal(t, len(people.AsObjects(".")), 6)
 
 	// Make sure that the Ids are set. It's possible (maybe?) that different DBs set ids differently so
 	// don't assume they're 1 and 2.

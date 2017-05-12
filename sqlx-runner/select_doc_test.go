@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/mgutz/jo/v1"
+	"github.com/mgutz/jo"
 	"gopkg.in/mgutz/dat.v2/dat"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
@@ -321,5 +321,3 @@ func TestSelectDocForObject(t *testing.T) {
 	assert.Equal(t, "A very good day", comments.MustString("[0].comment"))
 	assert.Equal(t, "Yum. Apple pie.", comments.MustString("[1].comment"))
 }
-
-
