@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -24,6 +25,8 @@ type Execer struct {
 	// uuid is prepended into the SQL for the query to be searched
 	// in pg_stat_activity, used by timeout logic
 	queryID string
+
+	ctx context.Context
 }
 
 const queryIDPrefix = "--dat:qid="
@@ -33,6 +36,7 @@ func NewExecer(database database, builder dat.Builder) *Execer {
 	return &Execer{
 		database: database,
 		builder:  builder,
+		ctx:      context.Background(),
 	}
 }
 
@@ -52,6 +56,12 @@ func (ex *Execer) Timeout(timeout time.Duration) dat.Execer {
 	} else {
 		ex.queryID = ""
 	}
+	return ex
+}
+
+// Context sets the context for current query.
+func (ex *Execer) Context(ctx context.Context) dat.Execer {
+	ex.ctx = ctx
 	return ex
 }
 

@@ -1,5 +1,5 @@
 hash: 96b33372e619c3e4f2c39384e9577881d2a6ba9c22ac6eb04cfd680471f8dc84
-updated: 2016-06-04T15:45:36.594344149-07:00
+updated: 2017-06-23T10:43:54.561604473+02:00
 imports:
 - name: github.com/cenkalti/backoff
   version: c29158af31815ccc31ca29c86c121bc39e00d3d8
@@ -11,7 +11,7 @@ imports:
 - name: github.com/howeyc/gopass
   version: 66487b23f2880ba32e185121d2cd51a338ea069a
 - name: github.com/jmoiron/sqlx
-  version: a7f971fe8ea891a1a74ddb40c623f5722e28e8a8
+  version: 8ed836a8adb659e8492bcaa49e0880bb84075fe2
   subpackages:
   - reflectx
 - name: github.com/lib/pq
