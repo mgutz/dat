@@ -261,3 +261,16 @@ func TestCacheSelectQuerySliceByHash(t *testing.T) {
 		assert.Equal(t, ids, []int64{1})
 	}
 }
+
+func TestCacheExecInvalidate(t *testing.T) {
+	const key = "invalidate-exec"
+	Cache.FlushDB()
+	Cache.Set(key, "foo", 1*time.Second)
+	s, _ := Cache.Get(key)
+	assert.Equal(t, "foo", s)
+	_, err := testDB.SQL("select 1").Cache(key, 0, true).Exec()
+	assert.NoError(t, err)
+	s, err = Cache.Get(key)
+	assert.Equal(t, "", s)
+	assert.NoError(t, err)
+}

@@ -14,7 +14,7 @@
 
 ## Dependencies define constraints on dependent projects. They are respected by
 ## dep whether coming from the Gopkg.toml of the current project or a dependency.
-# [[dependencies]]
+# [[constraint]]
 ## Required: the root import path of the project being constrained.
 # name = "github.com/user/project"
 #
@@ -27,8 +27,8 @@
 ## Optional: an alternate location (URL or import path) for the project's source.
 # source = "https://github.com/myfork/package.git"
 
-## Overrides have the same structure as [[dependencies]], but supercede all
-## [[dependencies]] declarations from all projects. Only the current project's
+## Overrides have the same structure as [[constraint]], but supercede all
+## [[constraint]] declarations from all projects. Only the current project's
 ## [[overrides]] are applied.
 ##
 ## Overrides are a sledgehammer. Use them only as a last resort.
@@ -51,58 +51,58 @@
 
 
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/cenkalti/backoff"
   version = "^1.0.0"
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/garyburd/redigo"
   version = "^1.0.0"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "github.com/lib/pq"
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/mattn/go-isatty"
   version = ">=0.0.2, <1.0.0"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "github.com/mgutz/ansi"
 
-[[dependencies]]
+[[constraint]]
   branch = "next"
   name = "github.com/mgutz/jo"
 
-[[dependencies]]
+[[constraint]]
   branch = "remove-start-frame"
   name = "github.com/mgutz/logxi"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "github.com/mgutz/str"
 
-[[dependencies]]
+[[constraint]]
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/pmylund/go-cache"
   version = "^2.0.0"
 
-[[dependencies]]
+[[constraint]]
   name = "github.com/satori/go.uuid"
   version = "^1.1.0"
 
-[[dependencies]]
+[[constraint]]
   name = "gopkg.in/godo.v2"
   version = "^2.0.9"
 
-[[dependencies]]
+[[constraint]]
   name = "gopkg.in/stretchr/testify.v1"
   version = "^1.1.4"

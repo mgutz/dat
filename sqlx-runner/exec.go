@@ -13,9 +13,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	guid "github.com/satori/go.uuid"
 	"github.com/mgutz/dat/dat"
 	"github.com/mgutz/dat/kvs"
+	guid "github.com/satori/go.uuid"
 )
 
 // database is the interface for sqlx's DB or Tx against which
@@ -128,7 +128,13 @@ func (ex *Execer) execFn() (sql.Result, error) {
 		return nil, logSQLError(err, "execFn.30:"+fmt.Sprintf("%T", err), fullSQL, args)
 	}
 
-	return result, nil
+	// invalidating the cache is the only cache operation that makes sense
+	// when executing a query directly
+	if ex.cacheInvalidate {
+		err = ex.delCacheKey()
+	}
+
+	return result, err
 }
 
 // execSQL executes SQL. DO NOT add timeout logic here since this is called
@@ -645,6 +651,13 @@ func (ex *Execer) setCache(data interface{}, dataType int) {
 	if err != nil {
 		logger.Warn("Could not set cache. Query will proceed without caching", "err", err)
 	}
+}
+
+func (ex *Execer) delCacheKey() error {
+	if Cache == nil || ex.cacheID == "" {
+		return nil
+	}
+	return Cache.Del(ex.cacheID)
 }
 
 func (ex *Execer) queryJSON() ([]byte, error) {
