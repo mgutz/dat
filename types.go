@@ -182,6 +182,9 @@ func (n *NullTime) UnmarshalJSON(b []byte) error {
 	}
 
 	s := string(b)
+	if len(s) < 2 {
+		return logger.Error("Cannot parse time", "time", s)
+	}
 	s = s[1 : len(s)-1]
 	for _, format := range formats {
 		t, err := time.Parse(format, s)
