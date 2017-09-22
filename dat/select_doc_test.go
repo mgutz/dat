@@ -31,12 +31,25 @@ func TestSelectDocSQLDocs(t *testing.T) {
 		Many("f", `SELECT g, h FROM f WHERE id= $1`, 4).
 		Many("x", `SELECT id, y, z FROM x`).
 		Vector("y", `SELECT id FROM x`).
+		Scalar("z", `SELECT id FROM x`).
 		From("a").
 		Where("d=$1", 4).
+		Union(
+			SelectDoc("f", "g").
+				From("foo").
+				Where("1 = 1")).
+		With("other", SelectDoc("h", "i").
+			From("bar").
+			Where("2 = 2")).
 		ToSQL()
 	assert.NoError(t, err)
 
 	expected := `
+	WITH other AS (
+		SELECT h, i
+		FROM bar
+		WHERE (2 = 2)
+	)
 	SELECT row_to_json(dat__item.*)
 	FROM (
 		SELECT
@@ -44,9 +57,11 @@ func TestSelectDocSQLDocs(t *testing.T) {
 			c,
 			(SELECT array_agg(dat__f.*) FROM (SELECT g,h FROM f WHERE id=$1) AS dat__f) AS "f",
 			(SELECT array_agg(dat__x.*) FROM (SELECT id,y,z FROM x) AS dat__x) AS "x",
-			(SELECT array_agg(dat__y.dat__scalar) FROM (SELECT id FROM x) AS dat__y (dat__scalar)) AS "y"
+			(SELECT array_agg(dat__y.dat__scalar) FROM (SELECT id FROM x) AS dat__y (dat__scalar)) AS "y",
+			(SELECT dat__z.dat__scalar FROM (SELECT id FROM x) AS dat__z (dat__scalar) limit 1) AS "z"
 		FROM a
 		WHERE (d=$2)
+		UNION SELECT f, g FROM foo WHERE (1 = 1)
 	) as dat__item
 	`
 	assert.Equal(t, stripWS(expected), stripWS(sql))

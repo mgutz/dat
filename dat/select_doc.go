@@ -8,10 +8,13 @@ type subInfo struct {
 // SelectDocBuilder builds SQL that returns a JSON row.
 type SelectDocBuilder struct {
 	*SelectBuilder
+	subQueriesWith   []*subInfo
 	subQueriesMany   []*subInfo
-	subQueriesVector []*subInfo
 	subQueriesOne    []*subInfo
+	subQueriesVector []*subInfo
+	subQueriesScalar []*subInfo
 	innerSQL         *Expression
+	union            *Expression
 	isParent         bool
 	err              error
 }
@@ -30,79 +33,71 @@ func (b *SelectDocBuilder) InnerSQL(sql string, a ...interface{}) *SelectDocBuil
 	return b
 }
 
-// Many loads a sub query resulting in an array of rows as an alias.
-func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+func storeExpr(destination *[]*subInfo, name string, column string, sqlOrBuilder interface{}, a ...interface{}) error {
+	var err error
 	switch t := sqlOrBuilder.(type) {
 	default:
-		b.err = NewError("SelectDocBuilder.Many: sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+		err = NewError(name + ": sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *JSQLBuilder:
 		t.isParent = false
 		sql, args, err := t.ToSQL()
 		if err != nil {
-			b.err = err
-			return b
+			return err
 		}
-		b.subQueriesMany = append(b.subQueriesMany, &subInfo{Expr(sql, args...), column})
+		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
 	case *SelectDocBuilder:
 		t.isParent = false
 		sql, args, err := t.ToSQL()
 		if err != nil {
-			b.err = err
-			return b
+			return err
 		}
-		b.subQueriesMany = append(b.subQueriesMany, &subInfo{Expr(sql, args...), column})
+		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
 	case Builder:
 		sql, args, err := t.ToSQL()
 		if err != nil {
-			b.err = err
-			return b
+			return err
 		}
-		b.subQueriesMany = append(b.subQueriesMany, &subInfo{Expr(sql, args...), column})
+		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
 	case string:
-		b.subQueriesMany = append(b.subQueriesMany, &subInfo{Expr(t, a...), column})
+		*destination = append(*destination, &subInfo{Expr(t, a...), column})
 	}
+	return err
+}
+
+// With loads a sub query that will be inserted as a "with" table
+func (b *SelectDocBuilder) With(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	b.err = storeExpr(&b.subQueriesWith, "SelectDocBuilder.With", column, sqlOrBuilder, a...)
+	return b
+}
+
+// Many loads a sub query resulting in an array of rows as an alias.
+func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	b.err = storeExpr(&b.subQueriesMany, "SelectDocBuilder.Many", column, sqlOrBuilder, a...)
 	return b
 }
 
 // Vector loads a sub query resulting in an array of homogeneous scalars as an alias.
 func (b *SelectDocBuilder) Vector(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
-	switch t := sqlOrBuilder.(type) {
-	default:
-		b.err = NewError("SelectDocBuilder.ManyScalars: sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
-	case *JSQLBuilder:
-		t.isParent = false
-		sql, args, err := t.ToSQL()
-		if err != nil {
-			b.err = err
-			return b
-		}
-		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(sql, args...), column})
-	case *SelectDocBuilder:
-		t.isParent = false
-		sql, args, err := t.ToSQL()
-		if err != nil {
-			b.err = err
-			return b
-		}
-		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(sql, args...), column})
-	case Builder:
-		sql, args, err := t.ToSQL()
-		if err != nil {
-			b.err = err
-			return b
-		}
-		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(sql, args...), column})
-	case string:
-		b.subQueriesVector = append(b.subQueriesVector, &subInfo{Expr(t, a...), column})
-	}
+	b.err = storeExpr(&b.subQueriesVector, "SelectDocBuilder.Vector", column, sqlOrBuilder, a...)
 	return b
 }
 
 // One loads a query resulting in a single row as an alias.
 func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	b.err = storeExpr(&b.subQueriesOne, "SelectDocBuilder.One", column, sqlOrBuilder, a...)
+	return b
+}
+
+// Scalar loads a query resulting in a single scalar as an alias and embeds the scalar in the parent object, rather than as a child object
+func (b *SelectDocBuilder) Scalar(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	b.err = storeExpr(&b.subQueriesScalar, "SelectDocBuilder.Scalar", column, sqlOrBuilder, a...)
+	return b
+}
+
+func (b *SelectDocBuilder) Union(sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	switch t := sqlOrBuilder.(type) {
 	default:
-		b.err = NewError("sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+		b.err = NewError("SelectDocBuilder.Union: sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
 	case *JSQLBuilder:
 		t.isParent = false
 		sql, args, err := t.ToSQL()
@@ -110,7 +105,7 @@ func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...int
 			b.err = err
 			return b
 		}
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
+		b.union = Expr(sql, args...)
 	case *SelectDocBuilder:
 		t.isParent = false
 		sql, args, err := t.ToSQL()
@@ -118,16 +113,16 @@ func (b *SelectDocBuilder) One(column string, sqlOrBuilder interface{}, a ...int
 			b.err = err
 			return b
 		}
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
+		b.union = Expr(sql, args...)
 	case Builder:
 		sql, args, err := t.ToSQL()
 		if err != nil {
 			b.err = err
 			return b
 		}
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(sql, args...), column})
+		b.union = Expr(sql, args...)
 	case string:
-		b.subQueriesOne = append(b.subQueriesOne, &subInfo{Expr(t, a...), column})
+		b.union = Expr(t, a...)
 	}
 	return b
 }
@@ -169,6 +164,18 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 				ID in (1, 2)
 		) as item
 	*/
+
+	for i, sub := range b.subQueriesWith {
+		if i == 0 {
+			buf.WriteString("WITH ")
+		} else {
+			buf.WriteString(", ")
+		}
+		buf.WriteString(sub.alias)
+		buf.WriteString(" AS (")
+		sub.WriteRelativeArgs(buf, &args, &placeholderStartPos)
+		buf.WriteString(") ")
+	}
 
 	if b.isParent {
 		//buf.WriteString("SELECT convert_to(row_to_json(dat__item.*)::text, 'UTF8') FROM ( SELECT ")
@@ -238,6 +245,17 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 		buf.WriteString(") AS dat__")
 		buf.WriteString(sub.alias)
 		buf.WriteString(") AS ")
+		writeQuotedIdentifier(buf, sub.alias)
+	}
+
+	for _, sub := range b.subQueriesScalar {
+		buf.WriteString(", (SELECT dat__")
+		buf.WriteString(sub.alias)
+		buf.WriteString(".dat__scalar FROM (")
+		sub.WriteRelativeArgs(buf, &args, &placeholderStartPos)
+		buf.WriteString(") AS dat__")
+		buf.WriteString(sub.alias)
+		buf.WriteString("(dat__scalar) limit 1) AS ")
 		writeQuotedIdentifier(buf, sub.alias)
 	}
 
@@ -317,6 +335,11 @@ func (b *SelectDocBuilder) ToSQL() (string, []interface{}, error) {
 				buf.WriteString(s)
 			}
 		}
+	}
+
+	if b.union != nil {
+		buf.WriteString(" UNION ")
+		b.union.WriteRelativeArgs(buf, &args, &placeholderStartPos)
 	}
 
 	if b.isParent {

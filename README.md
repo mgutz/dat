@@ -30,6 +30,8 @@
         // Vector returns [3, 4, 9] instead of an array of objects
         Vector("comment_ids", `SELECT id FROM comments where id = users.id`).
         One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
+        // Scalar embeds a single value directly in the parent object, rather than a nested object
+        Scalar("comment_total", `SELECT count(1) FROM comments WHERE id = users.id`).
         From("users").
         Where("id = $1", 4).
         QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
