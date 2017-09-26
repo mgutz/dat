@@ -11,6 +11,20 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	// InnerJoin ...
+	InnerJoin = iota
+	// LeftOuterJoin ...
+	LeftOuterJoin
+	// RightOuterJoin ...
+	RightOuterJoin
+	// FullOuterJoin ...
+	FullOuterJoin
+)
+
+// JoinType ...
+var JoinType = []string{"INNER JOIN", "LEFT OUTER JOIN", "RIGHT OUTER JOIN", "FULL OUTER JOIN"}
+
 // Expressioner is an interface that returns raw SQL with optional placeholders and arguments.
 type Expressioner interface {
 	Expression() (string, []interface{}, error)

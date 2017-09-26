@@ -141,7 +141,8 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 	sql.WriteString(") VALUES ")
 
 	start := 1
-	// Go thru each value we want to insert. Write the placeholders, and collect args
+	// Go through each value we want to insert, write placeholders,
+	// and collect args
 	for i, row := range b.vals {
 		if i > 0 {
 			sql.WriteRune(',')
@@ -155,7 +156,8 @@ func (b *InsertBuilder) ToSQL() (string, []interface{}, error) {
 	}
 	anyVals := len(b.vals) > 0
 
-	// Go thru the records. Write the placeholders, and do reflection on the records to extract args
+	// Go through the records, write placeholders, and do reflection on the
+	// records to extract args
 	for i, rec := range b.records {
 		if i > 0 || anyVals {
 			sql.WriteRune(',')

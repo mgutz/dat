@@ -1,12 +1,39 @@
 # dat
 
-**DO NOT USE YET! SWITCHING to golang/dep**
-
 [GoDoc](https://godoc.org/github.com/mgutz/dat)
 
-`dat` (Data Access Toolkit) is a fast, lightweight Postgres library for Go.
+`dat` (Data Access Toolkit) is a fast, lightweight Postgres library for Go with
+first-class SQL and JSON support
 
-*   Focused on Postgres. See `Insect`, `Upsert`, `SelectDoc`, `QueryJSON`
+TLDR;
+
+```go
+// single trip to the database! (Postgres 9.3+)
+DB.JSQL(`SELECT id, user_name as "userName", avatar FROM users WHERE id = $1`, 4).
+    Many("recentComments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
+    One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
+    Vector("commentIds", `SELECT id FROM comments where id = users.id`).
+    Scalar("commentTotal", `SELECT count(1) FROM comments WHERE id = users.id`).
+    QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
+```
+
+results in
+
+```json
+{
+    "id": 4,
+    "userName": "mario",
+    "avatar": "https://imgur.com/a23x.jpg",
+    "recentComments": [{"id": 1, "title": "..."}],
+    "account": {
+        "balance": 42.00
+    },
+    "commentIds": [3, 4, 9],
+    "commentTotal": 10
+}
+```
+
+## Features
 
 *   Built on a solid foundation [sqlx](https://github.com/jmoiron/sqlx)
 
@@ -19,37 +46,6 @@
 
     ```go
     DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
-    ```
-
-*   JSON Document retrieval (single trip to Postgres, requires Postgres 9.3+)
-
-    ```go
-    DB.SelectDoc("id", "user_name", "avatar").
-        Many("recent_comments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
-        Many("recent_posts", `SELECT id, title FROM posts WHERE author_id = users.id LIMIT 10`).
-        // Vector returns [3, 4, 9] instead of an array of objects
-        Vector("comment_ids", `SELECT id FROM comments where id = users.id`).
-        One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
-        // Scalar embeds a single value directly in the parent object, rather than a nested object
-        Scalar("comment_total", `SELECT count(1) FROM comments WHERE id = users.id`).
-        From("users").
-        Where("id = $1", 4).
-        QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
-    ```
-
-    results in
-
-    ```json
-    {
-        "id": 4,
-        "user_name": "mario",
-        "avatar": "https://imgur.com/a23x.jpg",
-        "recent_comments": [{"id": 1, "title": "..."}],
-        "recent_posts": [{"id": 1, "title": "..."}],
-        "account": {
-            "balance": 42.00
-        }
-    }
     ```
 
 *   JSON marshalable bytes (requires Postgres 9.3+)
@@ -300,6 +296,28 @@ ids := []int64{10,20,30,40,50}
 b := DB.SQL("SELECT * FROM posts WHERE id IN $1", ids)
 b.MustInterpolate() == "SELECT * FROM posts WHERE id IN (10,20,30,40,50)"
 ```
+
+### Join
+
+| method    | meaning          |
+| --------- | ---------------- |
+| Join      | INNER JOIN       |
+| LeftJoin  | LEFT OUTER JOIN  |
+| RightJoin | RIGHT OUTER JOIN |
+| FullJoin  | FULL OUTER JOIN  |
+
+```go
+const accountQ = `
+    select *
+    from user_accounts UA
+`
+
+// alias accountQ as UB
+DB.JSQL(`select U.id, user_name, UB.balance from users U`).
+    JOIN(accountQ, "UB", "U.id = UB.user_id)
+```
+
+
 
 ### Tracing SQL
 
@@ -819,4 +837,4 @@ for more details and SQL injection.
 
 ## LICENSE
 
-[The MIT License (MIT)](https://github.com/mgutz/dat/blob/master/LICENSE)
+[The MIT License (MIT)](LICENSE)

@@ -1,145 +1,46 @@
 package dat
 
-import "errors"
+type joinExpression struct {
+	subQuery string
+	alias    string
+	kind     int // JoinOn, LeftJoinOn, RightJoinOn, FullJoinOn
+	expr     string
+}
+
+type subInfo struct {
+	*Expression
+	alias string
+}
 
 // SelectBuilder contains the clauses for a SELECT statement
 type SelectBuilder struct {
 	Execer
 
-	isDistinct      bool
-	distinctColumns []string
-	isInterpolated  bool
 	columns         []string
+	distinctColumns []string
+	err             error
 	fors            []string
-	table           string
-	whereFragments  []*whereFragment
 	groupBys        []string
 	havingFragments []*whereFragment
-	orderBys        []*whereFragment
+	isDistinct      bool
+	isInterpolated  bool
+	joins           []*joinExpression
 	limitCount      uint64
 	limitValid      bool
 	offsetCount     uint64
 	offsetValid     bool
+	orderBys        []*whereFragment
 	scope           Scope
-	err             error
+	table           string
+	union           *Expression
+	subQueriesWith  []*subInfo
+	whereFragments  []*whereFragment
 }
 
 // NewSelectBuilder creates a new SelectBuilder for the given columns
 func NewSelectBuilder(columns ...string) *SelectBuilder {
 	b := &SelectBuilder{isInterpolated: EnableInterpolation}
 	b.Columns(columns...)
-	return b
-}
-
-// Columns adds additional select columns to the builder.
-func (b *SelectBuilder) Columns(columns ...string) *SelectBuilder {
-	if len(columns) == 0 || columns[0] == "" {
-		b.err = errors.New("Select requires 1 or more columns")
-		return nil
-	}
-
-	b.columns = append(b.columns, columns...)
-	return b
-}
-
-// Distinct marks the statement as a DISTINCT SELECT
-func (b *SelectBuilder) Distinct() *SelectBuilder {
-	b.isDistinct = true
-	return b
-}
-
-// DistinctOn sets the columns for DISTINCT ON
-func (b *SelectBuilder) DistinctOn(columns ...string) *SelectBuilder {
-	b.isDistinct = true
-	b.distinctColumns = columns
-	return b
-}
-
-// From sets the table to SELECT FROM. JOINs may also be defined here.
-func (b *SelectBuilder) From(from string) *SelectBuilder {
-	b.table = from
-	return b
-}
-
-// For adds FOR clause to SELECT.
-func (b *SelectBuilder) For(options ...string) *SelectBuilder {
-	b.fors = options
-	return b
-}
-
-// ScopeMap uses a predefined scope in place of WHERE.
-func (b *SelectBuilder) ScopeMap(mapScope *MapScope, m M) *SelectBuilder {
-	b.scope = mapScope.mergeClone(m)
-	return b
-}
-
-// Scope uses a predefined scope in place of WHERE.
-func (b *SelectBuilder) Scope(sql string, args ...interface{}) *SelectBuilder {
-	b.scope = ScopeFunc(func(table string) (string, []interface{}) {
-		return sql, args
-	})
-	return b
-}
-
-// Where appends a WHERE clause to the statement for the given string and args
-// or map of column/value pairs
-func (b *SelectBuilder) Where(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
-	fragment, err := newWhereFragment(whereSQLOrMap, args)
-	if err != nil {
-		b.err = err
-		return b
-	}
-	b.whereFragments = append(b.whereFragments, fragment)
-	return b
-}
-
-// GroupBy appends a column to group the statement
-func (b *SelectBuilder) GroupBy(group string) *SelectBuilder {
-	b.groupBys = append(b.groupBys, group)
-	return b
-}
-
-// Having appends a HAVING clause to the statement
-func (b *SelectBuilder) Having(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
-	fragment, err := newWhereFragment(whereSQLOrMap, args)
-	if err != nil {
-		b.err = err
-	} else {
-		b.havingFragments = append(b.havingFragments, fragment)
-	}
-	return b
-}
-
-// OrderBy appends a column to ORDER the statement by
-func (b *SelectBuilder) OrderBy(whereSQLOrMap interface{}, args ...interface{}) *SelectBuilder {
-	fragment, err := newWhereFragment(whereSQLOrMap, args)
-	if err != nil {
-		b.err = err
-	} else {
-		b.orderBys = append(b.orderBys, fragment)
-	}
-	return b
-}
-
-// Limit sets a limit for the statement; overrides any existing LIMIT
-func (b *SelectBuilder) Limit(limit uint64) *SelectBuilder {
-	b.limitCount = limit
-	b.limitValid = true
-	return b
-}
-
-// Offset sets an offset for the statement; overrides any existing OFFSET
-func (b *SelectBuilder) Offset(offset uint64) *SelectBuilder {
-	b.offsetCount = offset
-	b.offsetValid = true
-	return b
-}
-
-// Paginate sets LIMIT/OFFSET for the statement based on the given page/perPage
-// Assumes page/perPage are valid. Page and perPage must be >= 1
-func (b *SelectBuilder) Paginate(page, perPage uint64) *SelectBuilder {
-	b.Limit(perPage)
-	b.Offset((page - 1) * perPage)
 	return b
 }
 
@@ -160,94 +61,38 @@ func (b *SelectBuilder) ToSQL() (string, []interface{}, error) {
 	buf := bufPool.Get()
 	defer bufPool.Put(buf)
 	var args []interface{}
+	var placeholderStartPos int64 = 1
+
+	writeWith(buf, b.subQueriesWith, &args, &placeholderStartPos)
 
 	buf.WriteString("SELECT ")
 
-	if b.isDistinct {
-		if len(b.distinctColumns) == 0 {
-			buf.WriteString("DISTINCT ")
-		} else {
-			buf.WriteString("DISTINCT ON (")
-			for i, s := range b.distinctColumns {
-				if i > 0 {
-					buf.WriteString(", ")
-				}
-				buf.WriteString(s)
-			}
-			buf.WriteString(") ")
-		}
+	writeDistinct(buf, b.isDistinct, b.distinctColumns)
+	writeColumns(buf, b.columns)
+
+	writeFrom(buf, b.table)
+
+	err := writeJoins(buf, b.joins)
+	if err != nil {
+		return NewDatSQLErr(err)
 	}
 
-	for i, s := range b.columns {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-		buf.WriteString(s)
-	}
-
-	buf.WriteString(" FROM ")
-	buf.WriteString(b.table)
-
-	var placeholderStartPos int64 = 1
+	// scope becomes where clause
 	whereFragments := b.whereFragments
-	if b.scope != nil {
-		var where string
-		sql, args2 := b.scope.ToSQL(b.table)
-		sql, where = splitWhere(sql)
-		buf.WriteString(sql)
-		if where != "" {
-			fragment, err := newWhereFragment(where, args2)
-			if err != nil {
-				return NewDatSQLErr(err)
-
-			}
-			whereFragments = append(whereFragments, fragment)
-		}
+	moreWheres, err := writeScope(buf, b.scope, b.table)
+	if err != nil {
+		return NewDatSQLErr(err)
 	}
+	whereFragments = append(whereFragments, moreWheres...)
+	writeWhere(buf, whereFragments, &args, &placeholderStartPos)
 
-	if len(whereFragments) > 0 {
-		buf.WriteString(" WHERE ")
-		writeAndFragmentsToSQL(buf, whereFragments, &args, &placeholderStartPos)
-	}
-
-	if len(b.groupBys) > 0 {
-		buf.WriteString(" GROUP BY ")
-		for i, s := range b.groupBys {
-			if i > 0 {
-				buf.WriteString(", ")
-			}
-			buf.WriteString(s)
-		}
-	}
-
-	if len(b.havingFragments) > 0 {
-		buf.WriteString(" HAVING ")
-		writeAndFragmentsToSQL(buf, b.havingFragments, &args, &placeholderStartPos)
-	}
-
-	if len(b.orderBys) > 0 {
-		buf.WriteString(" ORDER BY ")
-		writeCommaFragmentsToSQL(buf, b.orderBys, &args, &placeholderStartPos)
-	}
-
-	if b.limitValid {
-		buf.WriteString(" LIMIT ")
-		writeUint64(buf, b.limitCount)
-	}
-
-	if b.offsetValid {
-		buf.WriteString(" OFFSET ")
-		writeUint64(buf, b.offsetCount)
-	}
-
-	// add FOR clause
-	if len(b.fors) > 0 {
-		buf.WriteString(" FOR")
-		for _, s := range b.fors {
-			buf.WriteString(" ")
-			buf.WriteString(s)
-		}
-	}
+	writeGroupBy(buf, b.groupBys)
+	writeHaving(buf, b.havingFragments, &args, &placeholderStartPos)
+	writeOrderBy(buf, b.orderBys, &args, &placeholderStartPos)
+	writeLimit(buf, b.limitValid, b.limitCount)
+	writeOffset(buf, b.offsetValid, b.offsetCount)
+	writeFor(buf, b.fors)
+	writeUnion(buf, b.union, &args, &placeholderStartPos)
 
 	return buf.String(), args, nil
 }

@@ -292,3 +292,34 @@ func ParseDir(dir string, version string) error {
 
 	return filepath.Walk(dir, walkFn)
 }
+
+func storeExpr(destination *[]*subInfo, name string, column string, sqlOrBuilder interface{}, a ...interface{}) error {
+	var err error
+	switch t := sqlOrBuilder.(type) {
+	default:
+		err = NewError(name + ": sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
+	case *JSQLBuilder:
+		t.isParent = false
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			return err
+		}
+		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
+	case *SelectDocBuilder:
+		t.isParent = false
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			return err
+		}
+		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
+	case Builder:
+		sql, args, err := t.ToSQL()
+		if err != nil {
+			return err
+		}
+		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
+	case string:
+		*destination = append(*destination, &subInfo{Expr(t, a...), column})
+	}
+	return err
+}

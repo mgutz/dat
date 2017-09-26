@@ -324,3 +324,16 @@ func TestSelectFor(t *testing.T) {
 	`), stripWS(sql))
 	assert.Exactly(t, []interface{}{1000}, args)
 }
+
+func TestSelectJoin(t *testing.T) {
+	sql, args, err := Select("id").
+		From("users").
+		Where("id > $1", 1000).
+		Join("user_transactions", "ut", "ut.user_id = users.id").
+		ToSQL()
+	assert.NoError(t, err)
+	assert.Equal(t, stripWS(`
+		SELECT id FROM users INNER JOIN (select * from user_transactions) AS ut ON ut.user_id = users.id WHERE (id > $1)
+	`), stripWS(sql))
+	assert.Exactly(t, []interface{}{1000}, args)
+}

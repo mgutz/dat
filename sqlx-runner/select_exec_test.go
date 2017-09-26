@@ -319,4 +319,19 @@ func TestSelectFor(t *testing.T) {
 	assert.Equal(t, int64(1), p.ID)
 }
 
+func TestSelectJoin(t *testing.T) {
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
+	results := []map[string]interface{}{}
+	err := s.Select("*").
+		From("people PE").
+		Where("PE.id = $1", 1).
+		Join("posts", "PO", "PO.user_id = PE.id").
+		QueryObject(&results)
+	assert.NoError(t, err)
+	assert.Contains(t, []string{"Day 1", "Day 2"}, results[0]["title"].(string))
+	assert.Contains(t, []string{"Day 1", "Day 2"}, results[1]["title"].(string))
+}
+
 // Series of tests that test mapping struct fields to columns
