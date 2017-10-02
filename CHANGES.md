@@ -1,4 +1,14 @@
+## v4
 
+Added:
+
+* Join, LeftJoin, RightJoin and FullJoin
+* Union
+* With
+
+Changed:
+
+`Expr` changed field `Sql` to `SQL` (lint issue)
 
 ## v2
 

@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff"
-	"github.com/mgutz/logxi"
 	"github.com/mgutz/dat/dat"
 	"github.com/mgutz/dat/kvs"
 	"github.com/mgutz/dat/postgres"
+	"github.com/mgutz/logxi"
 )
 
 var logger logxi.Logger
@@ -19,6 +19,10 @@ var LogQueriesThreshold time.Duration
 
 // LogErrNoRows tells runner to log `sql.ErrNoRows`
 var LogErrNoRows bool
+
+// PendingTransactionsTimeout is the timeout for pending transactions
+// (used when the strict mode is enabled)
+var PendingTransactionsTimeout = 1 * time.Minute
 
 func init() {
 	dat.Dialect = postgres.New()
