@@ -16,6 +16,10 @@ var logger log.Logger
 // LogQueriesThreshold is the threshold for logging "slow" queries
 var LogQueriesThreshold time.Duration
 
+// PendingTransactionsTimeout is the timeout for pending transactions
+// (used when the strict mode is enabled)
+var PendingTransactionsTimeout = 1 * time.Minute
+
 func init() {
 	dat.Dialect = postgres.New()
 	logger = log.New("dat:sqlx")
