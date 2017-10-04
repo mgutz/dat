@@ -297,16 +297,9 @@ func storeExpr(destination *[]*subInfo, name string, column string, sqlOrBuilder
 	var err error
 	switch t := sqlOrBuilder.(type) {
 	default:
-		err = NewError(name + ": sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
-	case *JSQLBuilder:
-		t.isParent = false
-		sql, args, err := t.ToSQL()
-		if err != nil {
-			return err
-		}
-		*destination = append(*destination, &subInfo{Expr(sql, args...), column})
-	case *SelectDocBuilder:
-		t.isParent = false
+		err = NewError(name + ": sqlOrbuilder accepts only {string, Builder interface, JSONBuilder interface} type")
+	case JSONBuilder:
+		t.setIsParent(false)
 		sql, args, err := t.ToSQL()
 		if err != nil {
 			return err

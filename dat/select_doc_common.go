@@ -164,8 +164,8 @@ func (b *SelectDocBuilder) FullJoin(sql string, alias string, joinClause string)
 }
 
 // With loads a sub query that will be inserted as a "with" table
-func (b *SelectDocBuilder) With(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
-	b.err = storeExpr(&b.subQueriesWith, "SelectDocBuilder.With", column, sqlOrBuilder, a...)
+func (b *SelectDocBuilder) With(alias string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
+	b.err = storeExpr(&b.subQueriesWith, "SelectDocBuilder.With", alias, sqlOrBuilder, a...)
 	return b
 }
 

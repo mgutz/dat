@@ -9,11 +9,11 @@ TLDR;
 
 ```go
 // single trip to the database! (Postgres 9.3+)
-DB.JSQL(`SELECT id, user_name as "userName", avatar FROM users WHERE id = $1`, 4).
-    Many("recentComments", `SELECT id, title FROM comments WHERE id = users.id LIMIT 10`).
-    One("account", `SELECT balance FROM accounts WHERE user_id = users.id`).
-    Vector("commentIds", `SELECT id FROM comments where id = users.id`).
-    Scalar("commentTotal", `SELECT count(1) FROM comments WHERE id = users.id`).
+DB.JSQL(`SELECT id, user_name as "userName", avatar FROM users U WHERE U.id = $1`, 4).
+    Many("recentComments", `SELECT id, title FROM comments WHERE id = U.id LIMIT 10`).
+    One("account", `SELECT balance FROM accounts WHERE user_id = U.id`).
+    Vector("commentIds", `SELECT id FROM comments where id = U.id`).
+    Scalar("commentTotal", `SELECT count(1) FROM comments WHERE id = U.id`).
     QueryStruct(&obj) // obj must be agreeable with json.Unmarshal()
 ```
 
@@ -23,8 +23,8 @@ results in
 {
     "id": 4,
     "userName": "mario",
-    "avatar": "https://imgur.com/a23x.jpg",
-    "recentComments": [{"id": 1, "title": "..."}],
+    "avatar": "a23x.jpg",
+    "recentComments": [{"id": 1, "title": ""}, ...],
     "account": {
         "balance": 42.00
     },
@@ -42,10 +42,16 @@ results in
     DB.DB.Queryx(`SELECT * FROM users`)
     ```
 
-*   SQL and backtick friendly
+*   SQL friendly
 
     ```go
     DB.SQL(`SELECT * FROM people LIMIT 10`).QueryStructs(&people)
+
+    err := DB.
+        Select("id, user_name").
+        From("users").
+        Where("id = $1", id).
+        QueryStruct(&user)
     ```
 
 *   JSON marshalable bytes (requires Postgres 9.3+)
@@ -67,16 +73,6 @@ results in
 
     ```go
     DB.SQL(`SELECT * FROM people WHERE state = $1`, "CA").Exec()
-    ```
-
-*   SQL-like API
-
-    ```go
-    err := DB.
-        Select("id, user_name").
-        From("users").
-        Where("id = $1", id).
-        QueryStruct(&user)
     ```
 
 *   Redis caching
@@ -738,7 +734,7 @@ err = DB.Select("id").From("posts").QuerySlice(&ids)
 
 ### Caching
 
-dat implements caching backed by an in-memory or Redis store. The in-memory store
+`dat` implements caching backed by an in-memory or Redis store. The in-memory store
 is not recommended for production use. Caching can cache any struct or primitive type that
 can be marshaled/unmarshaled cleanly with the json package due to Redis being a string
 value store.

@@ -17,6 +17,14 @@ type Builder interface {
 	CanJSON() bool
 }
 
+// JSONBuilder is a builder which emits SQL with JSON. JSONBuilder needs to
+// know when it is a parent builder to wrap its entire statement as a Postgres
+// JSON expression.
+type JSONBuilder interface {
+	Builder
+	setIsParent(b bool)
+}
+
 // Call creates a new CallBuilder for the given sproc and args.
 func Call(sproc string, args ...interface{}) *CallBuilder {
 	b := NewCallBuilder(sproc, args...)
@@ -66,7 +74,7 @@ func SQL(sql string, args ...interface{}) *RawBuilder {
 	return b
 }
 
-// JSQL creates a new SelectDocBuilder.
+// JSQL creates a new builder from SQL; and adds JSON methods.
 func JSQL(sql string, args ...interface{}) *JSQLBuilder {
 	b := NewJSQLBuilder(sql, args...)
 	b.Execer = nullExecer

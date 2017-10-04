@@ -1,5 +1,12 @@
 package dat
 
+//// JSON related methods
+
+// setIsParent sets whether this builder is used a parent or sub-query builder.
+func (b *JSQLBuilder) setIsParent(value bool) {
+	b.isParent = value
+}
+
 // Many loads a sub query resulting in an array of rows as an alias.
 func (b *JSQLBuilder) Many(column string, sqlOrBuilder interface{}, a ...interface{}) *JSQLBuilder {
 	b.err = storeExpr(&b.subQueriesMany, "JSQLBuilder.Many", column, sqlOrBuilder, a...)

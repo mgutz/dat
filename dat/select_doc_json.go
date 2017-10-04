@@ -6,6 +6,11 @@ Copied from jsql_json.go, then s/SelectDocBuilder/SelectDocBuilder/g
 
 package dat
 
+// setIsParent sets whether this builder is used a parent or sub-query builder.
+func (b *SelectDocBuilder) setIsParent(value bool) {
+	b.isParent = value
+}
+
 // Many loads a sub query resulting in an array of rows as an alias.
 func (b *SelectDocBuilder) Many(column string, sqlOrBuilder interface{}, a ...interface{}) *SelectDocBuilder {
 	b.err = storeExpr(&b.subQueriesMany, "SelectDocBuilder.Many", column, sqlOrBuilder, a...)

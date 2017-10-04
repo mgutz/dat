@@ -42,7 +42,7 @@ func NewJSQLBuilder(q string, args ...interface{}) *JSQLBuilder {
 	return b
 }
 
-// ToSQL serialized the SelectBuilder to a SQL string
+// ToSQL converts the SelectBuilder to a SQL string
 // It returns the string with placeholders and a slice of query arguments
 func (b *JSQLBuilder) ToSQL() (string, []interface{}, error) {
 	if b.err != nil {

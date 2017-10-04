@@ -5,16 +5,8 @@ func (b *JSQLBuilder) Union(sqlOrBuilder interface{}, a ...interface{}) *JSQLBui
 	switch t := sqlOrBuilder.(type) {
 	default:
 		b.err = NewError("SelectDocBuilder.Union: sqlOrbuilder accepts only {string, Builder, *SelectDocBuilder} type")
-	case *JSQLBuilder:
-		t.isParent = false
-		sql, args, err := t.ToSQL()
-		if err != nil {
-			b.err = err
-			return b
-		}
-		b.union = Expr(sql, args...)
-	case *SelectDocBuilder:
-		t.isParent = false
+	case JSONBuilder:
+		t.setIsParent(false)
 		sql, args, err := t.ToSQL()
 		if err != nil {
 			b.err = err
