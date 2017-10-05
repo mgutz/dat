@@ -1,6 +1,9 @@
 package dat
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // Result serves the same purpose as sql.Result. Defining
 // it for the package avoids tight coupling with database/sql.
@@ -13,6 +16,7 @@ type Result struct {
 type Execer interface {
 	Cache(id string, ttl time.Duration, invalidate bool) Execer
 	Timeout(time.Duration) Execer
+	Context(context.Context) Execer
 	Interpolate() (string, []interface{}, error)
 	Exec() (*Result, error)
 
@@ -35,6 +39,10 @@ func (nop *disconnectedExecer) Cache(id string, ttl time.Duration, invalidate bo
 }
 
 func (nop *disconnectedExecer) Timeout(time.Duration) Execer {
+	return nil
+}
+
+func (nop *disconnectedExecer) Context(context.Context) Execer {
 	return nil
 }
 

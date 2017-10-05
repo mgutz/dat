@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -22,10 +23,15 @@ import (
 // queries can be executed
 type database interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	Queryx(query string, args ...interface{}) (*sqlx.Rows, error)
+	QueryxContext(ctx context.Context, query string, args ...interface{}) (*sqlx.Rows, error)
 	QueryRowx(query string, args ...interface{}) *sqlx.Row
+	QueryRowxContext(ctx context.Context, query string, args ...interface{}) *sqlx.Row
 	Select(dest interface{}, query string, args ...interface{}) error
+	SelectContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 	Get(dest interface{}, query string, args ...interface{}) error
+	GetContext(ctx context.Context, dest interface{}, query string, args ...interface{}) error
 }
 
 func toOutputStr(args []interface{}) string {
@@ -126,7 +132,7 @@ func (ex *Execer) execFn() (sql.Result, error) {
 	defer logExecutionTime(time.Now(), fullSQL, args)
 
 	var result sql.Result
-	result, err = ex.database.Exec(fullSQL, args...)
+	result, err = ex.database.ExecContext(ex.ctx, fullSQL, args...)
 	if err != nil {
 		return nil, logSQLError(err, "execFn.30:"+fmt.Sprintf("%T", err), fullSQL, args)
 	}
@@ -141,7 +147,7 @@ func (ex *Execer) execSQL(fullSQL string, args []interface{}) (sql.Result, error
 
 	var result sql.Result
 	var err error
-	result, err = ex.database.Exec(fullSQL, args...)
+	result, err = ex.database.ExecContext(ex.ctx, fullSQL, args...)
 	if err != nil {
 		return nil, logSQLError(err, "execSQL.30", fullSQL, args)
 	}
@@ -180,7 +186,7 @@ func (ex *Execer) queryFn() (*sqlx.Rows, error) {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	rows, err := ex.database.Queryx(fullSQL, args...)
+	rows, err := ex.database.QueryxContext(ex.ctx, fullSQL, args...)
 	if err != nil {
 		return nil, logSQLError(err, "queryFn.30", fullSQL, args)
 	}
@@ -230,7 +236,7 @@ func (ex *Execer) queryScalarFn(destinations []interface{}) error {
 	defer logExecutionTime(time.Now(), fullSQL, args)
 	// Run the query:
 	var rows *sqlx.Rows
-	rows, err = ex.database.Queryx(fullSQL, args...)
+	rows, err = ex.database.QueryxContext(ex.ctx, fullSQL, args...)
 	if err != nil {
 		return logSQLError(err, "queryScalarFn.12: querying database", fullSQL, args)
 	}
@@ -316,7 +322,7 @@ func (ex *Execer) querySliceFn(dest interface{}) error {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	rows, err := ex.database.Queryx(fullSQL, args...)
+	rows, err := ex.database.QueryxContext(ex.ctx, fullSQL, args...)
 	if err != nil {
 		return logSQLError(err, "querySlice.load_all_values.query", fullSQL, args)
 	}
@@ -387,7 +393,7 @@ func (ex *Execer) queryStructFn(dest interface{}) error {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	err = ex.database.Get(dest, fullSQL, args...)
+	err = ex.database.GetContext(ex.ctx, dest, fullSQL, args...)
 	if err != nil {
 		return logSQLError(err, "queryStruct.3", fullSQL, args)
 	}
@@ -438,7 +444,7 @@ func (ex *Execer) queryStructsFn(dest interface{}) error {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	err = ex.database.Select(dest, fullSQL, args...)
+	err = ex.database.SelectContext(ex.ctx, dest, fullSQL, args...)
 	if err != nil {
 		logSQLError(err, "queryStructs", fullSQL, args)
 	}
@@ -498,7 +504,7 @@ func (ex *Execer) queryJSONBlobFn(single bool) ([]byte, error) {
 	}
 
 	defer logExecutionTime(time.Now(), fullSQL, args)
-	rows, err := ex.database.Queryx(fullSQL, args...)
+	rows, err := ex.database.QueryxContext(ex.ctx, fullSQL, args...)
 	if err != nil {
 		return nil, logSQLError(err, "queryJSONStructs", fullSQL, args)
 	}
@@ -689,7 +695,7 @@ func (ex *Execer) queryJSONFn() ([]byte, error) {
 	defer logExecutionTime(time.Now(), fullSQL, args)
 	jsonSQL := fmt.Sprintf("SELECT TO_JSON(ARRAY_AGG(__datq.*)) FROM (%s) AS __datq", fullSQL)
 
-	err = ex.database.Get(&blob, jsonSQL, args...)
+	err = ex.database.GetContext(ex.ctx, &blob, jsonSQL, args...)
 	if err != nil {
 		logSQLError(err, "queryJSON", jsonSQL, args)
 	}
