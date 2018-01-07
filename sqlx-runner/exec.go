@@ -715,5 +715,5 @@ func (ex *Execer) queryObject(dest interface{}) error {
 
 // uuid generates a UUID.
 func uuid() string {
-	return fmt.Sprintf("%s", guid.NewV4())
+	return fmt.Sprintf("%s", guid.Must(guid.NewV4()))
 }
