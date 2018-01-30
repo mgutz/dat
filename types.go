@@ -31,7 +31,7 @@ const DEFAULT = UnsafeString("DEFAULT")
 // NOW SQL value
 const NOW = UnsafeString("NOW()")
 
-var timeFormat = "2006-01-02 15:04:05Z"
+var timeFormat = "2006-01-02 15:04:05.000"
 
 // NullString is a type that can be null or a string
 type NullString struct {
