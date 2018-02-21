@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"database/sql"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -39,22 +38,7 @@ func (q *Queryable) DeleteFrom(table string) *dat.DeleteBuilder {
 
 // Exec executes a SQL query with optional arguments.
 func (q *Queryable) Exec(cmd string, args ...interface{}) (*dat.Result, error) {
-	var result sql.Result
-	var err error
-
-	if len(args) == 0 {
-		result, err = q.runner.Exec(cmd)
-	} else {
-		result, err = q.runner.Exec(cmd, args...)
-	}
-	if err != nil {
-		return nil, logSQLError(err, "Exec", cmd, args)
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return nil, logSQLError(err, "Exec", cmd, args)
-	}
-	return &dat.Result{RowsAffected: rowsAffected}, nil
+	return q.SQL(cmd, args...).Exec()
 }
 
 // ExecBuilder executes the SQL in builder.
@@ -79,7 +63,7 @@ func (q *Queryable) ExecBuilder(b dat.Builder) error {
 // statements executed, or the index at which an error occurred.
 func (q *Queryable) ExecMulti(commands ...*dat.Expression) (int, error) {
 	for i, cmd := range commands {
-		_, err := q.runner.Exec(cmd.SQL, cmd.Args...)
+		_, err := q.SQL(cmd.SQL, cmd.Args...).Exec()
 		if err != nil {
 			return i, err
 		}

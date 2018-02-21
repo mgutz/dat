@@ -103,3 +103,8 @@ func (db *DB) Loose() *DB {
 		Version:   db.Version,
 	}
 }
+
+// Close closes the underlying sqlx DB connection.
+func (db *DB) Close() error {
+	return db.DB.Close()
+}

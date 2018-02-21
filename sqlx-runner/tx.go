@@ -2,8 +2,10 @@ package runner
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -19,11 +21,12 @@ const (
 
 // ErrTxRollbacked occurs when Commit() or Rollback() is called on a
 // transaction that has already been rollbacked.
-var ErrTxRollbacked = errors.New("Nested transaction already rollbacked")
+var ErrTxRollbacked = errors.New("Nested transaction already rolled back")
 
 // Tx is a transaction for the given Session
 type Tx struct {
 	sync.Mutex
+	ID int64
 	*sqlx.Tx
 	*Queryable
 	IsRollbacked bool
@@ -31,13 +34,16 @@ type Tx struct {
 	stateStack   []int
 }
 
+// txID is a unique transaction ID for debugging
+var dbgTxID int64
+
 // WrapSqlxTx creates a Tx from a sqlx.Tx
 func WrapSqlxTx(tx *sqlx.Tx) *Tx {
-	newtx := &Tx{Tx: tx, Queryable: &Queryable{tx}}
+	newtx := &Tx{Tx: tx, ID: atomic.AddInt64(&dbgTxID, 1), Queryable: &Queryable{tx}}
 	if dat.Strict {
 		time.AfterFunc(PendingTransactionsTimeout, func() {
 			if !newtx.IsRollbacked && newtx.state == txPending {
-				panic("A database transaction was not closed!")
+				logger.Fatal(fmt.Sprintf("ERROR  transaction [%d]. Transaction was not closed or exceeded `PendingTransactionsTimeout`!", newtx.ID))
 			}
 		})
 	}
@@ -53,8 +59,9 @@ func (db *DB) Begin() (*Tx, error) {
 		}
 		return nil, logger.Error("begin.error", err)
 	}
-	logger.Debug("begin tx")
-	return WrapSqlxTx(tx), nil
+	wrappedTx := WrapSqlxTx(tx)
+	logger.Trace("tx begin", "ID", wrappedTx.ID)
+	return wrappedTx, nil
 }
 
 // Begin returns this transaction
@@ -65,7 +72,7 @@ func (tx *Tx) Begin() (*Tx, error) {
 		return nil, ErrTxRollbacked
 	}
 
-	logger.Debug("begin nested tx")
+	logger.Trace("tx begin nested", "ID", tx.ID)
 	tx.pushState()
 	return tx, nil
 }
@@ -83,7 +90,7 @@ func (tx *Tx) Commit() error {
 		return logger.Error("Transaction has already been commited")
 	}
 	if tx.state == txRollbacked {
-		return logger.Error("Transaction has already been rollbacked")
+		return logger.Error("Transaction has already been rolled back")
 	}
 
 	if len(tx.stateStack) == 0 {
@@ -94,7 +101,7 @@ func (tx *Tx) Commit() error {
 		}
 	}
 
-	logger.Debug("commit")
+	logger.Debug("tx commit", "ID", tx.ID)
 	tx.state = txCommitted
 	return nil
 }
@@ -118,7 +125,7 @@ func (tx *Tx) Rollback() error {
 		return logger.Error("Unable to rollback", "err", err)
 	}
 
-	logger.Debug("rollback")
+	logger.Debug("tx rollback", "ID", tx.ID)
 	tx.state = txRollbacked
 	tx.IsRollbacked = true
 	return nil
@@ -143,7 +150,7 @@ func (tx *Tx) AutoCommit() error {
 		tx.popState()
 		return logger.Error("transaction.AutoCommit.commit_error", err)
 	}
-	logger.Debug("autocommit")
+	logger.Debug("tx autocommit", "ID", tx.ID)
 	tx.state = txCommitted
 	tx.popState()
 	return err
@@ -168,7 +175,7 @@ func (tx *Tx) AutoRollback() error {
 		tx.popState()
 		return logger.Error("transaction.AutoRollback.rollback_error", err)
 	}
-	logger.Debug("autorollback")
+	logger.Debug("tx autorollback", "ID", tx.ID)
 	tx.state = txRollbacked
 	tx.IsRollbacked = true
 	tx.popState()

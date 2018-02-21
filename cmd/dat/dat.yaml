@@ -1,0 +1,11 @@
+connection:
+  host: localhost
+  database: matcherino_development
+  user: matcherino
+  password: "!development"
+  extraParams: "sslmode=disable"
+
+# location of migration files
+migrationsDir: migrations
+
+
