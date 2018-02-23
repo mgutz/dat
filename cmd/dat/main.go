@@ -39,14 +39,14 @@ func main() {
 
 func usage() string {
 	return `
-dat v0.0.0 - migration tool
+dat v0.0.0 - simple migration tool
 
-Usage: dat [COMMAND]
+Usage: dat [command]
 
 Commands:
   createdb  Recreates database and runs migrations
   dropdb    Drops database
-  down      Migrate down
+  //down      Migrate down
   dump      Dumps the database
   exec      Executes sql from command line
   file      Executes sql file
@@ -68,6 +68,8 @@ func run(ctx *AppContext, command string) error {
 		return dropDB(ctx)
 	case "dump":
 		return dump(ctx)
+	case "exec":
+		return execUserString(ctx)
 	case "list":
 		return list(ctx)
 	case "new":

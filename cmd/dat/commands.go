@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 
 	runner "github.com/mgutz/dat/sqlx-runner"
+	"github.com/mgutz/jo"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -42,10 +43,8 @@ func dump(ctx *AppContext) error {
 		return err
 	}
 
-	var newFilename string
-	if len(ctx.Options.UnparsedArgs) > 1 {
-		newFilename = ctx.Options.UnparsedArgs[1]
-	} else {
+	newFilename := getCommandArg1(ctx)
+	if newFilename == "" {
 		newFilename = timestampedName("dump")
 	}
 	dumpsDir := ctx.Options.DumpsDir
@@ -110,12 +109,11 @@ func list(ctx *AppContext) error {
 
 // newScripts creates a new script directory with blank `up.sql` and `down.sql`
 func newScript(ctx *AppContext) error {
-	if len(ctx.Options.UnparsedArgs) != 2 {
+	title := getCommandArg1(ctx)
+	if title == "" {
 		return errors.New("Usage: dat new TITLE")
 	}
 
-	// command is "new title"
-	title := ctx.Options.UnparsedArgs[1]
 	upFilename := migrationFile(ctx.Options.MigrationsDir, title, "up.sql")
 	downFilename := migrationFile(ctx.Options.MigrationsDir, title, "down.sql")
 
@@ -157,11 +155,8 @@ func restore(ctx *AppContext) error {
 	}
 	db.Close()
 
-	var filename string
-	if len(ctx.Options.UnparsedArgs) > 1 {
-		// TODO assumes filename is within _dumps
-		filename = filepath.Join(ctx.Options.DumpsDir, ctx.Options.UnparsedArgs[1])
-	} else {
+	filename := getCommandArg1(ctx)
+	if filename == "" {
 		dumpFiles, err := getDumpFiles(ctx)
 		if err != nil {
 			return err
@@ -171,6 +166,9 @@ func restore(ctx *AppContext) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		// TODO assumes filename is within _dumps
+		filename = filepath.Join(ctx.Options.DumpsDir, filename)
 	}
 
 	cmd := exec.Command(
@@ -362,9 +360,8 @@ func upsertSprocs(conn runner.Connection, options *AppOptions) error {
 			where name = $3
 			`
 
-			logger.Info("Updating sproc %s ...", localSproc.Name)
+			logger.Info("Updating sproc %s ...\n", localSproc.Name)
 			_, err := tx.SQL(update, localSproc.CRC, localSproc.Script, localSproc.Name).Exec()
-
 			if err != nil {
 				return err
 			}
@@ -398,4 +395,33 @@ func sprocFind(sprocs []*Sproc, name string) *Sproc {
 	}
 
 	return nil
+}
+
+func execUserString(ctx *AppContext) error {
+	sql := getCommandArg1(ctx)
+	if sql == "" {
+		return errors.New(`Usage: dat exec [sql]`)
+	}
+
+	adapter := NewPostgresAdapter(ctx.Options)
+	db, err := adapter.AcquireDB(ctx.Options)
+	if err != nil {
+		return err
+	}
+
+	var obj *jo.Object
+	err = db.SQL(sql).QueryObject(&obj)
+	if err != nil {
+		return err
+	}
+
+	logger.Info(obj.Prettify())
+	return nil
+}
+
+func getCommandArg1(ctx *AppContext) string {
+	if len(ctx.Options.UnparsedArgs) > 1 {
+		return ctx.Options.UnparsedArgs[1]
+	}
+	return ""
 }
