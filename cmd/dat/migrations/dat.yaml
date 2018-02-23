@@ -4,8 +4,3 @@ connection:
   user: matcherino
   password: "!development"
   extraParams: "sslmode=disable"
-
-# location of migration files
-migrationsDir: migrations
-
-

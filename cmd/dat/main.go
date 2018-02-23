@@ -5,7 +5,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
@@ -22,28 +21,31 @@ func main() {
 	}
 
 	if len(options.UnparsedArgs) == 0 {
-		printUsage()
-		return
-	}
-
-	command := options.UnparsedArgs[0]
-	err = run(command, options)
-	if err != nil {
-		fmt.Println(err)
+		logger.Error(usage())
 		os.Exit(1)
 	}
 
-	fmt.Println("OK")
+	ctx := &AppContext{
+		Options: options,
+	}
+
+	command := options.UnparsedArgs[0]
+	err = run(ctx, command)
+	if err != nil {
+		logger.Error(fmt.Sprintf("\nERR %s\n", err))
+		os.Exit(1)
+	}
 }
 
-func printUsage() {
-	usage := `
+func usage() string {
+	return `
 dat v0.0.0 - migration tool
 
 Usage: dat [COMMAND]
 
 Commands:
   createdb  Recreates database and runs migrations
+  dropdb    Drops database
   down      Migrate down
   dump      Dumps the database
   exec      Executes sql from command line
@@ -53,31 +55,26 @@ Commands:
   restore   Restores the database
   up        Runs all migrations
 `
-	fmt.Println(usage)
 }
 
-// NewAdapter creates adapter.
-func NewAdapter(options *AppOptions) (*PostgresAdapter, error) {
-	switch options.Vendor {
-	default:
-		return nil, errors.New("Unknown vendor: " + options.Vendor)
-	case "postgres":
-		return NewPostgresAdapter(options), nil
-	}
-}
-
-func run(command string, options *AppOptions) error {
+func run(ctx *AppContext, command string) error {
 	switch command {
 	default:
-		printUsage()
+		logger.Info(usage())
 		return nil
 	case "createdb":
-		return createDB(options)
+		return createDB(ctx)
+	case "dropdb":
+		return dropDB(ctx)
+	case "dump":
+		return dump(ctx)
 	case "list":
-		return list(options)
+		return list(ctx)
 	case "new":
-		return newScript(options)
+		return newScript(ctx)
+	case "restore":
+		return restore(ctx)
 	case "up":
-		return up(options)
+		return up(ctx)
 	}
 }

@@ -57,7 +57,6 @@ func getAdapterAndDB(options *AppOptions) (*PostgresAdapter, *runner.DB, error) 
 		return nil, nil, err
 	}
 
-	// bootstrap is idempotent
 	err = adapter.Bootstrap(db)
 	return adapter, db, err
 }
@@ -75,6 +74,47 @@ func getMigrationSubDirectories(options *AppOptions) ([]string, error) {
 		if info.IsDir() && reMigrationDir.MatchString(path) {
 			files = append(files, info.Name())
 		}
+		return nil
+	})
+
+	// sort in DESC order
+	//sort.Sort(sort.StringSlice(files))
+	return files, err
+}
+
+var reSQLFile = regexp.MustCompile(`[\w\-]+.sql$`)
+
+func getSprocFiles(sprocsDir string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(sprocsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() && reSQLFile.MatchString(info.Name()) {
+			files = append(files, info.Name())
+		}
+		return nil
+	})
+
+	// sort in DESC order
+	//sort.Sort(sort.StringSlice(files))
+	return files, err
+}
+
+func getDumpFiles(ctx *AppContext) ([]string, error) {
+	dir := ctx.Options.DumpsDir
+
+	var files []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+
 		return nil
 	})
 
@@ -103,9 +143,13 @@ func getPartialLocalMigrations(options *AppOptions) ([]*Migration, error) {
 	return meta, nil
 }
 
+func timestampedName(name string) string {
+	return fmt.Sprintf("%s-%s", time.Now().Format("200601021504"), str.Slugify(name))
+}
+
 func migrationFile(dir string, title string, filename string) string {
 	// 201801231939-refactor-campaigns
-	subdir := fmt.Sprintf("%s-%s", time.Now().Format("200601021504"), str.Slugify(title))
+	subdir := timestampedName(title)
 	return filepath.Join(dir, subdir, filename)
 }
 
@@ -114,10 +158,56 @@ func scriptFilename(options *AppOptions, migration *Migration, subFile string) s
 	return filepath.Join(options.MigrationsDir, migration.Name, subFile)
 }
 
+func migrationFindIndexOf(migrations []*Migration, name string) int {
+	if len(migrations) > 0 {
+		for i, migration := range migrations {
+			if migration.Name == name {
+				return i
+			}
+		}
+	}
+
+	return -1
+}
+
 // verifyMigrationsHistory verifies local migrations are in sync with the database.
 // Devs might have added migrations in their working branch that predate migrations
 // already applied to the database.
-func verifyMigrationsHistory(localMigrations []*Migration, dbMigrations []*Migration) error {
+//
+// assumes localMigrations and dbMigrations are sorted in ASC order
+func verifyMigrationsHistory(ctx *AppContext, localMigrations []*Migration, dbMigrations []*Migration) error {
+	if len(dbMigrations) == 0 {
+		return nil
+	}
+
+	inError := false
+
+	// print any migration in DB that doesn't exist locally
+	for _, migration := range dbMigrations {
+		idx := migrationFindIndexOf(localMigrations, migration.Name)
+		if idx == -1 {
+			logger.Info("Migration %s was migrated in database but does not exist in local migrations.\n", migration.Name)
+			inError = true
+		}
+	}
+
+	// log any directory which has not been executed but is younger than last migration in DB
+	lastMigration := dbMigrations[len(dbMigrations)-1]
+	for _, localMigration := range localMigrations {
+		localName := localMigration.Name
+		if localName < lastMigration.Name {
+			idx := migrationFindIndexOf(dbMigrations, localName)
+			if idx == -1 {
+				logger.Info("Migration %s will not be migrated. Its timestamp is younger than last migration %s\n", localName, lastMigration.Name)
+				inError = true
+			}
+		}
+	}
+
+	if inError {
+		return fmt.Errorf("Local migrations are out of sync with %s database, rename as needed", ctx.Options.Connection.Database)
+	}
+
 	return nil
 }
 
@@ -140,4 +230,30 @@ func writeFileAll(filename string, b []byte) error {
 	}
 
 	return ioutil.WriteFile(filename, b, 0644)
+}
+
+// readInitScript reads migrations/_init/up.sql. If any error occurs, it returns
+// an empty string.
+func readInitScript(options *AppOptions) string {
+	path := filepath.Join(options.MigrationsDir, "_init", "up.sql")
+	s, _ := readFileText(path)
+	return s
+}
+
+func askOption(prompt string, options []string) (string, error) {
+	questions := []*survey.Question{
+		{
+			Name: "Option",
+			Prompt: &survey.Select{
+				Message: prompt,
+				Options: options,
+			},
+		},
+	}
+
+	var answers struct {
+		Option string
+	}
+	err := survey.Ask(questions, &answers)
+	return answers.Option, err
 }

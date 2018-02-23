@@ -6,6 +6,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
 	conf "github.com/mgutz/configpipe"
 )
@@ -23,7 +24,9 @@ type Connection struct {
 type AppOptions struct {
 	Connection     Connection
 	BatchSeparator string
+	DumpsDir       string
 	MigrationsDir  string
+	SprocsDir      string
 	TablePrefix    string
 	Vendor         string
 	UnparsedArgs   []string
@@ -39,9 +42,19 @@ func parseOptions(config *conf.Configuration) (*AppOptions, error) {
 			ExtraParams: config.AsString("connection.extraParams"),
 		},
 		BatchSeparator: config.OrString("batchSeparator", "GO"),
-		MigrationsDir:  config.OrString("migrationsDir", "./migrations"),
+		DumpsDir:       config.AsString("dumpsDir"),
+		MigrationsDir:  config.OrString("dir", "migrations"),
+		SprocsDir:      config.AsString("sprocsDir"),
 		TablePrefix:    config.OrString("tablePrefix", "dat"),
 		Vendor:         config.OrString("vendor", "postgres"),
+	}
+
+	if options.DumpsDir == "" {
+		options.DumpsDir = filepath.Join(options.MigrationsDir, "_dumps")
+	}
+
+	if options.SprocsDir == "" {
+		options.SprocsDir = filepath.Join(options.MigrationsDir, "sprocs")
 	}
 
 	// on an error, keep it at zero value, it is checked outside
@@ -60,16 +73,21 @@ func decryptor(input map[string]interface{}) (map[string]interface{}, error) {
 
 func loadConfig() (*conf.Configuration, error) {
 	envmode := os.Getenv("run_env")
+	dir := os.Getenv("dir")
+	// TODO need to parse "--dir dirname" and "--dir=dirname"
+	if dir == "" {
+		dir = "migrations"
+	}
 
 	var prodConfig conf.Filter
 	if envmode == "production" {
-		prodConfig = conf.YAML(&conf.File{Path: "dat-production.yaml"})
+		prodConfig = conf.YAML(&conf.File{Path: filepath.Join(dir, "dat-production.yaml")})
 	}
 
 	// later filters merge over earlier filters
 	return conf.Process(
 		// read from config.json file (if present)
-		conf.YAML(&conf.File{Path: "dat.yaml"}),
+		conf.YAML(&conf.File{Path: filepath.Join(dir, "dat.yaml")}),
 
 		// Any nil filter is noop, so this WILL NOT be processed in development mode.
 		prodConfig,

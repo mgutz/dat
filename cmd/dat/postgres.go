@@ -6,6 +6,10 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/mgutz/str"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/lib/pq"
 	"github.com/mgutz/dat/dat"
 	runner "github.com/mgutz/dat/sqlx-runner"
 )
@@ -37,7 +41,7 @@ func (pg *PostgresAdapter) AcquireDB(options *AppOptions) (*runner.DB, error) {
 
 	// ensures the database can be pinged with an exponential backoff (15 min)
 	// set this to enable interpolation
-	dat.EnableInterpolation = true
+	//dat.EnableInterpolation = true
 
 	// set to check things like sessions closing.
 	// Should be disabled in production/release builds.
@@ -53,8 +57,26 @@ func (pg *PostgresAdapter) ConnectionString(options *Connection) string {
 	return fmt.Sprintf("dbname=%s user=%s password=%s host=%s %s", options.Database, options.User, options.Password, options.Host, options.ExtraParams)
 }
 
+var bootstrapped bool
+
 // Bootstrap bootstraps dat metadata
 func (pg *PostgresAdapter) Bootstrap(conn runner.Connection) error {
+	if bootstrapped {
+		return nil
+	}
+
+	// check to see if there is an _INIT sub directory which executes before
+	// any dat scripts. The _INIT/up.sql should be an idempotent
+	// script. It was created to migrate data from existing migration tool
+	// to dat.
+	initScript := readInitScript(pg.options)
+	if initScript != "" {
+		err := execScript(conn, initScript)
+		if err != nil {
+			return err
+		}
+	}
+
 	sql := `
 		create table if not exists dat__migrations (
 			name text primary key,
@@ -89,7 +111,12 @@ func (pg *PostgresAdapter) Bootstrap(conn runner.Connection) error {
         END $$ LANGUAGE plpgsql;
       `
 	_, err := conn.SQL(sql).Exec()
-	return err
+	if err != nil {
+		return err
+	}
+
+	bootstrapped = true
+	return nil
 }
 
 // Create creates database.
@@ -99,7 +126,7 @@ func (pg *PostgresAdapter) Create(superConn runner.Connection) error {
 
 	expressions := []*dat.Expression{
 		// drop any existing connections which is helpful
-		dat.Expr(`
+		dat.Prep(`
 			select pg_terminate_backend(pid)
 			from pg_stat_activity
 			where datname=$1
@@ -108,46 +135,24 @@ func (pg *PostgresAdapter) Create(superConn runner.Connection) error {
 			options.Connection.Database,
 		),
 
-		dat.Expr(
+		dat.Interp(
 			`drop database if exists $1;`, dat.UnsafeString(connection.Database),
 		),
 
-		dat.Expr(
+		dat.Interp(
 			`drop user if exists $1;`,
 			dat.UnsafeString(connection.User),
 		),
 
-		dat.Expr(
+		dat.Interp(
 			`create user $1 password $2 SUPERUSER CREATEROLE;`,
 			dat.UnsafeString(connection.User),
 			connection.Password,
 		),
 
-		dat.Expr(
+		dat.Interp(
 			`create database $1 owner $2;`,
 			dat.UnsafeString(connection.Database),
-			dat.UnsafeString(connection.User),
-		),
-	}
-
-	_, err := superConn.ExecMulti(expressions...)
-	return err
-}
-
-// Drop drops database with option to force which means drop all
-// connections.
-func (pg *PostgresAdapter) Drop(superConn runner.Connection) error {
-	connection := pg.options.Connection
-
-	expressions := []*dat.Expression{
-		// drop any existing connections which is helpful
-		dat.Expr(
-			`drop database if exists $1;`,
-			dat.UnsafeString(connection.Database),
-		),
-
-		dat.Expr(
-			`drop user if exists $1;`,
 			dat.UnsafeString(connection.User),
 		),
 	}
@@ -245,7 +250,7 @@ func (PostgresAdapter) parseSprocName(body string) (string, error) {
 	return "", nil
 }
 
-var reBatchSeparator = regexp.MustCompile(`^GO\n`)
+var reBatchSeparator = regexp.MustCompile(`(?m)^GO\n`)
 
 // Executes a script which may have a batch separator (default is GO)
 func execScript(conn runner.Connection, script string) error {
@@ -259,8 +264,13 @@ func execScript(conn runner.Connection, script string) error {
 			continue
 		}
 
+		if str.IsEmpty(statement) {
+			return nil
+		}
+
 		_, err := conn.SQL(statement).Exec()
 		if err != nil {
+			spew.Dump(err)
 			return err
 		}
 	}
@@ -268,17 +278,33 @@ func execScript(conn runner.Connection, script string) error {
 	return nil
 }
 
+func execFile(ctx *AppContext, conn runner.Connection, filename string) (string, error) {
+	logger.Info("%s ... ", filename)
+	script, err := readFileText(filename)
+	if err != nil {
+		return "", err
+	}
+
+	err = execScript(conn, script)
+	if err != nil {
+		if e, ok := err.(*pq.Error); ok {
+			//. TODO need to show line number, column on syntax errors
+			spew.Dump(e)
+
+		}
+		return "", err
+	}
+	logger.Info("OK\n")
+	return script, nil
+}
+
 // runUpScripts run a migration's notx and up scripts
-func runUpScripts(options *AppOptions, conn runner.Connection, migration *Migration) error {
-	noTxFilename := scriptFilename(options, migration, "notx.sql")
+func runUpScripts(ctx *AppContext, conn runner.Connection, migration *Migration) error {
+	// notx.sql is not required
+	noTxFilename := scriptFilename(ctx.Options, migration, "notx.sql")
 	if _, err := os.Stat(noTxFilename); err == nil {
 		// notx is an optional script
-		script, err := readFileText(noTxFilename)
-		if err != nil {
-			return err
-		}
-
-		err = execScript(conn, script)
+		script, err := execFile(ctx, conn, noTxFilename)
 		if err != nil {
 			return err
 		}
@@ -287,17 +313,15 @@ func runUpScripts(options *AppOptions, conn runner.Connection, migration *Migrat
 		// path/to/whatever does not exist
 	}
 
-	upScript, err := readFileText(scriptFilename(options, migration, "up.sql"))
-	if err != nil {
-		return err
+	// down.sql is not required
+	downFilename := scriptFilename(ctx.Options, migration, "down.sql")
+	if _, err := os.Stat(downFilename); err == nil {
+		downScript, err := readFileText(downFilename)
+		if err != nil {
+			return err
+		}
+		migration.DownScript = downScript
 	}
-	migration.UpScript = upScript
-
-	downScript, err := readFileText(scriptFilename(options, migration, "down.sql"))
-	if err != nil {
-		return err
-	}
-	migration.DownScript = downScript
 
 	tx, err := conn.Begin()
 	if err != nil {
@@ -305,10 +329,11 @@ func runUpScripts(options *AppOptions, conn runner.Connection, migration *Migrat
 	}
 	defer tx.AutoRollback()
 
-	err = execScript(tx, upScript)
+	upScript, err := execFile(ctx, conn, scriptFilename(ctx.Options, migration, "up.sql"))
 	if err != nil {
 		return err
 	}
+	migration.UpScript = upScript
 
 	q := `
 		insert into dat__migrations (name, up_script, down_script, no_tx_script)
@@ -327,6 +352,112 @@ func runUpScripts(options *AppOptions, conn runner.Connection, migration *Migrat
 	}
 
 	tx.Commit()
-	fmt.Println("returning")
 	return nil
+}
+
+// Drop drops database with option to force which means drop all connections.
+func (pg *PostgresAdapter) Drop(superConn runner.Connection) error {
+	connection := pg.options.Connection
+
+	expressions := []*dat.Expression{
+		// drop any existing connections which is helpful
+		dat.Interp(`
+				select pg_terminate_backend(pid)
+				from pg_stat_activity
+				where datname=$1
+					and pid <> pg_backend_pid();
+			`,
+			connection.Database,
+		),
+
+		dat.Interp(
+			`drop database if exists $1;`,
+			dat.UnsafeString(connection.Database),
+		),
+
+		dat.Interp(
+			`drop user if exists $1;`,
+			dat.UnsafeString(connection.User),
+		),
+	}
+	_, err := superConn.ExecMulti(expressions...)
+	return err
+}
+
+var reSprocName = regexp.MustCompile(`(?mi)^\s*create function\s(\w+(\.(\w+))?)`)
+
+func parseSprocName(body string) string {
+	matches := reSprocName.FindStringSubmatch(body)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
+func registerSproc() {
+	/*
+	  registerSproc: (info, cb) ->
+	    state = { register: true, changed: false }
+	    return cb() if !info.name
+
+	    tx = @store.transactable()
+	    Async.series {
+	      begin: (cb) =>
+	        tx.begin(cb)
+
+	      fnExists: (cb) =>
+	        sql = """
+	        SELECT name, crc
+	        FROM mygrate__sprocs
+	        WHERE name = $1
+
+	        UNION ALL
+
+	        SELECT  proname, '0'
+	        FROM    pg_catalog.pg_namespace n
+	        JOIN    pg_catalog.pg_proc p ON pronamespace = n.oid
+	        WHERE
+	          nspname = 'public'
+	          AND proname NOT IN (
+	            SELECT name
+	            FROM mygrate__sprocs
+	            WHERE name = $1
+	          )
+	        """
+	        @store.sql(sql, [info.name, info.crc]).one (err, row) =>
+	          return cb(err) if err
+	          return cb() if !row
+
+	          if row.crc == info.crc
+	            state.register = false
+	            return cb()
+
+	          state.changed = true
+
+	          # delete the function
+	          @store.sql("SELECT mygrate__delfunc($1)", [info.name]).exec cb
+
+	      registerFn: (cb) =>
+	        return cb() if !state.register
+	        sql = """
+	        DELETE FROM mygrate__sprocs WHERE name = $1;
+	        INSERT INTO mygrate__sprocs (name, crc) VALUES ($1, $2);
+	        """
+	        @store.sql(sql, [info.name, info.crc]).exec (err) =>
+	          return cb(err) if err
+	          # register the function
+	          if state.changed
+	            console.log "Updating sproc #{info.name}"
+	          else
+	            console.log "Registering sproc #{info.name}"
+	          @store.sql(info.body).exec cb
+	    }, (err) ->
+	      if err
+	        return tx.rollback ->
+	          cb(err)
+	      tx.commit cb
+
+
+
+	*/
 }
