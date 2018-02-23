@@ -92,6 +92,8 @@ migrations/
     _init/
         up.sql      # idempotent script to run before dat bootstraps
 
+    _dumps/         # pg_dump files
+
     sprocs/
         any.sql     # 1 or more files sproc files
 
