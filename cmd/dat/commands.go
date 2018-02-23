@@ -419,6 +419,33 @@ func execUserString(ctx *AppContext) error {
 	return nil
 }
 
+func execUserFile(ctx *AppContext) error {
+	filename := getCommandArg1(ctx)
+	if filename == "" {
+		return errors.New(`Usage: dat file [sql]`)
+	}
+
+	adapter := NewPostgresAdapter(ctx.Options)
+	db, err := adapter.AcquireDB(ctx.Options)
+	if err != nil {
+		return err
+	}
+
+	sql, err := readFileText(filename)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.SQL(sql).Exec()
+	if err != nil {
+		printError(err)
+		return err
+	}
+
+	logger.Info("OK %s\n", filename)
+	return nil
+}
+
 func getCommandArg1(ctx *AppContext) string {
 	if len(ctx.Options.UnparsedArgs) > 1 {
 		return ctx.Options.UnparsedArgs[1]

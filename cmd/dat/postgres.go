@@ -461,3 +461,19 @@ func registerSproc() {
 
 	*/
 }
+
+func printError(err error) {
+	if err != nil {
+		if e, ok := err.(*pq.Error); ok {
+			//. TODO need to show line number, column on syntax errors
+			spew.Dump(e)
+			fmt.Println("Column", e.Column)
+			fmt.Println("Line", e.Line)
+			fmt.Println("Position", e.Position)
+			fmt.Println("Message", e.Message)
+			fmt.Println("Detail", e.Detail)
+			fmt.Println("Hint", e.Hint)
+			fmt.Println("Severity", e.Severity)
+		}
+	}
+}

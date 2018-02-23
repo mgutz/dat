@@ -7,9 +7,14 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/mgutz/logxi"
 )
 
 func main() {
+	// disable dat's logxi logger
+	logxi.Suppress(true)
+
 	config, err := loadConfig()
 	if err != nil {
 		panic(err)
@@ -70,6 +75,8 @@ func run(ctx *AppContext, command string) error {
 		return dump(ctx)
 	case "exec":
 		return execUserString(ctx)
+	case "file":
+		return execUserFile(ctx)
 	case "list":
 		return list(ctx)
 	case "new":
