@@ -1,33 +1,38 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+
+	"github.com/mgutz/str"
 
 	runner "github.com/mgutz/dat/sqlx-runner"
 	"github.com/mgutz/jo"
 	"github.com/olekukonko/tablewriter"
 )
 
-func createDB(ctx *AppContext) error {
+func commandCreateDB(ctx *AppContext) error {
 	superOptions, err := buildSuperOptions(ctx.Options)
 	if err != nil {
 		return err
 	}
 
-	adapter := NewPostgresAdapter(ctx.Options)
-	superDB, err := adapter.AcquireDB(superOptions)
+	adapter := NewPostgresAdapter()
+	superDB, err := adapter.AcquireDB(&superOptions.Connection)
 	if err != nil {
 		return err
 	}
 	defer superDB.Close()
 
-	err = adapter.Create(superDB)
+	err = adapter.Create(ctx, superDB)
 	if err != nil {
 		return err
 	}
@@ -36,8 +41,58 @@ func createDB(ctx *AppContext) error {
 	return nil
 }
 
+// Down undoes 1 or more migrations based on argument. Default is 1 down.
+func commandDown(ctx *AppContext) error {
+	var count int
+	if len(ctx.Options.UnparsedArgs) == 1 {
+		count = 1
+	} else {
+		arg := ctx.Options.UnparsedArgs[1]
+		n, err := strconv.Atoi(arg)
+		if err != nil {
+			return errors.New("Usage: dat down [n]")
+		}
+		count = n
+		if count == 0 {
+			count = 1
+		}
+	}
+
+	_, db, err := getAdapterAndDB(ctx)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return migrateDown(db, count)
+}
+
+// dropDB drops the database
+func commandDropDB(ctx *AppContext) error {
+	adapter := NewPostgresAdapter()
+
+	// drop the database
+
+	superOptions, err := buildSuperOptions(ctx.Options)
+	if err != nil {
+		return err
+	}
+
+	db, err := adapter.AcquireDB(&superOptions.Connection)
+	if err != nil {
+		return err
+	}
+
+	err = adapter.Drop(ctx, db)
+	if err != nil {
+		return err
+	}
+	db.Close()
+	return nil
+}
+
 // dump dumps a database to a file for use by restore
-func dump(ctx *AppContext) error {
+func commandDump(ctx *AppContext) error {
 	superOptions, err := buildSuperOptions(ctx.Options)
 	if err != nil {
 		return err
@@ -54,28 +109,53 @@ func dump(ctx *AppContext) error {
 		return err
 	}
 
-	cmd := exec.Command(
-		"pg_dump",
+	var args []string
+	var exe string
+
+	if ctx.Options.DockerContainer == "" {
+		exe = "pg_dump"
+	} else {
+		exe = "docker"
+		args = []string{
+			"exec",
+			ctx.Options.DockerContainer,
+			"pg_dump",
+		}
+	}
+
+	args = append(args,
 		"--dbname="+ctx.Options.Connection.Database,
 		"--host="+ctx.Options.Connection.Host,
 		"--username="+superOptions.Connection.User,
+		"--port="+ctx.Options.Connection.Port,
 		"-Fc",
-		"-f",
-		destination,
 	)
+
+	var buf bytes.Buffer
+
+	logger.Info("exe=%s args=%v\n", exe, args)
+	cmd := exec.Command(exe, args...)
 	cmd.Env = append(os.Environ(), "PGPASSWORD="+superOptions.Connection.Password)
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = &buf
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()
-	if err == nil {
-		logger.Info("dumped %s", destination)
+	if err != nil {
+		logger.Info(buf.String())
+		return err
 	}
+
+	err = writeFileAll(destination, buf.Bytes())
+	if err != nil {
+		logger.Error("Error writing dump file %s", destination)
+		return err
+	}
+	logger.Info("dumped %s", destination)
 	return err
 }
 
-func list(ctx *AppContext) error {
-	adapter, db, err := getAdapterAndDB(ctx.Options)
+func commandList(ctx *AppContext) error {
+	adapter, db, err := getAdapterAndDB(ctx)
 	if err != nil {
 		return err
 	}
@@ -108,7 +188,7 @@ func list(ctx *AppContext) error {
 }
 
 // newScripts creates a new script directory with blank `up.sql` and `down.sql`
-func newScript(ctx *AppContext) error {
+func commandNew(ctx *AppContext) error {
 	title := getCommandArg1(ctx)
 	if title == "" {
 		return errors.New("Usage: dat new TITLE")
@@ -132,28 +212,78 @@ func newScript(ctx *AppContext) error {
 	return nil
 }
 
-// restore restores `dump` file
-func restore(ctx *AppContext) error {
-	adapter := NewPostgresAdapter(ctx.Options)
+func commandRedo(ctx *AppContext) error {
+	adapter, db, err := getAdapterAndDB(ctx)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
-	// drop the database
+	last, err := adapter.GetLastMigration(db)
+	if err != nil {
+		return err
+	}
+
+	err = migrateDown(db, 1)
+
+	return runUpScripts(ctx, db, last)
+}
+
+func migrateDown(conn runner.Connection, count int) error {
+	tx, err := conn.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.AutoRollback()
+
+	var migrations []*Migration
+	err = tx.SQL(lastNMigrationSQL, count).QueryStructs(&migrations)
+	if err != nil {
+		return err
+	}
+
+	// run the down script then delete it from migrations table
+	for _, migration := range migrations {
+		logger.Info("DB down script %s ... ", migration.Name)
+		if !str.IsEmpty(migration.DownScript) {
+			err = execScript(tx, migration.DownScript)
+			if err != nil {
+				logger.Info("\n")
+				return err
+			}
+		}
+
+		_, err = tx.SQL(`delete from dat__migrations where name=$1`, migration.Name).Exec()
+		if err != nil {
+			logger.Info("\n")
+			return err
+		}
+		logger.Info("OK\n")
+	}
+
+	tx.Commit()
+	return nil
+}
+
+// restore restores `dump` file
+func commandRestore(ctx *AppContext) error {
+	adapter := NewPostgresAdapter()
 
 	superOptions, err := buildSuperOptions(ctx.Options)
 	if err != nil {
 		return err
 	}
 
-	db, err := adapter.AcquireDB(superOptions)
+	db, err := adapter.AcquireDB(&superOptions.Connection)
 	if err != nil {
 		return err
 	}
 
-	err = adapter.Create(db)
+	err = adapter.ResetRole(ctx, db)
+	db.Close()
 	if err != nil {
-		db.Close()
 		return err
 	}
-	db.Close()
 
 	filename := getCommandArg1(ctx)
 	if filename == "" {
@@ -171,18 +301,43 @@ func restore(ctx *AppContext) error {
 		filename = filepath.Join(ctx.Options.DumpsDir, filename)
 	}
 
-	cmd := exec.Command(
-		"pg_restore",
-		"--dbname="+ctx.Options.Connection.Database,
+	var exe string
+	var args []string
+	dockerContainer := ctx.Options.DockerContainer
+	if dockerContainer == "" {
+		exe = "pg_restore"
+	} else {
+		exe = "docker"
+		args = []string{
+			"exec",
+			"-i",
+			dockerContainer,
+			"pg_restore",
+		}
+	}
+
+	args = append(
+		args,
+		"--dbname="+superOptions.Connection.Database,
 		"--host="+ctx.Options.Connection.Host,
 		"--username="+superOptions.Connection.User,
 		"--create",
-		filename,
 	)
+
+	cmd := exec.Command(exe, args...)
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	buf := bytes.NewBuffer(b)
+
 	cmd.Env = append(os.Environ(), "PGPASSWORD="+superOptions.Connection.Password)
 	cmd.Stdout = os.Stdout
-	cmd.Stdin = os.Stdin
+	cmd.Stdin = buf
 	cmd.Stderr = os.Stderr
+
+	logger.Info("%s %v\n", exe, args)
 	err = cmd.Run()
 	if err == nil {
 		logger.Info("restored %s", filename)
@@ -190,32 +345,8 @@ func restore(ctx *AppContext) error {
 	return err
 }
 
-// dropDB drops the database
-func dropDB(ctx *AppContext) error {
-	adapter := NewPostgresAdapter(ctx.Options)
-
-	// drop the database
-
-	superOptions, err := buildSuperOptions(ctx.Options)
-	if err != nil {
-		return err
-	}
-
-	db, err := adapter.AcquireDB(superOptions)
-	if err != nil {
-		return err
-	}
-
-	err = adapter.Drop(db)
-	if err != nil {
-		return err
-	}
-	db.Close()
-	return nil
-}
-
-func up(ctx *AppContext) error {
-	adapter, db, err := getAdapterAndDB(ctx.Options)
+func commandUp(ctx *AppContext) error {
+	adapter, db, err := getAdapterAndDB(ctx)
 	if err != nil {
 		return err
 	}
@@ -243,7 +374,6 @@ func up(ctx *AppContext) error {
 	}
 
 	dbLen := len(dbMigrations)
-
 	localLen := len(localMigrations)
 	var list []*Migration
 	if dbLen == 0 {
@@ -397,14 +527,14 @@ func sprocFind(sprocs []*Sproc, name string) *Sproc {
 	return nil
 }
 
-func execUserString(ctx *AppContext) error {
+func commandExec(ctx *AppContext) error {
 	sql := getCommandArg1(ctx)
 	if sql == "" {
 		return errors.New(`Usage: dat exec [sql]`)
 	}
 
-	adapter := NewPostgresAdapter(ctx.Options)
-	db, err := adapter.AcquireDB(ctx.Options)
+	adapter := NewPostgresAdapter()
+	db, err := adapter.AcquireDB(&ctx.Options.Connection)
 	if err != nil {
 		return err
 	}
@@ -419,14 +549,14 @@ func execUserString(ctx *AppContext) error {
 	return nil
 }
 
-func execUserFile(ctx *AppContext) error {
+func commandFile(ctx *AppContext) error {
 	filename := getCommandArg1(ctx)
 	if filename == "" {
 		return errors.New(`Usage: dat file [sql]`)
 	}
 
-	adapter := NewPostgresAdapter(ctx.Options)
-	db, err := adapter.AcquireDB(ctx.Options)
+	adapter := NewPostgresAdapter()
+	db, err := adapter.AcquireDB(&ctx.Options.Connection)
 	if err != nil {
 		return err
 	}
@@ -438,7 +568,7 @@ func execUserFile(ctx *AppContext) error {
 
 	_, err = db.SQL(sql).Exec()
 	if err != nil {
-		printError(err)
+		logger.Error(sprintPQError(sql, err))
 		return err
 	}
 
@@ -451,4 +581,31 @@ func getCommandArg1(ctx *AppContext) string {
 		return ctx.Options.UnparsedArgs[1]
 	}
 	return ""
+}
+
+const datYAMLExample = `
+connection:
+  host: localhost
+  database: matcherino_development
+  user: matcherino
+  password: "!development"
+  extraParams: "sslmode=disable"
+
+# set this if using docker, it will use pg_dump and pg_restore in container
+# dockerContainer: postgres-svc
+`
+
+func commandInit(ctx *AppContext) error {
+	filename := filepath.Join(ctx.Options.MigrationsDir, "dat.yaml")
+	if _, err := os.Stat(filename); err == nil {
+		return errors.New("File exists " + filename)
+	}
+
+	err := writeFileAll(filename, []byte(datYAMLExample))
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Edit %s", filename)
+	return nil
 }

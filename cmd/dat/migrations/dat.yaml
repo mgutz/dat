@@ -4,3 +4,6 @@ connection:
   user: matcherino
   password: "!development"
   extraParams: "sslmode=disable"
+
+dockerContainer: postgres-svc
+

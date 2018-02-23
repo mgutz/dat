@@ -19,8 +19,8 @@ func (Logger) Info(s string, args ...interface{}) {
 }
 
 // Error writes string to stderr
-func (Logger) Error(s string) {
-	os.Stderr.WriteString(s)
+func (Logger) Error(s string, args ...interface{}) {
+	os.Stderr.WriteString(fmt.Sprintf(s, args...))
 }
 
 var logger = Logger{}

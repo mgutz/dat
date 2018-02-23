@@ -18,18 +18,20 @@ type Connection struct {
 	Host        string
 	User        string
 	Password    string
+	Port        string
 }
 
 // AppOptions are the options to connect to a database
 type AppOptions struct {
-	Connection     Connection
-	BatchSeparator string
-	DumpsDir       string
-	MigrationsDir  string
-	SprocsDir      string
-	TablePrefix    string
-	Vendor         string
-	UnparsedArgs   []string
+	Connection      Connection
+	BatchSeparator  string
+	DockerContainer string
+	DumpsDir        string
+	MigrationsDir   string
+	SprocsDir       string
+	TablePrefix     string
+	Vendor          string
+	UnparsedArgs    []string
 }
 
 func parseOptions(config *conf.Configuration) (*AppOptions, error) {
@@ -38,15 +40,17 @@ func parseOptions(config *conf.Configuration) (*AppOptions, error) {
 			Database:    config.MustString("connection.database"),
 			User:        config.MustString("connection.user"),
 			Password:    config.AsString("connection.password"),
+			Port:        config.OrString("connection.port", "5432"),
 			Host:        config.OrString("connection.host", "localhost"),
 			ExtraParams: config.AsString("connection.extraParams"),
 		},
-		BatchSeparator: config.OrString("batchSeparator", "GO"),
-		DumpsDir:       config.AsString("dumpsDir"),
-		MigrationsDir:  config.OrString("dir", "migrations"),
-		SprocsDir:      config.AsString("sprocsDir"),
-		TablePrefix:    config.OrString("tablePrefix", "dat"),
-		Vendor:         config.OrString("vendor", "postgres"),
+		BatchSeparator:  config.OrString("batchSeparator", "GO"),
+		DockerContainer: config.AsString("dockerContainer"),
+		DumpsDir:        config.AsString("dumpsDir"),
+		MigrationsDir:   config.OrString("dir", "migrations"),
+		SprocsDir:       config.AsString("sprocsDir"),
+		TablePrefix:     config.OrString("tablePrefix", "dat"),
+		Vendor:          config.OrString("vendor", "postgres"),
 	}
 
 	if options.DumpsDir == "" {

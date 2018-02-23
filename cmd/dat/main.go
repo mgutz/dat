@@ -44,20 +44,21 @@ func main() {
 
 func usage() string {
 	return `
-dat v0.0.0 - simple migration tool
+dat v1.0.0.0-alpha.1 - simple migration tool
 
 Usage: dat [command]
 
 Commands:
-  createdb  Recreates database and runs migrations
+  createdb  Recreates database
   dropdb    Drops database
-  //down      Migrate down
-  dump      Dumps the database
+  down      Migrate down
+  dump      Dumps the database to a file
   exec      Executes sql from command line
   file      Executes sql file
+  init 		Initializes migrations dir w/ dat.yaml
   new       Creates a new migration
   redo      Redoes the last migration
-  restore   Restores the database
+  restore   Restores a dump file
   up        Runs all migrations
 `
 }
@@ -68,22 +69,28 @@ func run(ctx *AppContext, command string) error {
 		logger.Info(usage())
 		return nil
 	case "createdb":
-		return createDB(ctx)
+		return commandCreateDB(ctx)
+	case "down":
+		return commandDown(ctx)
 	case "dropdb":
-		return dropDB(ctx)
+		return commandDropDB(ctx)
 	case "dump":
-		return dump(ctx)
+		return commandDump(ctx)
 	case "exec":
-		return execUserString(ctx)
+		return commandExec(ctx)
 	case "file":
-		return execUserFile(ctx)
+		return commandFile(ctx)
+	case "init":
+		return commandInit(ctx)
 	case "list":
-		return list(ctx)
+		return commandList(ctx)
 	case "new":
-		return newScript(ctx)
+		return commandNew(ctx)
+	case "redo":
+		return commandRedo(ctx)
 	case "restore":
-		return restore(ctx)
+		return commandRestore(ctx)
 	case "up":
-		return up(ctx)
+		return commandUp(ctx)
 	}
 }
