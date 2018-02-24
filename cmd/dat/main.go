@@ -7,22 +7,22 @@ package main
 import (
 	"fmt"
 	"os"
-
-	"github.com/mgutz/logxi"
 )
 
 func main() {
 	// disable dat's logxi logger
-	logxi.Suppress(true)
+	//logxi.Suppress(true)
 
 	config, err := loadConfig()
 	if err != nil {
-		panic(err)
+		os.Stderr.WriteString(err.Error())
+		os.Exit(1)
 	}
 
 	options, err := parseOptions(config)
 	if err != nil {
-		panic(err)
+		os.Stderr.WriteString(err.Error())
+		os.Exit(1)
 	}
 
 	if len(options.UnparsedArgs) == 0 {
@@ -58,6 +58,7 @@ Commands:
   file      Executes sql file
   init 		Initializes migrations dir
   new       Creates a new migration
+  query		Queries database and prints JSON
   redo      Redoes the last migration
   restore   Restores a dump file
   up        Runs all migrations
@@ -89,6 +90,8 @@ func run(ctx *AppContext, command string) error {
 		return commandList(ctx)
 	case "new":
 		return commandNew(ctx)
+	case "query":
+		return commandQuery(ctx)
 	case "redo":
 		return commandRedo(ctx)
 	case "restore":

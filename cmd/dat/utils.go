@@ -291,7 +291,7 @@ func execScript(conn runner.Connection, script string, warnEmpty bool) error {
 				continue
 			}
 
-			logger.Error(sprintPQError(statement, err))
+			logger.Error("\n%s\n", sprintPQError(statement, err))
 			return err
 		}
 	}
@@ -309,7 +309,6 @@ func execFile(ctx *AppContext, conn runner.Connection, filename string) (string,
 
 	err = execScript(conn, script, false)
 	if err != nil {
-		logger.Info("\n")
 		return "", err
 	}
 	logger.Info("OK\n")
@@ -420,9 +419,9 @@ func sprintPQError(script string, err error) string {
 
 		if e.Position != "" {
 			line, col, _ := extractLineColumn(script, e.Position)
-			return fmt.Sprintf("[%s=%s] %s at line=%d col=%d\n", e.Severity, e.Code, e.Message, line, col)
+			return fmt.Sprintf("[%s code=%s]\n%s at line=%d col=%d\n", e.Severity, e.Code, e.Message, line, col)
 		}
-		return fmt.Sprintf("[PQ %s=%s] %s", e.Severity, e.Code, e.Message)
+		return fmt.Sprintf("[%s code=%s]\n%s", e.Severity, e.Code, e.Message)
 	}
 
 	return ""

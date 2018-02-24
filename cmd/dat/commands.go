@@ -42,10 +42,12 @@ func commandCreateDB(ctx *AppContext) error {
 
 // commandConsole runs psql console
 func commandConsole(ctx *AppContext) error {
+	connection := ctx.Options.Connection
 	var args []string
 	var exe string
 
 	container := ctx.Options.DockerContainer
+	passwordEnv := "PGPASSWORD=" + connection.Password
 	if container == "" {
 		exe = "psql"
 	} else {
@@ -53,12 +55,12 @@ func commandConsole(ctx *AppContext) error {
 		args = []string{
 			"exec",
 			"-it",
+			"-e",
+			passwordEnv,
 			container,
 			"psql",
 		}
 	}
-
-	connection := ctx.Options.Connection
 
 	args = append(args,
 		"--dbname="+connection.Database,
@@ -69,7 +71,7 @@ func commandConsole(ctx *AppContext) error {
 
 	logger.Info("exe=%s args=%v\n", exe, args)
 	cmd := exec.Command(exe, args...)
-	cmd.Env = append(os.Environ(), "PGPASSWORD="+connection.Password)
+	cmd.Env = append(os.Environ(), passwordEnv)
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
@@ -147,12 +149,15 @@ func commandDump(ctx *AppContext) error {
 	var args []string
 	var exe string
 
+	passwordEnv := "PGPASSWORD=" + superOptions.Connection.Password
 	if ctx.Options.DockerContainer == "" {
 		exe = "pg_dump"
 	} else {
 		exe = "docker"
 		args = []string{
 			"exec",
+			"-e",
+			passwordEnv,
 			ctx.Options.DockerContainer,
 			"pg_dump",
 		}
@@ -170,7 +175,7 @@ func commandDump(ctx *AppContext) error {
 
 	logger.Info("exe=%s args=%v\n", exe, args)
 	cmd := exec.Command(exe, args...)
-	cmd.Env = append(os.Environ(), "PGPASSWORD="+superOptions.Connection.Password)
+	cmd.Env = append(os.Environ(), passwordEnv)
 	cmd.Stdout = &buf
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
@@ -190,6 +195,22 @@ func commandDump(ctx *AppContext) error {
 }
 
 func commandExec(ctx *AppContext) error {
+	q := getCommandArg1(ctx)
+	if q == "" {
+		return errors.New(`Usage: dat exec [sql_string]`)
+	}
+
+	adapter := NewPostgresAdapter()
+	db, err := adapter.AcquireDB(&ctx.Options.Connection)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return execScript(db, q, false)
+}
+
+func commandQuery(ctx *AppContext) error {
 	q := getCommandArg1(ctx)
 	if q == "" {
 		return errors.New(`Usage: dat exec [sql_string]`)
@@ -252,7 +273,9 @@ func commandInit(ctx *AppContext) error {
 	}
 
 	logger.Info("Edit %s", filename)
-	return nil
+
+	err = os.MkdirAll(filepath.Join(ctx.Options.MigrationsDir, "sprocs"), os.ModePerm)
+	return err
 }
 
 func commandList(ctx *AppContext) error {
@@ -309,7 +332,7 @@ func commandNew(ctx *AppContext) error {
 		return err
 	}
 
-	logger.Info("migrations created %s\n", filepath.Dir(upFilename))
+	logger.Info("Created %s\n", filepath.Dir(upFilename))
 
 	return nil
 }
@@ -405,6 +428,7 @@ func commandRestore(ctx *AppContext) error {
 
 	var exe string
 	var args []string
+	passwordEnv := "PGPASSWORD=" + superOptions.Connection.Password
 	dockerContainer := ctx.Options.DockerContainer
 	if dockerContainer == "" {
 		exe = "pg_restore"
@@ -413,6 +437,8 @@ func commandRestore(ctx *AppContext) error {
 		args = []string{
 			"exec",
 			"-i",
+			"-e",
+			passwordEnv,
 			dockerContainer,
 			"pg_restore",
 		}
@@ -434,7 +460,7 @@ func commandRestore(ctx *AppContext) error {
 
 	buf := bytes.NewBuffer(b)
 
-	cmd.Env = append(os.Environ(), "PGPASSWORD="+superOptions.Connection.Password)
+	cmd.Env = append(os.Environ(), passwordEnv)
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = buf
 	cmd.Stderr = os.Stderr
@@ -459,7 +485,7 @@ func commandUp(ctx *AppContext) error {
 	}
 
 	if len(localMigrations) == 0 {
-		logger.Info("Nothing to run. Try 'dat new  some-migration'")
+		logger.Info("Nothing to run. Try 'dat new some-migration'")
 		return nil
 	}
 

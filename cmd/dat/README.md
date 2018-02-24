@@ -52,11 +52,15 @@ Start from fresh DB
 dat createdb
 ```
 
-Dump database to send to colleague or to creat a snapshot
+Dump database to send to colleague or to create a snapshot
 
 ```sh
-# set dockerContainer if running Postgres in docker to use pg_dump in container
-# creates migrations/_dumps/ISSUE-31 file
+# both create migrations/_dumps/ISSUE-31 file
+
+# use local pg_dump
+dat dump ISSUE-31
+
+# use docker container pg_dump
 dat dump ISSUE-31 --dockerContainer=postgres-svc
 ```
 
@@ -75,6 +79,16 @@ vim migrations/sprocs/calc_tax.sql
 
 # then run migrations
 dat up
+```
+
+Run psql on database
+
+```sh
+# local
+dat console
+
+# w/in docker container
+dat console --dockerContainer postgres-svc
 ```
 
 ## Directory Structure and Files
@@ -102,24 +116,24 @@ migrations/
 
 ## FAQ
 
-Q. How to add multiple sprocs in file?
+Q. How to add multiple sprocs in single file?
 
 A. Use `GO` separator.
 
-```
-    # file=migrations/sprocs/foobar.sql
+```sql
+-- migrations/sprocs/foo.sql
 
-    create function f_foo()
-    returns void as $$
-    begin
-    end;
-    $$ language plpgsql;
+create function f_foo()
+returns void as $$
+begin
+end;
+$$ language plpgsql;
 
-    GO
+GO
 
-    create function f_bar()
-    returns void as $$
-    begin
-    end;
-    $$ language plpgsql;
+create function f_bar()
+returns void as $$
+begin
+end;
+$$ language plpgsql;
 ```

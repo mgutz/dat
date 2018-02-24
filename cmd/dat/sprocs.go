@@ -1,12 +1,17 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"hash/fnv"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
+	"github.com/mgutz/str"
+
+	"github.com/mgutz/dat/dat"
 	runner "github.com/mgutz/dat/sqlx-runner"
 )
 
@@ -44,12 +49,15 @@ func upsertSprocs(conn runner.Connection, options *AppOptions) error {
 		}
 
 		for _, sproc := range sprocs {
-			name := parseSprocName(sproc)
-			localSprocs = append(localSprocs, &Sproc{
-				Name:   name,
-				Script: sproc,
-				CRC:    hash([]byte(sproc)),
-			})
+			script := strings.TrimSpace(sproc)
+			if !str.IsEmpty(script) {
+				name := parseSprocName(script)
+				localSprocs = append(localSprocs, &Sproc{
+					Name:   name,
+					Script: script,
+					CRC:    hash([]byte(script)),
+				})
+			}
 		}
 	}
 
@@ -59,43 +67,61 @@ func upsertSprocs(conn runner.Connection, options *AppOptions) error {
 	}
 	defer tx.AutoRollback()
 
-	var dbSprocs []*Sproc
-
+	// need to know if it exists to display inserting or updating feedback
 	existsSproc := `
-	SELECT name, crc
-	FROM dat__sprocs
+	select name, crc
+	from dat__sprocs
+	where name = $1
+
+	union all
+
+	select  proname, '0'
+	from pg_catalog.pg_namespace n
+	join pg_catalog.pg_proc p on pronamespace = n.oid
+	where
+		nspname = 'public'
+		and proname = $1
+		and not exists (
+			select 1
+			from dat__sprocs
+			where name = $1
+		)
 	`
-	err = tx.SQL(existsSproc).QueryStructs(&dbSprocs)
-	if err != nil {
-		return err
-	}
 
 	executed := 0
 	for _, localSproc := range localSprocs {
-		found := sprocFind(dbSprocs, localSproc.Name)
-		if found == nil {
-			insert := `
-			insert into dat__sprocs (name, crc, script)
-			values ($1, $2, $3)
+		found := false
+		var dbSproc Sproc
+		err = tx.SQL(existsSproc, localSproc.Name).QueryStruct(&dbSproc)
+		if err != nil {
+			if err != sql.ErrNoRows {
+				return err
+			}
+		} else {
+			found = true
+		}
+
+		addSproc := false
+		if !found {
+			addSproc = true
+			logger.Info("Inserting %s\n", localSproc.Name)
+		} else if dbSproc.CRC != localSproc.CRC {
+			addSproc = true
+			logger.Info("Updating %s\n", localSproc.Name)
+		}
+
+		if addSproc {
+			trackAndDeleteSQL := `
+			delete from dat__sprocs where name = $1;
+			insert into dat__sprocs (name, crc, script) values ($1, $2, $3);
+			select dat__delfunc($1);
 			`
-			logger.Info("Inserting sproc %s ...", localSproc.Name)
-			_, err := tx.SQL(insert, localSproc.Name, localSproc.CRC, localSproc.Script).Exec()
+
+			_, err = tx.ExecExpr(dat.Interp(trackAndDeleteSQL, localSproc.Name, localSproc.CRC, localSproc.Script))
 			if err != nil {
 				return err
 			}
-			executed++
-		} else if found.CRC != localSproc.CRC {
-			update := `
-			update dat__sprocs
-			set
-				crc = $1,
-				updated_at = now(),
-				script = $2
-			where name = $3
-			`
-
-			logger.Info("Updating sproc %s ...\n", localSproc.Name)
-			_, err := tx.SQL(update, localSproc.CRC, localSproc.Script, localSproc.Name).Exec()
+			err = execScript(tx, localSproc.Script, false)
 			if err != nil {
 				return err
 			}

@@ -99,7 +99,7 @@ func loadConfig() (*conf.Configuration, error) {
 	}
 
 	// later filters merge over earlier filters
-	return conf.Process(
+	config, err := conf.Process(
 		// read from config.json file (if present)
 		datYAML,
 
@@ -115,4 +115,19 @@ func loadConfig() (*conf.Configuration, error) {
 		// use custom filter to decrypt encrypted values
 		conf.FilterFunc(decryptor),
 	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// unless command is "init", dat.yaml is required
+	unparsed, err := config.StringArray("_unparsed")
+	if len(unparsed) > 0 {
+		command := unparsed[0]
+		if command != "init" && datYAML == nil {
+			return nil, errors.New("migrations/dat.yaml not found. Try `dat init`")
+		}
+	}
+
+	return config, err
 }

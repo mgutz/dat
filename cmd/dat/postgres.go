@@ -84,8 +84,8 @@ func (pg *PostgresAdapter) Bootstrap(ctx *AppContext, conn runner.Connection) er
 		return nil
 	}
 
-	// check to see if there is an _INIT sub directory which executes before
-	// any dat scripts. The _INIT/up.sql should be an idempotent
+	// check to see if there is an _init sub directory which executes before
+	// any dat scripts. The _init/up.sql should be an idempotent
 	// script. It was created to migrate data from existing migration tool
 	// to dat.
 	initScript := readInitScript(ctx.Options)
@@ -116,16 +116,17 @@ func (pg *PostgresAdapter) Bootstrap(ctx *AppContext, conn runner.Connection) er
         CREATE OR REPLACE FUNCTION dat__delfunc(_name text) returns void AS $$
         BEGIN
             EXECUTE (
-               SELECT string_agg(format('DROP FUNCTION %s(%s);'
-                                 ,oid::regproc
-                                 ,pg_catalog.pg_get_function_identity_arguments(oid))
-                      ,E'\n')
+               SELECT string_agg(format(
+					  'DROP FUNCTION %s(%s);',
+                      oid::regproc,
+					  pg_catalog.pg_get_function_identity_arguments(oid)
+				   ), E'\n')
                FROM   pg_proc
                WHERE  proname = _name
                AND    pg_function_is_visible(oid)
             );
         exception when others then
-            -- do nothing, EXEC above returns an exception if it does not
+          -- do nothing, EXEC above returns an exception if it does not
           -- find existing function
         END $$ LANGUAGE plpgsql;
       `
