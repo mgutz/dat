@@ -90,7 +90,7 @@ func (pg *PostgresAdapter) Bootstrap(ctx *AppContext, conn runner.Connection) er
 	// to dat.
 	initScript := readInitScript(ctx.Options)
 	if initScript != "" {
-		err := execScript(conn, initScript)
+		err := execScript(conn, initScript, false)
 		if err != nil {
 			return err
 		}

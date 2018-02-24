@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	"github.com/mgutz/str"
 
@@ -267,7 +266,7 @@ var reBatchSeparator = regexp.MustCompile(`(?m)^GO\n`)
 
 // Executes a script which may have a batch separator (default is GO). Filename
 // is used for error reporting
-func execScript(conn runner.Connection, script string) error {
+func execScript(conn runner.Connection, script string, warnEmpty bool) error {
 	statements := reBatchSeparator.Split(script, -1)
 	if len(statements) == 0 {
 		return nil
@@ -284,7 +283,11 @@ func execScript(conn runner.Connection, script string) error {
 
 		_, err := conn.SQL(statement).Exec()
 		if err != nil {
-			if strings.Contains(err.Error(), "no RowsAffected") {
+			if strings.Contains(err.Error(), "empty statement") {
+				if warnEmpty {
+					logger.Info("\nEmpty query:\n")
+					logger.Info("%s\n", statement)
+				}
 				continue
 			}
 
@@ -304,7 +307,7 @@ func execFile(ctx *AppContext, conn runner.Connection, filename string) (string,
 		return "", err
 	}
 
-	err = execScript(conn, script)
+	err = execScript(conn, script, false)
 	if err != nil {
 		logger.Info("\n")
 		return "", err
@@ -399,23 +402,11 @@ func (pg *PostgresAdapter) Drop(ctx *AppContext, superConn runner.Connection) er
 	return err
 }
 
-var reSprocName = regexp.MustCompile(`(?mi)^\s*create function\s(\w+(\.(\w+))?)`)
-
-func parseSprocName(body string) string {
-	matches := reSprocName.FindStringSubmatch(body)
-	if len(matches) > 1 {
-		return matches[1]
-	}
-	return ""
-}
-
 func sprintPQError(script string, err error) string {
 	if err == nil {
 		return ""
 	}
 
-	fmt.Println("DBG:00")
-	spew.Dump(err)
 	if e, ok := err.(*pq.Error); ok {
 		//. TODO need to show line number, column on syntax errors
 		// fmt.Println("Code", e.Code)
@@ -427,7 +418,6 @@ func sprintPQError(script string, err error) string {
 		// fmt.Println("Hint", e.Hint)
 		// fmt.Println("Severity", e.Severity)
 
-		fmt.Println("DBG:10")
 		if e.Position != "" {
 			line, col, _ := extractLineColumn(script, e.Position)
 			return fmt.Sprintf("[%s=%s] %s at line=%d col=%d\n", e.Severity, e.Code, e.Message, line, col)
@@ -473,63 +463,23 @@ func extractLineColumn(script string, pos string) (int, int, error) {
 	}
 
 	return line, column, nil
-
-	// i = 0
-	// while i < max and i < position
-	//   ch = sql[i]
-	//   if ch is '\r'
-	// 	line++
-	// 	column = 1
-	// 	# account for windows
-	// 	if i+1 < max
-	// 	  if sql[i+1] is '\n'
-	// 		i++
-	//   else if ch is '\n'
-	// 	line++
-	// 	column = 1
-	//   else
-	// 	column++
-	//   i++
-
 }
 
-/*
+func getCommandArg1(ctx *AppContext) string {
+	if len(ctx.Options.UnparsedArgs) > 1 {
+		return ctx.Options.UnparsedArgs[1]
+	}
+	return ""
+}
 
-###
-# Finds the line, col based on error.position
-###
-toSqlError = (filename, err, sql="") ->
-  if not err.position?
-    return err.message
+const datYAMLExample = `
+connection:
+  host: localhost
+  database: dev_db
+  user: grace
+  password: "!development"
+  extraParams: "sslmode=disable"
 
-  if not sql
-    try
-      sql = Fs.readFileSync(filename, 'utf8')
-    catch err
-      return err
-
-  message = err.message
-  position = err.position - 1 # postgres 1-based
-  line = 1
-  column = 1
-  max = sql.length
-
-  i = 0
-  while i < max and i < position
-    ch = sql[i]
-    if ch is '\r'
-      line++
-      column = 1
-      # account for windows
-      if i+1 < max
-        if sql[i+1] is '\n'
-          i++
-    else if ch is '\n'
-      line++
-      column = 1
-    else
-      column++
-    i++
-
-  new SqlError(message, filename, line, column)
-*/
+# if using docker set to container name to use pg_dump and pg_restore inside container
+# dockerContainer: postgres-svc
+`

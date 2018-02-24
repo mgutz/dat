@@ -49,13 +49,14 @@ dat v1.0.0.0-alpha.1 - simple migration tool
 Usage: dat [command]
 
 Commands:
+  con   	Runs psql on database
   createdb  Recreates database
   dropdb    Drops database
   down      Migrate down
   dump      Dumps the database to a file
-  exec      Executes sql from command line
+  exec      Executes sql string
   file      Executes sql file
-  init 		Initializes migrations dir w/ dat.yaml
+  init 		Initializes migrations dir
   new       Creates a new migration
   redo      Redoes the last migration
   restore   Restores a dump file
@@ -68,11 +69,13 @@ func run(ctx *AppContext, command string) error {
 	default:
 		logger.Info(usage())
 		return nil
-	case "createdb":
+	case "create", "createdb":
 		return commandCreateDB(ctx)
+	case "con", "console":
+		return commandConsole(ctx)
 	case "down":
 		return commandDown(ctx)
-	case "dropdb":
+	case "drop", "dropdb":
 		return commandDropDB(ctx)
 	case "dump":
 		return commandDump(ctx)

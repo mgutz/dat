@@ -5,11 +5,15 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
 	conf "github.com/mgutz/configpipe"
 )
+
+// ErrConfigNotFound indicates configuration file not found.
+var ErrConfigNotFound = errors.New("dat.yaml not found")
 
 // Connection are the options for building connections string.
 type Connection struct {
@@ -37,8 +41,8 @@ type AppOptions struct {
 func parseOptions(config *conf.Configuration) (*AppOptions, error) {
 	options := &AppOptions{
 		Connection: Connection{
-			Database:    config.MustString("connection.database"),
-			User:        config.MustString("connection.user"),
+			Database:    config.AsString("connection.database"),
+			User:        config.AsString("connection.user"),
 			Password:    config.AsString("connection.password"),
 			Port:        config.OrString("connection.port", "5432"),
 			Host:        config.OrString("connection.host", "localhost"),
@@ -88,10 +92,16 @@ func loadConfig() (*conf.Configuration, error) {
 		prodConfig = conf.YAML(&conf.File{Path: filepath.Join(dir, "dat-production.yaml")})
 	}
 
+	var datYAML conf.Filter
+	filename := filepath.Join(dir, "dat.yaml")
+	if _, err := os.Stat(filename); err == nil {
+		datYAML = conf.YAML(&conf.File{Path: filename})
+	}
+
 	// later filters merge over earlier filters
 	return conf.Process(
 		// read from config.json file (if present)
-		conf.YAML(&conf.File{Path: filepath.Join(dir, "dat.yaml")}),
+		datYAML,
 
 		// Any nil filter is noop, so this WILL NOT be processed in development mode.
 		prodConfig,

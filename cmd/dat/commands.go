@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -39,6 +38,42 @@ func commandCreateDB(ctx *AppContext) error {
 
 	logger.Info("Created %s", adapter.ConnectionString(&ctx.Options.Connection))
 	return nil
+}
+
+// commandConsole runs psql console
+func commandConsole(ctx *AppContext) error {
+	var args []string
+	var exe string
+
+	container := ctx.Options.DockerContainer
+	if container == "" {
+		exe = "psql"
+	} else {
+		exe = "docker"
+		args = []string{
+			"exec",
+			"-it",
+			container,
+			"psql",
+		}
+	}
+
+	connection := ctx.Options.Connection
+
+	args = append(args,
+		"--dbname="+connection.Database,
+		"--host="+connection.Host,
+		"--username="+connection.User,
+		"--port="+connection.Port,
+	)
+
+	logger.Info("exe=%s args=%v\n", exe, args)
+	cmd := exec.Command(exe, args...)
+	cmd.Env = append(os.Environ(), "PGPASSWORD="+connection.Password)
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // Down undoes 1 or more migrations based on argument. Default is 1 down.
@@ -82,12 +117,12 @@ func commandDropDB(ctx *AppContext) error {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 
 	err = adapter.Drop(ctx, db)
 	if err != nil {
 		return err
 	}
-	db.Close()
 	return nil
 }
 
@@ -154,6 +189,72 @@ func commandDump(ctx *AppContext) error {
 	return err
 }
 
+func commandExec(ctx *AppContext) error {
+	q := getCommandArg1(ctx)
+	if q == "" {
+		return errors.New(`Usage: dat exec [sql_string]`)
+	}
+
+	adapter := NewPostgresAdapter()
+	db, err := adapter.AcquireDB(&ctx.Options.Connection)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	var obj jo.Object
+	err = db.SQL(q).QueryObject(&obj)
+	if err != nil {
+		return err
+	}
+
+	logger.Info(obj.Prettify())
+	return nil
+}
+
+func commandFile(ctx *AppContext) error {
+	filename := getCommandArg1(ctx)
+	if filename == "" {
+		return errors.New(`Usage: dat file [filename]`)
+	}
+
+	adapter := NewPostgresAdapter()
+	db, err := adapter.AcquireDB(&ctx.Options.Connection)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sql, err := readFileText(filename)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.SQL(sql).Exec()
+	if err != nil {
+		logger.Error(sprintPQError(sql, err))
+		return err
+	}
+
+	logger.Info("OK %s\n", filename)
+	return nil
+}
+
+func commandInit(ctx *AppContext) error {
+	filename := filepath.Join(ctx.Options.MigrationsDir, "dat.yaml")
+	if _, err := os.Stat(filename); err == nil {
+		return errors.New("File exists " + filename)
+	}
+
+	err := writeFileAll(filename, []byte(datYAMLExample))
+	if err != nil {
+		return err
+	}
+
+	logger.Info("Edit %s", filename)
+	return nil
+}
+
 func commandList(ctx *AppContext) error {
 	adapter, db, err := getAdapterAndDB(ctx)
 	if err != nil {
@@ -163,14 +264,15 @@ func commandList(ctx *AppContext) error {
 	migrations, err := adapter.GetAllMigrations(db)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			logger.Info("No migrations found.")
+			logger.Info("A No migrations found.")
 			return nil
 		}
 		return err
 	}
 
 	if len(migrations) == 0 {
-		return errors.New("No migrations found")
+		logger.Info("No migrations found")
+		return nil
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -246,7 +348,7 @@ func migrateDown(conn runner.Connection, count int) error {
 	for _, migration := range migrations {
 		logger.Info("DB down script %s ... ", migration.Name)
 		if !str.IsEmpty(migration.DownScript) {
-			err = execScript(tx, migration.DownScript)
+			err = execScript(tx, migration.DownScript, true)
 			if err != nil {
 				logger.Info("\n")
 				return err
@@ -415,197 +517,4 @@ func commandUp(ctx *AppContext) error {
 
 	err = upsertSprocs(db, ctx.Options)
 	return err
-}
-
-// upsertSprocs parses all sprocs in SQL files under migrations/sprocs and
-// insert/updates the database
-func upsertSprocs(conn runner.Connection, options *AppOptions) error {
-	sprocsDir := options.SprocsDir
-	files, err := getSprocFiles(sprocsDir)
-	if err != nil {
-		return err
-	}
-
-	var localSprocs []*Sproc
-	for _, file := range files {
-		filename := filepath.Join(sprocsDir, file)
-		script, err := readFileText(filename)
-		if err != nil {
-			return err
-		}
-
-		sprocs := reBatchSeparator.Split(script, -1)
-		if len(sprocs) == 0 {
-			continue
-		}
-
-		for _, sproc := range sprocs {
-			name := parseSprocName(sproc)
-			localSprocs = append(localSprocs, &Sproc{
-				Name:   name,
-				Script: sproc,
-				CRC:    hash([]byte(sproc)),
-			})
-		}
-	}
-
-	tx, err := conn.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.AutoRollback()
-
-	var dbSprocs []*Sproc
-
-	existsSproc := `
-	SELECT name, crc
-	FROM dat__sprocs
-	`
-	err = tx.SQL(existsSproc).QueryStructs(&dbSprocs)
-	if err != nil {
-		return err
-	}
-
-	executed := 0
-	for _, localSproc := range localSprocs {
-		found := sprocFind(dbSprocs, localSproc.Name)
-		if found == nil {
-			insert := `
-			insert into dat__sprocs (name, crc, script)
-			values ($1, $2, $3)
-			`
-			logger.Info("Inserting sproc %s ...", localSproc.Name)
-			_, err := tx.SQL(insert, localSproc.Name, localSproc.CRC, localSproc.Script).Exec()
-			if err != nil {
-				return err
-			}
-			executed++
-		} else if found.CRC != localSproc.CRC {
-			update := `
-			update dat__sprocs
-			set
-				crc = $1,
-				updated_at = now(),
-				script = $2
-			where name = $3
-			`
-
-			logger.Info("Updating sproc %s ...\n", localSproc.Name)
-			_, err := tx.SQL(update, localSproc.CRC, localSproc.Script, localSproc.Name).Exec()
-			if err != nil {
-				return err
-			}
-			executed++
-		}
-	}
-
-	if executed == 0 {
-		logger.Info("No sprocs need updating")
-	}
-
-	tx.Commit()
-
-	return nil
-}
-
-func hash(b []byte) string {
-	hash := fnv.New64a()
-	hash.Write(b)
-	return fmt.Sprintf("%x", hash.Sum64())
-}
-
-func sprocFind(sprocs []*Sproc, name string) *Sproc {
-
-	if len(sprocs) > 0 {
-		for _, sproc := range sprocs {
-			if sproc.Name == name {
-				return sproc
-			}
-		}
-	}
-
-	return nil
-}
-
-func commandExec(ctx *AppContext) error {
-	sql := getCommandArg1(ctx)
-	if sql == "" {
-		return errors.New(`Usage: dat exec [sql]`)
-	}
-
-	adapter := NewPostgresAdapter()
-	db, err := adapter.AcquireDB(&ctx.Options.Connection)
-	if err != nil {
-		return err
-	}
-
-	var obj *jo.Object
-	err = db.SQL(sql).QueryObject(&obj)
-	if err != nil {
-		return err
-	}
-
-	logger.Info(obj.Prettify())
-	return nil
-}
-
-func commandFile(ctx *AppContext) error {
-	filename := getCommandArg1(ctx)
-	if filename == "" {
-		return errors.New(`Usage: dat file [sql]`)
-	}
-
-	adapter := NewPostgresAdapter()
-	db, err := adapter.AcquireDB(&ctx.Options.Connection)
-	if err != nil {
-		return err
-	}
-
-	sql, err := readFileText(filename)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.SQL(sql).Exec()
-	if err != nil {
-		logger.Error(sprintPQError(sql, err))
-		return err
-	}
-
-	logger.Info("OK %s\n", filename)
-	return nil
-}
-
-func getCommandArg1(ctx *AppContext) string {
-	if len(ctx.Options.UnparsedArgs) > 1 {
-		return ctx.Options.UnparsedArgs[1]
-	}
-	return ""
-}
-
-const datYAMLExample = `
-connection:
-  host: localhost
-  database: matcherino_development
-  user: matcherino
-  password: "!development"
-  extraParams: "sslmode=disable"
-
-# set this if using docker, it will use pg_dump and pg_restore in container
-# dockerContainer: postgres-svc
-`
-
-func commandInit(ctx *AppContext) error {
-	filename := filepath.Join(ctx.Options.MigrationsDir, "dat.yaml")
-	if _, err := os.Stat(filename); err == nil {
-		return errors.New("File exists " + filename)
-	}
-
-	err := writeFileAll(filename, []byte(datYAMLExample))
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Edit %s", filename)
-	return nil
 }
