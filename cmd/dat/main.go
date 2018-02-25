@@ -1,5 +1,4 @@
 /**
- *
  * dat is a migration tool
  */
 package main
@@ -7,11 +6,20 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/mgutz/logxi"
 )
 
+const version = "1.0.0-alpha.1"
+
 func main() {
-	// disable dat's logxi logger
-	//logxi.Suppress(true)
+	// disable logxi logger
+	logxi.Suppress(true)
+
+	if len(os.Args) < 2 {
+		logger.Error(usage())
+		os.Exit(1)
+	}
 
 	config, err := loadConfig()
 	if err != nil {
@@ -43,26 +51,28 @@ func main() {
 }
 
 func usage() string {
-	return `
-dat v1.0.0.0-alpha.1 - simple migration tool
+	const text = `
+dat %s - migration tool
 
 Usage: dat [command]
 
 Commands:
-  con   	Runs psql on database
+  cli       Runs psql on database
   createdb  Recreates database
   dropdb    Drops database
   down      Migrate down
   dump      Dumps the database to a file
   exec      Executes sql string
   file      Executes sql file
-  init 		Initializes migrations dir
+  init      Initializes migrations dir
   new       Creates a new migration
-  query		Queries database and prints JSON
+  query     Queries database and prints JSON
   redo      Redoes the last migration
   restore   Restores a dump file
   up        Runs all migrations
 `
+
+	return fmt.Sprintf(text, version)
 }
 
 func run(ctx *AppContext, command string) error {
@@ -70,10 +80,10 @@ func run(ctx *AppContext, command string) error {
 	default:
 		logger.Info(usage())
 		return nil
+	case "cli":
+		return commandCLI(ctx)
 	case "create", "createdb":
 		return commandCreateDB(ctx)
-	case "con", "console":
-		return commandConsole(ctx)
 	case "down":
 		return commandDown(ctx)
 	case "drop", "dropdb":

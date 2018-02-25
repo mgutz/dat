@@ -418,7 +418,7 @@ func sprintPQError(script string, err error) string {
 		// fmt.Println("Severity", e.Severity)
 
 		if e.Position != "" {
-			line, col, _ := extractLineColumn(script, e.Position)
+			line, col, _ := calcLineCol(script, e.Position)
 			return fmt.Sprintf("[%s code=%s]\n%s at line=%d col=%d\n", e.Severity, e.Code, e.Message, line, col)
 		}
 		return fmt.Sprintf("[%s code=%s]\n%s", e.Severity, e.Code, e.Message)
@@ -427,7 +427,7 @@ func sprintPQError(script string, err error) string {
 	return ""
 }
 
-func extractLineColumn(script string, pos string) (int, int, error) {
+func calcLineCol(script string, pos string) (int, int, error) {
 	position, err := strconv.Atoi(pos)
 	if err != nil {
 		return 0, 0, err

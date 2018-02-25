@@ -33,8 +33,6 @@ type AppOptions struct {
 	DumpsDir        string
 	MigrationsDir   string
 	SprocsDir       string
-	TablePrefix     string
-	Vendor          string
 	UnparsedArgs    []string
 }
 
@@ -53,8 +51,6 @@ func parseOptions(config *conf.Configuration) (*AppOptions, error) {
 		DumpsDir:        config.AsString("dumpsDir"),
 		MigrationsDir:   config.OrString("dir", "migrations"),
 		SprocsDir:       config.AsString("sprocsDir"),
-		TablePrefix:     config.OrString("tablePrefix", "dat"),
-		Vendor:          config.OrString("vendor", "postgres"),
 	}
 
 	if options.DumpsDir == "" {

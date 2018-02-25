@@ -40,8 +40,8 @@ func commandCreateDB(ctx *AppContext) error {
 	return nil
 }
 
-// commandConsole runs psql console
-func commandConsole(ctx *AppContext) error {
+// commandCLI runs psql console
+func commandCLI(ctx *AppContext) error {
 	connection := ctx.Options.Connection
 	var args []string
 	var exe string
@@ -78,7 +78,7 @@ func commandConsole(ctx *AppContext) error {
 	return cmd.Run()
 }
 
-// Down undoes 1 or more migrations based on argument. Default is 1 down.
+// Down undoes 1 or more migrations. Default is 1 down.
 func commandDown(ctx *AppContext) error {
 	var count int
 	if len(ctx.Options.UnparsedArgs) == 1 {
