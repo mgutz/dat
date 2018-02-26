@@ -16,7 +16,7 @@ type Expression struct {
 
 // Expr is a SQL expression with placeholders, and a slice of args to replace them with
 func Expr(sql string, values ...interface{}) *Expression {
-	logger.Warn("DEPRECATION Expr will be deprecated. Use dat.Exp or dat.Expi")
+	logger.Warn("DEPRECATION Expr will be deprecated. Use dat.Prep or dat.Interp")
 	return &Expression{SQL: sql, Args: values, Interpolate: true}
 }
 
