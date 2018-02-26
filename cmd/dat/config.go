@@ -31,6 +31,7 @@ type AppOptions struct {
 	BatchSeparator  string
 	DockerContainer string
 	DumpsDir        string
+	InitDir         string
 	MigrationsDir   string
 	SprocsDir       string
 	UnparsedArgs    []string
@@ -49,12 +50,17 @@ func parseOptions(config *conf.Configuration) (*AppOptions, error) {
 		BatchSeparator:  config.OrString("batchSeparator", "GO"),
 		DockerContainer: config.AsString("dockerContainer"),
 		DumpsDir:        config.AsString("dumpsDir"),
+		InitDir:         config.AsString("initDir"),
 		MigrationsDir:   config.OrString("dir", "migrations"),
 		SprocsDir:       config.AsString("sprocsDir"),
 	}
 
 	if options.DumpsDir == "" {
-		options.DumpsDir = filepath.Join(options.MigrationsDir, "_dumps")
+		options.DumpsDir = filepath.Join(options.MigrationsDir, "dumps")
+	}
+
+	if options.InitDir == "" {
+		options.InitDir = filepath.Join(options.MigrationsDir, "init")
 	}
 
 	if options.SprocsDir == "" {

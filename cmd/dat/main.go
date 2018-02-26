@@ -10,7 +10,7 @@ import (
 	"github.com/mgutz/logxi"
 )
 
-const version = "1.0.0-alpha.1"
+const version = "4.0.0-alpha.1"
 
 func main() {
 	// disable logxi logger

@@ -84,8 +84,8 @@ func (pg *PostgresAdapter) Bootstrap(ctx *AppContext, conn runner.Connection) er
 		return nil
 	}
 
-	// check to see if there is an _init sub directory which executes before
-	// any dat scripts. The _init/up.sql should be an idempotent
+	// check to see if there is an init sub directory which executes before
+	// any dat scripts. The init/up.sql should be an idempotent
 	// script. It was created to migrate data from existing migration tool
 	// to dat.
 	initScript := readInitScript(ctx.Options)

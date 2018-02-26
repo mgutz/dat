@@ -2,7 +2,7 @@
  * This idempotent example script runs each time dat starts to convert legacy
  * migrations to `dat`. This exmaple migrates `mygrate` tables to `dat`.
  *
- * dat runs `_init/up.sql` if it exists before any other script.
+ * dat runs `migrations/init/up.sql` if it exists before any other script.
  */
 do $$ begin
 	if not exists (

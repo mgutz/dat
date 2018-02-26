@@ -239,7 +239,7 @@ func writeFileAll(filename string, b []byte) error {
 // readInitScript reads migrations/_init/up.sql. If any error occurs, it returns
 // an empty string.
 func readInitScript(options *AppOptions) string {
-	path := filepath.Join(options.MigrationsDir, "_init", "up.sql")
+	path := filepath.Join(options.InitDir, "up.sql")
 	s, _ := readFileText(path)
 	return s
 }
