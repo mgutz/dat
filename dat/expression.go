@@ -57,7 +57,7 @@ func AppliedExpr(cmd string, arrArgs [][]interface{}) *AppliedExpression {
 }
 
 // Expression implements expressioner interface
-func (ae *AppliedExpression) Expression() (string, interface{}, error) {
+func (ae *AppliedExpression) Expression() (string, []interface{}, error) {
 	var buf bytes.Buffer
 
 	for _, args := range ae.arrArgs {
