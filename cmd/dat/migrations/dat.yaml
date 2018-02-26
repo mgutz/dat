@@ -1,0 +1,10 @@
+
+connection:
+  host: localhost
+  database: dev_db
+  user: grace
+  password: "!development"
+  extraParams: "sslmode=disable"
+
+# if using docker set to container name to use pg_dump and pg_restore inside container
+# dockerContainer: postgres-svc

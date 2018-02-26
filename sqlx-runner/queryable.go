@@ -57,6 +57,28 @@ func (q *Queryable) Exec(cmd string, args ...interface{}) (*dat.Result, error) {
 	return &dat.Result{RowsAffected: rowsAffected}, nil
 }
 
+// ExecExpr executes an Expression
+func (q *Queryable) ExecExpr(expr dat.Expressioner) (*dat.Result, error) {
+	var result sql.Result
+	var err error
+
+	cmd, args, err := expr.Expression()
+
+	if len(args) == 0 {
+		result, err = q.runner.Exec(cmd)
+	} else {
+		result, err = q.runner.Exec(cmd, args...)
+	}
+	if err != nil {
+		return nil, logSQLError(err, "Exec", cmd, args)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, logSQLError(err, "Exec", cmd, args)
+	}
+	return &dat.Result{RowsAffected: rowsAffected}, nil
+}
+
 // ExecBuilder executes the SQL in builder.
 func (q *Queryable) ExecBuilder(b dat.Builder) error {
 	sql, args, err := b.Interpolate()
@@ -79,7 +101,7 @@ func (q *Queryable) ExecBuilder(b dat.Builder) error {
 // statements executed, or the index at which an error occurred.
 func (q *Queryable) ExecMulti(commands ...*dat.Expression) (int, error) {
 	for i, cmd := range commands {
-		_, err := q.runner.Exec(cmd.SQL, cmd.Args...)
+		_, err := q.ExecExpr(cmd)
 		if err != nil {
 			return i, err
 		}

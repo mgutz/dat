@@ -1,9 +1,11 @@
 
 
+
 #. Replaces text in files
-function replace-text {
-	# excludes ./vendor
-	find . -path ./vendor -prune -o -name "*.go" -print | xargs sed -i 's|gopkg.in/mgutz/dat.v2/|github.com/mgutz/dat/|'
+function update-version {
+	version=$(cat VERSION)
+    # excludes ./vendor
+	sed -i "s|const version = \".*\"|const version = \"${version}\"|" cmd/dat/main.go
 }
 
 #. Links a go/src... project to vendor
@@ -15,4 +17,43 @@ function link {
     local package="$1"
     rm -rf vendor/$package
     ln -sfn $HOME/go/src/$package vendor/$package
+}
+
+
+#. Builds executables
+function build {
+    package="${1:-github.com/mgutz/dat/cmd/dat}"
+    if [[ -z "$package" ]]; then
+        echo "usage: $0 <package-name>"
+        exit 1
+    fi
+    package_split=(${package//\// })
+    package_name=${package_split[-1]}
+
+    output_dir=build
+    rm -rf $output_dir
+    mkdir -p $output_dir
+
+    platforms=("windows/amd64" "windows/386" "darwin/amd64" "linux/amd64" "linux/386")
+    version=$(cat VERSION)
+
+    for platform in "${platforms[@]}"
+    do
+        platform_split=(${platform//\// })
+        GOOS=${platform_split[0]}
+        GOARCH=${platform_split[1]}
+        output_archive=$package_name'-v'$version'-'$GOOS'-'$GOARCH.gz
+        output_name=$package_name
+        if [ $GOOS = "windows" ]; then
+            output_name+='.exe'
+        fi
+
+        env GOOS=$GOOS GOARCH=$GOARCH go build -o $output_dir/$output_name $package
+        tar cvf $output_dir/$output_archive -C $output_dir $output_name
+        rm $output_dir/$output_name
+        if [ $? -ne 0 ]; then
+            echo 'An error has occurred! Aborting the script execution...'
+            exit 1
+        fi
+    done
 }

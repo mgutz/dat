@@ -21,7 +21,10 @@
 
 [[projects]]
   name = "github.com/garyburd/redigo"
-  packages = ["internal","redis"]
+  packages = [
+    "internal",
+    "redis"
+  ]
   revision = "8873b2f1995f59d4bcdd2b0dc9858e2cb9bf0c13"
   version = "v1.0.0"
 
@@ -32,15 +35,27 @@
   revision = "66487b23f2880ba32e185121d2cd51a338ea069a"
 
 [[projects]]
+  name = "github.com/imdario/mergo"
+  packages = ["."]
+  revision = "7fe0c75c13abdee74b09fcacef5ea1c6bba6a874"
+  version = "0.2.4"
+
+[[projects]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
-  packages = [".","reflectx"]
-  revision = "d9bd385d68c068f1fabb5057e3dedcbcbb039d0f"
+  packages = [
+    ".",
+    "reflectx"
+  ]
+  revision = "05cef0741ade10ca668982355b3f3f0bcf0ff0a8"
 
 [[projects]]
   branch = "master"
   name = "github.com/lib/pq"
-  packages = [".","oid"]
+  packages = [
+    ".",
+    "oid"
+  ]
   revision = "2704adc878c21e1329f46f6e56a1c387d788ff94"
 
 [[projects]]
@@ -56,10 +71,22 @@
   version = "v0.0.2"
 
 [[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
+  version = "v0.0.2"
+
+[[projects]]
   branch = "master"
   name = "github.com/mgutz/ansi"
   packages = ["."]
   revision = "9520e82c474b0a04dd04f8a40959027271bab992"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mgutz/configpipe"
+  packages = ["."]
+  revision = "621b0622fab23a6fe6c1a740586312ed4e3d3681"
 
 [[projects]]
   branch = "next"
@@ -92,6 +119,12 @@
   revision = "00c06406c2dd2e011f153a6502a21473676db33f"
 
 [[projects]]
+  branch = "map-string"
+  name = "github.com/mgutz/yaml"
+  packages = ["."]
+  revision = "fa84835a587118b5ebe80c9b66ecd5a4d96e93ea"
+
+[[projects]]
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
@@ -99,9 +132,21 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/nahanni/go-ucl"
+  packages = ["."]
+  revision = "3788fcf0dad8868285c3ebb779fae2856b48da61"
+
+[[projects]]
+  branch = "master"
   name = "github.com/nozzle/throttler"
   packages = ["."]
   revision = "d9b45f19996c645d38c9266d1f5cf1990e930119"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  revision = "b8a9be070da40449e501c3c4730a889e42d87a9e"
 
 [[projects]]
   name = "github.com/pmezard/go-difflib"
@@ -134,8 +179,24 @@
   revision = "f845067cf72a21fb4929b0e6a35273bd83b56396"
 
 [[projects]]
+  name = "gopkg.in/AlecAivazis/survey.v1"
+  packages = [
+    ".",
+    "core",
+    "terminal"
+  ]
+  revision = "0aa8b6a162b391fe2d95648b7677d1d6ac2090a6"
+  version = "v1.4.1"
+
+[[projects]]
   name = "gopkg.in/godo.v2"
-  packages = [".","glob","util","watcher","watcher/fswatch"]
+  packages = [
+    ".",
+    "glob",
+    "util",
+    "watcher",
+    "watcher/fswatch"
+  ]
   revision = "b5fd2f0bef1ebe832e628cfad18ab1cc707f65a1"
   version = "v2.0.9"
 
@@ -148,6 +209,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b44137c9dc1f63f04edd9ab34c21bf193b964058fc8e584c1790f38701500972"
+  inputs-digest = "8b625f4c32b90bc86d80105c465617eee3187d5ba822a6b0ec6b993aa601c60d"
   solver-name = "gps-cdcl"
   solver-version = 1
