@@ -18,6 +18,7 @@ type Person struct {
 	Key       dat.NullString  `db:"key"`
 	Name      string          `db:"name"`
 	CreatedAt dat.NullTime    `db:"created_at"`
+	Nullable  *string         `db:"nullable"`
 
 	Posts []*Post `json:"posts"`
 }
@@ -79,7 +80,8 @@ const createTables = `
 		image bytea,
 		key text,
 		name text NOT NULL,
-		created_at timestamptz default now()
+		created_at timestamptz default now(),
+		nullable text
 	);
 	CREATE TABLE posts (
 		id SERIAL PRIMARY KEY,
