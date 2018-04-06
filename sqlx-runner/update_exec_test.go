@@ -61,6 +61,34 @@ func TestUpdateReal(t *testing.T) {
 	assert.Equal(t, person.Email.String, "barack@whitehouse.gov")
 }
 
+func TestUpdateRealNullable(t *testing.T) {
+	s := beginTxWithFixtures()
+	defer s.AutoRollback()
+
+	person := Person{Name: "Barack", Nullable: nil}
+	err := s.
+		InsertInto("people").
+		Columns("name", "nullable").
+		Record(person).
+		Returning("*").
+		QueryStruct(&person)
+	person.Nullable = strToPtr("obama2@whitehouse.gov")
+	_, err = s.
+		Update("people").
+		Set("nullable", person.Nullable).
+		Where("id = $1", person.ID).
+		Exec()
+	assert.NoError(t, err)
+	err = s.
+		Select("*").
+		From("people").
+		Where("id = $1", person.ID).
+		QueryStruct(&person)
+	assert.NoError(t, err)
+	assert.NotNil(t, person.Nullable)
+	assert.Equal(t, *person.Nullable, "obama2@whitehouse.gov")
+}
+
 func TestUpdateReturningStar(t *testing.T) {
 	s := beginTxWithFixtures()
 	defer s.AutoRollback()
@@ -231,4 +259,8 @@ func TestUpdateScopeFunc(t *testing.T) {
 	assert.Equal(t, person.Name, "Barack")
 	assert.Equal(t, person.Email.Valid, true)
 	assert.Equal(t, person.Email.String, "barack@whitehouse.gov")
+}
+
+func strToPtr(s string) *string {
+	return &s
 }
