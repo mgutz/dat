@@ -3,7 +3,7 @@ package runner
 import (
 	"testing"
 
-	"gopkg.in/mgutz/dat.v1"
+	dat "gopkg.in/mgutz/dat.v2"
 	"gopkg.in/stretchr/testify.v1/assert"
 )
 
@@ -73,12 +73,14 @@ func TestUpdateRealNullable(t *testing.T) {
 		Returning("*").
 		QueryStruct(&person)
 	person.Nullable = strToPtr("obama2@whitehouse.gov")
+
 	_, err = s.
 		Update("people").
 		Set("nullable", person.Nullable).
 		Where("id = $1", person.ID).
 		Exec()
 	assert.NoError(t, err)
+
 	err = s.
 		Select("*").
 		From("people").
@@ -87,6 +89,21 @@ func TestUpdateRealNullable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, person.Nullable)
 	assert.Equal(t, *person.Nullable, "obama2@whitehouse.gov")
+
+	_, err = s.
+		Update("people").
+		Set("nullable", nil).
+		Where("id = $1", person.ID).
+		Exec()
+	assert.NoError(t, err)
+
+	err = s.
+		Select("*").
+		From("people").
+		Where("id = $1", person.ID).
+		QueryStruct(&person)
+	assert.NoError(t, err)
+	assert.Nil(t, person.Nullable)
 }
 
 func TestUpdateReturningStar(t *testing.T) {
