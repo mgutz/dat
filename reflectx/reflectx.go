@@ -192,6 +192,10 @@ func FieldByIndexes(v reflect.Value, indexes []int) reflect.Value {
 		v = reflect.Indirect(v).Field(i)
 		// if this is a pointer, it's possible it is nil
 		if v.Kind() == reflect.Ptr && v.IsNil() {
+			if !v.CanSet() {
+				continue
+			}
+
 			alloc := reflect.New(Deref(v.Type()))
 			v.Set(alloc)
 		}
