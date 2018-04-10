@@ -124,6 +124,17 @@ func TestInsertReal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, person2.ID > 0)
 	assert.NotEqual(t, person.ID, person2.ID)
+
+	person3 := Person{Name: "Barack", Nullable: nil}
+	err = s.
+		InsertInto("people").
+		Columns("name", "nullable").
+		Record(person3).
+		Returning("id", "nullable").
+		QueryStruct(&person3)
+	assert.True(t, person3.ID > 0)
+	assert.NotEqual(t, person2.ID, person3.ID)
+	assert.Nil(t, person3.Nullable)
 }
 
 func TestInsertMultipleRecords(t *testing.T) {

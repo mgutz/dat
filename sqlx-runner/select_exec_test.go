@@ -86,7 +86,7 @@ func TestSelectQueryStruct(t *testing.T) {
 	// Found:
 	var person Person
 	err := s.
-		Select("id", "name", "email").
+		Select("id", "name", "email", "nullable").
 		From("people").
 		Where("email = $1", "john@acme.com").
 		QueryStruct(&person)
@@ -95,11 +95,12 @@ func TestSelectQueryStruct(t *testing.T) {
 	assert.Equal(t, person.Name, "John")
 	assert.True(t, person.Email.Valid)
 	assert.Equal(t, person.Email.String, "john@acme.com")
+	assert.Nil(t, person.Nullable)
 
 	// Not found:
 	var person2 Person
 	err = s.
-		Select("id", "name", "email").
+		Select("id", "name", "email", "nullable").
 		From("people").Where("email = $1", "dontexist@acme.com").
 		QueryStruct(&person2)
 	assert.Contains(t, err.Error(), "no rows")
