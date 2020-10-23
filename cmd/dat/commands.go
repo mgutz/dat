@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 
 	"github.com/mgutz/str"
 
@@ -80,20 +79,7 @@ func commandCLI(ctx *AppContext) error {
 
 // Down undoes 1 or more migrations. Default is 1 down.
 func commandDown(ctx *AppContext) error {
-	var count int
-	if len(ctx.Options.UnparsedArgs) == 1 {
-		count = 1
-	} else {
-		arg := ctx.Options.UnparsedArgs[1]
-		n, err := strconv.Atoi(arg)
-		if err != nil {
-			return errors.New("Usage: dat down [n]")
-		}
-		count = n
-		if count == 0 {
-			count = 1
-		}
-	}
+	count := ctx.Options.DownCmd.Count
 
 	_, db, err := getAdapterAndDB(ctx)
 	if err != nil {
@@ -135,7 +121,7 @@ func commandDump(ctx *AppContext) error {
 		return err
 	}
 
-	newFilename := getCommandArg1(ctx)
+	newFilename := ctx.Options.DumpCmd.Filename
 	if newFilename == "" {
 		newFilename = timestampedName("dump")
 	}
@@ -195,10 +181,7 @@ func commandDump(ctx *AppContext) error {
 }
 
 func commandExec(ctx *AppContext) error {
-	q := getCommandArg1(ctx)
-	if q == "" {
-		return errors.New(`Usage: dat exec [sql_string]`)
-	}
+	q := ctx.Options.ExecCmd.Query
 
 	adapter := NewPostgresAdapter()
 	db, err := adapter.AcquireDB(&ctx.Options.Connection)
@@ -206,35 +189,23 @@ func commandExec(ctx *AppContext) error {
 		return err
 	}
 	defer db.Close()
+
+	if ctx.Options.ExecCmd.Query == "json" {
+		var obj jo.Object
+		err = db.SQL(q).QueryObject(&obj)
+		if err != nil {
+			return err
+		}
+
+		logger.Info(obj.Prettify())
+		return nil
+	}
 
 	return execScript(db, q, false)
 }
 
-func commandQuery(ctx *AppContext) error {
-	q := getCommandArg1(ctx)
-	if q == "" {
-		return errors.New(`Usage: dat exec [sql_string]`)
-	}
-
-	adapter := NewPostgresAdapter()
-	db, err := adapter.AcquireDB(&ctx.Options.Connection)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	var obj jo.Object
-	err = db.SQL(q).QueryObject(&obj)
-	if err != nil {
-		return err
-	}
-
-	logger.Info(obj.Prettify())
-	return nil
-}
-
 func commandFile(ctx *AppContext) error {
-	filename := getCommandArg1(ctx)
+	filename := ctx.Options.FileCmd.Filename
 	if filename == "" {
 		return errors.New(`Usage: dat file [filename]`)
 	}
@@ -278,7 +249,7 @@ func commandInit(ctx *AppContext) error {
 	return err
 }
 
-func commandList(ctx *AppContext) error {
+func commandHistory(ctx *AppContext) error {
 	adapter, db, err := getAdapterAndDB(ctx)
 	if err != nil {
 		return err
@@ -287,14 +258,14 @@ func commandList(ctx *AppContext) error {
 	migrations, err := adapter.GetAllMigrations(db)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			logger.Info("A No migrations found.")
+			logger.Info("No migrations found.")
 			return nil
 		}
 		return err
 	}
 
 	if len(migrations) == 0 {
-		logger.Info("No migrations found")
+		logger.Info("No migrations found\n")
 		return nil
 	}
 
@@ -314,7 +285,7 @@ func commandList(ctx *AppContext) error {
 
 // newScripts creates a new script directory with blank `up.sql` and `down.sql`
 func commandNew(ctx *AppContext) error {
-	title := getCommandArg1(ctx)
+	title := ctx.Options.NewCmd.Title
 	if title == "" {
 		return errors.New("Usage: dat new TITLE")
 	}
@@ -410,7 +381,7 @@ func commandRestore(ctx *AppContext) error {
 		return err
 	}
 
-	filename := getCommandArg1(ctx)
+	filename := ctx.Options.RestoreCmd.Filename
 	if filename == "" {
 		dumpFiles, err := getDumpFiles(ctx)
 		if err != nil {

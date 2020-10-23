@@ -24,7 +24,7 @@ var reSprocName = regexp.MustCompile(`(?mi)^\s*create function\s(\w+(\.(\w+))?)`
 
 // upsertSprocs parses all sprocs in SQL files under migrations/sprocs and
 // insert/updates the database
-func upsertSprocs(conn runner.Connection, options *AppOptions) error {
+func upsertSprocs(conn runner.Connection, options *CLIArgs) error {
 	sprocsDir := options.SprocsDir
 	if !dirExists(sprocsDir) {
 		return nil

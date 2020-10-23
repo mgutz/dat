@@ -18,7 +18,7 @@ import (
 	survey "gopkg.in/AlecAivazis/survey.v1"
 )
 
-func buildSuperOptions(options *AppOptions) (*AppOptions, error) {
+func buildSuperOptions(options *CLIArgs) (*CLIArgs, error) {
 	questions := []*survey.Question{
 		{
 			Name:   "SuperUser",
@@ -46,7 +46,7 @@ func buildSuperOptions(options *AppOptions) (*AppOptions, error) {
 	}
 
 	// use conversion to clone, then set admin credentials
-	superOptions := AppOptions(*options)
+	superOptions := CLIArgs(*options)
 	superOptions.Connection.User = answers.SuperUser
 	superOptions.Connection.Password = answers.SuperPassword
 	superOptions.Connection.Database = "postgres"
@@ -67,7 +67,7 @@ func getAdapterAndDB(ctx *AppContext) (*PostgresAdapter, *runner.DB, error) {
 
 var reMigrationDir = regexp.MustCompile(`[0-9]+-[\w\-]+$`)
 
-func getMigrationSubDirectories(options *AppOptions) ([]string, error) {
+func getMigrationSubDirectories(options *CLIArgs) ([]string, error) {
 
 	var files []string
 	err := filepath.Walk(options.MigrationsDir+"/", func(path string, info os.FileInfo, err error) error {
@@ -129,7 +129,7 @@ func getDumpFiles(ctx *AppContext) ([]string, error) {
 
 // gets local migrations names only, it does not fill in DownScript, UpScript and
 // NoTransactionScript
-func getPartialLocalMigrations(options *AppOptions) ([]*Migration, error) {
+func getPartialLocalMigrations(options *CLIArgs) ([]*Migration, error) {
 	dirs, err := getMigrationSubDirectories(options)
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
@@ -158,7 +158,7 @@ func migrationFile(dir string, title string, filename string) string {
 }
 
 // scriptFilename computes a migration sripts filename
-func scriptFilename(options *AppOptions, migration *Migration, subFile string) string {
+func scriptFilename(options *CLIArgs, migration *Migration, subFile string) string {
 	return filepath.Join(options.MigrationsDir, migration.Name, subFile)
 }
 
@@ -238,7 +238,7 @@ func writeFileAll(filename string, b []byte) error {
 
 // readInitScript reads migrations/_init/up.sql. If any error occurs, it returns
 // an empty string.
-func readInitScript(options *AppOptions) string {
+func readInitScript(options *CLIArgs) string {
 	path := filepath.Join(options.InitDir, "up.sql")
 	s, _ := readFileText(path)
 	return s
@@ -462,13 +462,6 @@ func calcLineCol(script string, pos string) (int, int, error) {
 	}
 
 	return line, column, nil
-}
-
-func getCommandArg1(ctx *AppContext) string {
-	if len(ctx.Options.UnparsedArgs) > 1 {
-		return ctx.Options.UnparsedArgs[1]
-	}
-	return ""
 }
 
 const datYAMLExample = `

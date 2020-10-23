@@ -57,3 +57,11 @@ function build {
         fi
     done
 }
+
+# More details
+function test() {
+    export DAT_DRIVER="postgres"
+    export DAT_DSN="dbname=dat_test user=dat password=!test host=localhost sslmode=disable"
+    (cd dat && go test -race)
+    (cd sqlx-runner && go test -race)
+}
