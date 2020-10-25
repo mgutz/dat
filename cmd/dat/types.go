@@ -4,7 +4,7 @@ import "github.com/mgutz/dat/dat"
 
 // AppContext is the context we pass around instead of having globals
 type AppContext struct {
-	Options *CLIArgs
+	Args *CLIArgs
 }
 
 // AdapterContext is the context to pass to adapters

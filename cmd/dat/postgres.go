@@ -49,7 +49,6 @@ type PostgresAdapter struct {
 // AcquireDB creates a new database connection which implements runner.Connection
 func (pg *PostgresAdapter) AcquireDB(connection *Connection) (*runner.DB, error) {
 	connectionStr := pg.ConnectionString(connection)
-
 	if conn, ok := pg.dbs[connectionStr]; ok {
 		return conn, nil
 	}
@@ -88,7 +87,7 @@ func (pg *PostgresAdapter) Bootstrap(ctx *AppContext, conn runner.Connection) er
 	// any dat scripts. The init/up.sql should be an idempotent
 	// script. It was created to migrate data from existing migration tool
 	// to dat.
-	initScript := readInitScript(ctx.Options)
+	initScript := readInitScript(ctx.Args)
 	if initScript != "" {
 		err := execScript(conn, initScript, false)
 		if err != nil {
@@ -139,10 +138,10 @@ func (pg *PostgresAdapter) Bootstrap(ctx *AppContext, conn runner.Connection) er
 	return nil
 }
 
-// Create creates a blank database. If the user and database exists they will
-// be dropped.
+// Create creates a blank database. If the user and database exists, both are
+// dropped.
 func (pg *PostgresAdapter) Create(ctx *AppContext, superConn runner.Connection) error {
-	connection := ctx.Options.Connection
+	connection := ctx.Args.Connection
 
 	expressions := []*dat.Expression{
 		// drop any existing connections which is helpful
@@ -184,7 +183,7 @@ func (pg *PostgresAdapter) Create(ctx *AppContext, superConn runner.Connection) 
 
 // ResetRole resets a role droppping anything it owns.
 func (pg *PostgresAdapter) ResetRole(ctx *AppContext, superConn runner.Connection) error {
-	connection := ctx.Options.Connection
+	connection := ctx.Args.Connection
 
 	expressions := []*dat.Expression{
 		// drop any existing connections
@@ -242,5 +241,18 @@ func (pg *PostgresAdapter) GetLastMigration(conn runner.Connection) (*Migration,
 func (pg *PostgresAdapter) DeleteMigration(conn runner.Connection, name string) error {
 	sql := `delete from dat__migrations where name=$1`
 	_, err := conn.SQL(sql, name).Exec()
+	return err
+}
+
+// CleanDatabase removes all tables, etc form database.
+func (pg *PostgresAdapter) CleanDatabase(conn runner.Connection, name string) error {
+	sql := fmt.Sprintf(`
+	drop schema public cascade;
+	create schema public;
+	grant all on schema public to %s;
+	grant all on schema public to public;
+	comment on schema public is 'standard public schema';
+	`, name)
+	_, err := conn.SQL(sql).Exec()
 	return err
 }

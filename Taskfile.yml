@@ -1,0 +1,24 @@
+# https://taskfile.dev
+
+version: "3"
+
+vars:
+  GREETING:
+    sh: "echo $USER"
+
+env:
+  DAT_DRIVER: postgres
+  DAT_DSN: "dbname=dat_test user=dat password=!test host=localhost sslmode=disable"
+
+tasks:
+  test:
+    desc: Run tests
+    cmds:
+      - (cd dat && go test -race)
+      - (cd sqlx-runner && go test -race)
+    silent: true
+
+  build:
+    desc: Builds dat utility
+    cmds:
+      - go install github.com/mgutz/dat/cmd/dat

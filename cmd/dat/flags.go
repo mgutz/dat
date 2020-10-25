@@ -20,7 +20,7 @@ var ErrConfigNotFound = errors.New("dat.yaml not found")
 // Connection are the options for building connections string.
 type Connection struct {
 	Database    string `arg:"-d,--database,required,env:dat_database" placeholder:"DB"`
-	ExtraParams string `arg:"-e,--extraParams,env:dat_extraParams" help:"Extra connection string parameters" placeholder:"QS"`
+	ExtraParams string `arg:"-e,--extraParams,env:dat_extraParams" help:"Extra  connection params" placeholder:"QS"`
 	Host        string `arg:"-h,--host,env:dat_host" default:"localhost" description:"Host"`
 	Password    string `arg:"--password,env:dat_password"`
 	Port        string `arg:"-p,--port,env:dat_port" default:"5432"`
@@ -29,8 +29,12 @@ type Connection struct {
 
 // CLIArgs are the options to connect to a database
 type CLIArgs struct {
+	CleanCmd *struct {
+		Owner string `arg:"positional" help:"Owner"`
+	} `arg:"subcommand:clean" help:"Remove data and tables from database"`
+
 	CLICmd *struct {
-	} `arg:"subcommand:cli" help:"Run psqlx"`
+	} `arg:"subcommand:cli" help:"Run psql"`
 
 	CreateDBCmd *struct {
 	} `arg:"subcommand:createdb" help:"(Re)Creates the database"`
@@ -83,17 +87,17 @@ type CLIArgs struct {
 	Connection
 	BatchSeparator  string `arg:"--batchSeparator" default:"GO" help:"Statement separator" env:"dat_batchSeparator" placeholder:"SEP"`
 	DockerContainer string `arg:"-"`
-	DumpsDir        string `arg:"--dumpsDir" env:"dat_dumpsDir" placeholder:"DIR"`
-	InitDir         string `arg:"--initDir" env:"dat_initDir"  placeholder:"DIR"`
-	MigrationsDir   string `arg:"--dir" default:"migrations" env:"dat_dir" help:"migrationsDir"  placeholder:"DIR"`
-	SprocsDir       string `arg:"--sprocsDir" help:"Stored procedures"  placeholder:"DIR"`
+	DumpsDir        string `arg:"--dumpsDir,env:dat_dumpsDir" placeholder:"DIR"`
+	InitDir         string `arg:"--initDir,env:dat_initDir" placeholder:"DIR"`
+	MigrationsDir   string `arg:"--dir,env:dat_dir" default:"migrations" help:"Migrations directory"  placeholder:"DIR"`
+	SprocsDir       string `arg:"--sprocsDir,env:dat_sprocsDir" help:"Stored procedures"  placeholder:"DIR"`
 }
 
 func loadEnvFiles() error {
 	err := godotenv.Load()
 	if err != nil {
 		if os.IsNotExist(err) {
-			// do nothing, it's not error if .env file does not
+			// do nothing, it's not error if .env file does not exist
 			return nil
 		}
 
@@ -126,6 +130,9 @@ func parseArgs() (*CLIArgs, error) {
 	if args.SprocsDir == "" {
 		args.SprocsDir = filepath.Join(args.MigrationsDir, "sprocs")
 	}
+
+	// b, _ := json.MarshalIndent(args, "", "    ")
+	// fmt.Println("args=", string(b))
 
 	return &args, nil
 }
